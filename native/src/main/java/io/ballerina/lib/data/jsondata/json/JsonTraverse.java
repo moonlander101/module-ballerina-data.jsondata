@@ -113,6 +113,10 @@ public class JsonTraverse {
 
         private Object traverseJson(Object json, Type type) {
             Type referredType = TypeUtils.getReferredType(type);
+            if (json == null && referredType.isNilable()) {
+                return null;
+            }
+
             switch (referredType.getTag()) {
                 case TypeTags.RECORD_TYPE_TAG -> {
                     if (!(json instanceof BMap)) {
@@ -158,7 +162,12 @@ public class JsonTraverse {
                     return convertToBasicType(json, referredType);
                 }
                 case TypeTags.UNION_TAG -> {
-                    for (Type memberType : ((UnionType) referredType).getMemberTypes()) {
+                    UnionType unionType = (UnionType) referredType;
+                    if (json == null && unionType.isNilable()) {
+                        return null;
+                    }
+
+                    for (Type memberType : unionType.getMemberTypes()) {
                         try {
                             return traverseJson(json, memberType);
                         } catch (Exception e) {
