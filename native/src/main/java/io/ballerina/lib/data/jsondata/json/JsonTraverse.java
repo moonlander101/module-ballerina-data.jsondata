@@ -235,6 +235,8 @@ public class JsonTraverse {
                     if (allowDataProjection) {
                         continue;
                     }
+                    this.fieldHierarchy.pop();
+                    this.restType.pop();
                     throw DiagnosticLog.error(DiagnosticErrorCode.UNDEFINED_FIELD, key);
                 }
 
