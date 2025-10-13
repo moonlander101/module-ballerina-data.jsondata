@@ -307,4 +307,30 @@ isolated function testDisableDataProjectionInOpenArray() returns error? {
     string jsonStr = string `[1, 3, 4, 5, 7]`;
     int[] val2 = check parseString(jsonStr, options);
     test:assertEquals(val2, [1, 3, 4, 5, 7]);
+    
+    json jsonContent = {
+        "abc": {
+            "x": "test"
+        },
+        "name": "test1"
+    };
+    Metadata book = check parseAsType(jsonContent, options3);
+    test:assertEquals(book.name, "test1");
+    test:assertEquals(book.abc?.x, "test");
 }
+
+public type X C|B;
+
+public type C record {|
+    string y;
+    string z;
+|};
+
+public type B record {|
+    string x;
+|};
+
+public type Metadata record {|
+    string name;
+    X abc; 
+|};
