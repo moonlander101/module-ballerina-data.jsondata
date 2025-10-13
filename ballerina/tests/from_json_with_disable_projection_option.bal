@@ -314,7 +314,7 @@ isolated function testDisableDataProjectionInOpenArray() returns error? {
         },
         "name": "test1"
     };
-    Metadata book = check parseAsType(jsonContent, options3);
+    Metadata book = check parseAsType(jsonContent, options);
     test:assertEquals(book.name, "test1");
     test:assertEquals(book.abc?.x, "test");
 }
