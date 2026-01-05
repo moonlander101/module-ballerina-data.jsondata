@@ -48,3 +48,21 @@ groupId = "com.networknt"
 artifactId = "json-schema-validator"
 version = "3.0.0"
 
+[[platform.java21.dependency]]
+path = "./lib/jackson-core-2.17.2.jar"
+groupId = "com.fasterxml.jackson.core"
+artifactId = "jackson-core"
+version = "2.17.2"
+
+[[platform.java21.dependency]]
+path = "./lib/jackson-databind-2.17.2.jar"
+groupId = "com.fasterxml.jackson.core"
+artifactId = "jackson-databind"
+version = "2.17.2"
+
+[[platform.java21.dependency]]
+path = "./lib/jackson-annotations-2.17.2.jar"
+groupId = "com.fasterxml.jackson.core"
+artifactId = "jackson-annotations"
+version = "2.17.2"
+
