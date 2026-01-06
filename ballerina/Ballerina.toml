@@ -85,8 +85,8 @@ artifactId = "joni"
 version = "2.2.5"
 
 [[platform.java21.dependency]]
-path = "./lib/jcodings-1.0.58.jar"
+path = "./lib/jcodings-1.0.63.jar"
 groupId = "org.jruby.jcodings"
 artifactId = "jcodings"
-version = "1.0.58"
+version = "1.0.63"
 
