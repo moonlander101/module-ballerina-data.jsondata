@@ -41,3 +41,39 @@ groupId = "io.ballerina.stdlib"
 artifactId = "constraint-native"
 version = "@constraint.version@"
 path = "./lib/constraint-native-@stdlib.constraintnative.version@.jar"
+
+[[platform.java21.dependency]]
+path = "./lib/json-schema-validator-@networknt.json.schema.validator.version@.jar"
+groupId = "com.networknt"
+artifactId = "json-schema-validator"
+version = "@networknt.json.schema.validator.version@"
+
+[[platform.java21.dependency]]
+path = "./lib/jackson-databind-@@jacksonDatabindVersion@@.jar"
+groupId = "com.fasterxml.jackson.core"
+artifactId = "jackson-databind"
+version = "@@jacksonDatabindVersion@@"
+
+[[platform.java21.dependency]]
+path = "./lib/jackson-core-@@jacksonCoreVersion@@.jar"
+groupId = "com.fasterxml.jackson.core"
+artifactId = "jackson-core"
+version = "@@jacksonCoreVersion@@"
+
+[[platform.java21.dependency]]
+path = "./lib/jackson-annotations-@@jacksonAnnotationsVersion@@.jar"
+groupId = "com.fasterxml.jackson.core"
+artifactId = "jackson-annotations"
+version = "@@jacksonAnnotationsVersion@@"
+
+[[platform.java21.dependency]]
+path = "./lib/jackson-datatype-jsr310-@@jacksonDatatypeJsr310Version@@.jar"
+groupId = "com.fasterxml.jackson.datatype"
+artifactId = "jackson-datatype-jsr310"
+version = "@@jacksonDatatypeJsr310Version@@"
+
+[[platform.java21.dependency]]
+path = "./lib/snakeyaml-@@snakeyamlVersion@@.jar"
+groupId = "org.yaml"
+artifactId = "snakeyaml"
+version = "@@snakeyamlVersion@@"

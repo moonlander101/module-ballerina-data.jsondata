@@ -71,6 +71,9 @@ dependencies {
     externalJars(group: 'io.ballerina.stdlib', name: 'constraint-native', version: "${stdlibConstraintVersion}") {
         transitive = false
     }
+    externalJars(group: 'com.networknt', name: 'json-schema-validator', version: "${networkntJsonSchemaValidatorVersion}") {
+        transitive = true
+    }
 }
 
 task updateTomlFiles {
@@ -85,6 +88,14 @@ task updateTomlFiles {
         newConfig = newConfig.replace("@accessors.version@", project.javaAccessorsSmartVersion)
         newConfig = newConfig.replace("@stdlib.constraintnative.version@", stdlibDependentConstraintNativeVersion)
         newConfig = newConfig.replace("@constraint.version@", stdlibDependentConstraintVersion)
+
+        newConfig = newConfig.replace("@networknt.json.schema.validator.version@", project.networkntJsonSchemaValidatorVersion)
+        newConfig = newConfig.replace("@@jacksonDatabindVersion@@", project.jacksonDatabindVersion)
+        newConfig = newConfig.replace("@@jacksonCoreVersion@@", project.jacksonCoreVersion)
+        newConfig = newConfig.replace("@@jacksonAnnotationsVersion@@", project.jacksonAnnotationsVersion)
+        newConfig = newConfig.replace("@@jacksonDatatypeJsr310Version@@", project.jacksonDatatypeJsr310Version)
+        newConfig = newConfig.replace("@@snakeyamlVersion@@", project.snakeyamlVersion)
+
         ballerinaTomlFile.text = newConfig
 
         def newCompilerPluginToml = compilerPluginTomlFilePlaceHolder.text.replace("@project.version@", project.version)

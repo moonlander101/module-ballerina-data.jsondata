@@ -36,6 +36,8 @@ dependencies {
     implementation group: 'com.jayway.jsonpath', name: 'json-path', version: "${javaJsonPathVersion}"
 
     implementation group: 'io.ballerina.stdlib', name: 'constraint-native', version: "${stdlibConstraintVersion}"
+
+    implementation group: 'com.networknt', name: 'json-schema-validator', version: "${networkntJsonSchemaValidatorVersion}"
 }
 
 checkstyle {
