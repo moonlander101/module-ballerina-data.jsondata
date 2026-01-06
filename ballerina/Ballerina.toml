@@ -77,3 +77,10 @@ path = "./lib/snakeyaml-2.3.jar"
 groupId = "org.yaml"
 artifactId = "snakeyaml"
 version = "2.3"
+
+[[platform.java21.dependency]]
+path = "./lib/joni-2.2.5.jar"
+groupId = "org.jruby.joni"
+artifactId = "joni"
+version = "2.2.5"
+
