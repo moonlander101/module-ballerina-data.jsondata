@@ -48,46 +48,32 @@ groupId = "com.networknt"
 artifactId = "json-schema-validator"
 version = "3.0.0"
 
-#[[platform.java21.dependency]]
-#path = "./lib/jackson-core-3.0.3.jar"
-#groupId = "tools.jackson.core"
-#artifactId = "jackson-core"
-#version = "3.0.3"
-#
-#[[platform.java21.dependency]]
-#path = "./lib/jackson-databind-3.0.3.jar"
-#groupId = "tools.jackson.core"
-#artifactId = "jackson-databind"
-#version = "3.0.3"
-#
-#[[platform.java21.dependency]]
-#path = "./lib/jackson-dataformat-yaml-3.0.3.jar"
-#groupId = "tools.jackson.dataformat"
-#artifactId = "jackson-dataformat-yaml"
-#version = "3.0.3"
-#
-#[[platform.java21.dependency]]
-#path = "./lib/jackson-annotations-2.20.jar"
-#groupId = "com.fasterxml.jackson.core"
-#artifactId = "jackson-annotations"
-#version = "2.20"
-#
-#[[platform.java21.dependency]]
-#path = "./lib/itu-1.14.0.jar"
-#groupId = "com.ethlo.time"
-#artifactId = "itu"
-#version = "1.14.0"
-#
-#[[platform.java21.dependency]]
-#path = "./lib/slf4j-api-2.0.17.jar"
-#groupId = "org.slf4j"
-#artifactId = "slf4j-api"
-#version = "2.0.17"
-#
-#[[platform.java21.dependency]]
-#path = "./lib/snakeyaml-engine-2.10.jar"
-#groupId = "org.snakeyaml"
-#artifactId = "snakeyaml-engine"
-#version = "2.10"
+[[platform.java21.dependency]]
+path = "./lib/jackson-databind-3.0.3.jar"
+groupId = "com.fasterxml.jackson.core"
+artifactId = "jackson-databind"
+version = "3.0.3"
 
+[[platform.java21.dependency]]
+path = "./lib/jackson-core-3.0.3.jar"
+groupId = "com.fasterxml.jackson.core"
+artifactId = "jackson-core"
+version = "3.0.3"
 
+[[platform.java21.dependency]]
+path = "./lib/jackson-annotations-2.20.jar"
+groupId = "com.fasterxml.jackson.core"
+artifactId = "jackson-annotations"
+version = "2.20"
+
+[[platform.java21.dependency]]
+path = "./lib/jackson-datatype-jsr310-2.18.2.jar"
+groupId = "com.fasterxml.jackson.datatype"
+artifactId = "jackson-datatype-jsr310"
+version = "2.18.2"
+
+[[platform.java21.dependency]]
+path = "./lib/snakeyaml-2.3.jar"
+groupId = "org.yaml"
+artifactId = "snakeyaml"
+version = "2.3"
