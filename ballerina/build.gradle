@@ -74,6 +74,9 @@ dependencies {
     externalJars(group: 'com.networknt', name: 'json-schema-validator', version: "${networkntJsonSchemaValidatorVersion}") {
         transitive = true
     }
+    externalJars(group: 'org.jruby.joni', name: 'joni', version: "${joniVersion}") {
+        transitive = true
+    }
 }
 
 task updateTomlFiles {
@@ -95,6 +98,8 @@ task updateTomlFiles {
         newConfig = newConfig.replace("@@jacksonAnnotationsVersion@@", project.jacksonAnnotationsVersion)
         newConfig = newConfig.replace("@@jacksonDatatypeJsr310Version@@", project.jacksonDatatypeJsr310Version)
         newConfig = newConfig.replace("@@snakeyamlVersion@@", project.snakeyamlVersion)
+        newConfig = newConfig.replace("@@joniVersion@@", project.joniVersion)
+        newConfig = newConfig.replace("@@jcodingsVersion@@", project.jcodingsVersion)
 
         ballerinaTomlFile.text = newConfig
 

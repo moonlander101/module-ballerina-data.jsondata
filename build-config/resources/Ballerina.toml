@@ -77,3 +77,16 @@ path = "./lib/snakeyaml-@@snakeyamlVersion@@.jar"
 groupId = "org.yaml"
 artifactId = "snakeyaml"
 version = "@@snakeyamlVersion@@"
+
+[[platform.java21.dependency]]
+path = "./lib/joni-@@joniVersion@@.jar"
+groupId = "org.jruby.joni"
+artifactId = "joni"
+version = "@@joniVersion@@"
+
+[[platform.java21.dependency]]
+path = "./lib/jcodings-@@jcodingsVersion@@.jar"
+groupId = "org.jruby.jcodings"
+artifactId = "jcodings"
+version = "@@jcodingsVersion@@"
+

@@ -38,6 +38,8 @@ dependencies {
     implementation group: 'io.ballerina.stdlib', name: 'constraint-native', version: "${stdlibConstraintVersion}"
 
     implementation group: 'com.networknt', name: 'json-schema-validator', version: "${networkntJsonSchemaValidatorVersion}"
+
+    implementation group: 'org.jruby.joni', name: 'joni', version: "${joniVersion}"
 }
 
 checkstyle {
