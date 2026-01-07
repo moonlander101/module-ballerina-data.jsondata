@@ -19,6 +19,7 @@
 package io.ballerina.lib.data.jsondata.json;
 
 import io.ballerina.lib.data.jsondata.io.BallerinaByteBlockInputStream;
+import io.ballerina.lib.data.jsondata.json.schema.SchemaValidator;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
@@ -81,6 +82,18 @@ public class Native {
         } catch (BError e) {
             return e;
         }
+    }
+
+    public static Object validate(Object jsonValue, Object schema) {
+        Object err = null;
+        if (schema instanceof BString) {
+            SchemaValidator schemaValidator = SchemaValidator.getInstance(((BString) schema).getValue());
+            err = schemaValidator.validateAgainstSchema(jsonValue, (BString) schema);
+        }
+//        else {
+//            err = schemaValidator.validateAgainstBallerinaType(jsonValue, (BTypedesc) schema);
+//        }
+        return err;
     }
 
     public static Object parseStream(Environment env, BStream json, BMap<BString, Object> options, BTypedesc typed) {
