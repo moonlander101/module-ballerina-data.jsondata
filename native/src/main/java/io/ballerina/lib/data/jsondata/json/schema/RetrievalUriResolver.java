@@ -29,10 +29,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
-public class SchemaRetrievalUriResolver implements SchemaIdResolver {
+public class RetrievalUriResolver implements SchemaIdResolver {
     private final Map<String, String> idToPath = new HashMap<>();
 
-    public SchemaRetrievalUriResolver(String firstFilePath) {
+    public RetrievalUriResolver(String firstFilePath) {
         Path filePath = new File(firstFilePath).toPath().toAbsolutePath().normalize();
         if (Files.isDirectory(filePath))  {
             throw new RuntimeException("The provided path is a directory, expected a file path: " + firstFilePath);
