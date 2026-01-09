@@ -38,7 +38,6 @@ public class RetrievalUriResolver implements SchemaIdResolver {
             throw new RuntimeException("The provided path is a directory, expected a file path: " + firstFilePath);
         }
         Path rootDir = filePath.getParent();
-        System.out.println("Root directory for schema discovery: " + rootDir);
         initialDiscovery(rootDir);
     }
 
@@ -46,7 +45,8 @@ public class RetrievalUriResolver implements SchemaIdResolver {
     public AbsoluteIri resolve(AbsoluteIri targetId) {
         String idStr = targetId.toString();
         if (idToPath.containsKey(idStr)) {
-            return AbsoluteIri.of(idToPath.get(idStr));
+            String resolvedPath = idToPath.get(idStr);
+            return AbsoluteIri.of(resolvedPath);
         }
         return AbsoluteIri.of(idToPath.getOrDefault(idStr, idStr));
     }
@@ -55,19 +55,19 @@ public class RetrievalUriResolver implements SchemaIdResolver {
         try (Stream<Path> paths = Files.walk(rootDir)) {
             paths.filter(path -> path.toString().endsWith(".json"))
                     .forEach(path -> {
-                        String id = extractIdFromJson(path);
-                        if (id != null) {
-                            this.idToPath.put(id, path.toUri().toString());
+                        String topLevelId = extractRootIdFromJson(path);
+                        if (topLevelId != null && !topLevelId.isEmpty()) {
+                            String normalizedUri = path.toUri().normalize().toString();
+                            this.idToPath.put(topLevelId, normalizedUri);
                         }
                     });
 
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        System.out.println("HashMap after initial discovery: " + idToPath);
     }
 
-    public String extractIdFromJson(Path jsonFilePath) {
+    public String extractRootIdFromJson(Path jsonFilePath) {
         try {
             String content = Files.readString(jsonFilePath);
             int idIndex = content.indexOf("\"$id\"");
