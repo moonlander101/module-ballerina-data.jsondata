@@ -89,13 +89,13 @@ public class Native {
         Object err = null;
         if (schema instanceof BString) {
             String schemaStr = ((BString) schema).getValue();
-            try {
-                StringUtils.getJsonString(schemaStr);
+            java.io.File file = new java.io.File(schemaStr);
+            if (file.exists() && file.isFile()) {
                 SchemaFileValidator validator = SchemaFileValidator.getInstance(schemaStr);
-                return validator.validate(jsonValue, (BString) schema);
-            } catch (IllegalArgumentException e) {
+                err = validator.validate(jsonValue, (BString) schema);
+            } else {
                 SchemaStringValidator validator = SchemaStringValidator.getInstance();
-                return validator.validate(jsonValue, (BString) schema);
+                err = validator.validate(jsonValue, (BString) schema);
             }
         }
 //        else {
