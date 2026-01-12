@@ -18,7 +18,14 @@
 
 package io.ballerina.lib.data.jsondata.json.schema;
 
-import com.networknt.schema.*;
+import com.networknt.schema.InputFormat;
+import com.networknt.schema.OutputFormat;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaException;
+import com.networknt.schema.SchemaLocation;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SchemaRegistryConfig;
+import com.networknt.schema.SpecificationVersion;
 import com.networknt.schema.output.OutputUnit;
 import com.networknt.schema.regex.JoniRegularExpressionFactory;
 
@@ -27,12 +34,11 @@ import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BString;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 public class SchemaFileValidator {
     private final SchemaRegistry schemaRegistry;
@@ -58,10 +64,9 @@ public class SchemaFileValidator {
                         try {
                             if (uri.startsWith("file:")) {
                                 return Files.readString(Paths.get(java.net.URI.create(uri)));
-                            } else {
-                                throw new RuntimeException("Retrieval URI is not a local file: " + uri);
                             }
-                        } catch (Exception e) {
+                            return null;
+                        } catch (IOException e) {
                             throw new RuntimeException("Failed to load schema: " + uri, e);
                         }
                     })
@@ -89,30 +94,21 @@ public class SchemaFileValidator {
 
             if (!result.isValid()) {
                 List<String> allErrors = new ArrayList<>();
-                collectErrors(result, allErrors); // Call the recursive helper
+                collectErrors(result, allErrors);
 
-                StringBuilder errorMessage = new StringBuilder("Failed \n");
+                StringBuilder errorMessage = new StringBuilder("Failed to meet schema requirements, \n");
                 for (String err : allErrors) {
                     errorMessage.append("- ").append(err).append("\n");
                 }
-                throw new Exception(errorMessage.toString());
+                throw new RuntimeException(errorMessage.toString());
             }
 
             return null;
         }
-        catch (java.io.IOException e) {
-            return DiagnosticLog.createJsonError("IO error while reading schema file: " + e.getMessage());
+        catch (SchemaException e) {
+            return DiagnosticLog.createJsonError("Schema processing error: " + e.getMessage());
         }
-        catch (Exception e) {
-            if (e.getMessage().contains("FileNotFound")) {
-                return DiagnosticLog.createJsonError(
-                        """
-                        $ref tag in your schema could not be resolved to a local file.\s
-                        Please ensure that all schema files contain an absolute \
-                        $id and refs use that when referencing schemas/subschemas
-                        """
-                );
-            }
+        catch (java.lang.RuntimeException e) {
             return DiagnosticLog.createJsonError("Schema validation error: " + e.getMessage());
         }
     }
