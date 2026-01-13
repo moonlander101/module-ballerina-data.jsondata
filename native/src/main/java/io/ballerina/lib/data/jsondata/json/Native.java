@@ -91,16 +91,23 @@ public class Native {
             String schemaStr = ((BString) schema).getValue();
             java.io.File file = new java.io.File(schemaStr);
             if (file.exists() && file.isFile()) {
-                SchemaFileValidator validator = SchemaFileValidator.getInstance(schemaStr);
-                err = validator.validate(jsonValue, (BString) schema);
+                try {
+                    SchemaFileValidator validator = SchemaFileValidator.getInstance(schemaStr);
+                    err = validator.validate(jsonValue, (BString) schema);
+                } catch (Exception e) {
+                    err = DiagnosticLog.createJsonError(e.getMessage());
+                }
             } else {
-                SchemaStringValidator validator = SchemaStringValidator.getInstance();
-                err = validator.validate(jsonValue, (BString) schema);
+                try {
+                    SchemaStringValidator validator = SchemaStringValidator.getInstance();
+                    err = validator.validate(jsonValue, (BString) schema);
+                } catch (Exception e) {
+                    err = DiagnosticLog.createJsonError(e.getMessage());
+                }
             }
+        } else {
+            err = DiagnosticLog.createJsonError("type validation not done yet");
         }
-//        else {
-//            err = schemaValidator.validateAgainstBallerinaType(jsonValue, (BTypedesc) schema);
-//        }
         return err;
     }
 
