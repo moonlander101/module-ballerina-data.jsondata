@@ -38,7 +38,9 @@ public enum DiagnosticErrorCode {
     CANNOT_CONVERT_TO_EXPECTED_TYPE("JSON_ERROR_011", "cannot.convert.to.expected.type"),
     UNDEFINED_FIELD("JSON_ERROR_012", "undefined.field"),
     CAN_NOT_READ_STREAM("JSON_ERROR_013", "cannot.read.stream"),
-    CYCLIC_REFERENCE("JSON_ERROR_014", "cyclic.reference");
+    CYCLIC_REFERENCE("JSON_ERROR_014", "cyclic.reference"),
+    SCHEMA_FILE_NOT_FOUND("JSON_ERROR_015", "schema.file.not.found"),
+    SCHEMA_VALIDATION_FAILED("JSON_ERROR_016", "schema.validation.failed");
 
     String diagnosticId;
     String messageKey;

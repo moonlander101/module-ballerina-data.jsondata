@@ -21,6 +21,7 @@ package io.ballerina.lib.data.jsondata.json.schema;
 import com.networknt.schema.*;
 import com.networknt.schema.output.OutputUnit;
 import com.networknt.schema.regex.JoniRegularExpressionFactory;
+import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BString;
@@ -65,19 +66,25 @@ public class SchemaStringValidator {
 
             if (!result.isValid()) {
                 List<String> allErrors = new ArrayList<>();
-                collectErrors(result, allErrors); // Call the recursive helper
+                collectErrors(result, allErrors);
 
-                StringBuilder errorMessage = new StringBuilder("Failed \n");
-                for (String err : allErrors) {
-                    errorMessage.append("- ").append(err).append("\n");
+                StringBuilder errorMessage = new StringBuilder();
+                for (int i = 0; i < allErrors.size(); i++) {
+                    if (i > 0) {
+                        errorMessage.append("\n");
+                    }
+                    errorMessage.append("- ").append(allErrors.get(i));
                 }
-                throw new Exception(errorMessage.toString());
+                return DiagnosticLog.error(
+                        DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
+                        errorMessage.toString()
+                );
             }
 
             return null;
         }
         catch (Exception e) {
-            return DiagnosticLog.createJsonError("Schema validation error: " + e.getMessage());
+            return DiagnosticLog.createJsonError("schema processing error: " + e.getMessage());
         }
     }
 
