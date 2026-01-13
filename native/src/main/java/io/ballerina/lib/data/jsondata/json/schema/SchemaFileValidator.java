@@ -32,6 +32,7 @@ import com.networknt.schema.regex.JoniRegularExpressionFactory;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.runtime.api.utils.StringUtils;
+import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BString;
 
 import java.io.File;
@@ -76,7 +77,7 @@ public class SchemaFileValidator {
         );
     }
 
-    public Object validate(Object jsonValue, BString schema) {
+    public BError validate(Object jsonValue, BString schema) {
         try {
             String inputString = StringUtils.getJsonString(jsonValue);
             String schemaPathStr = schema.getValue();
