@@ -49,7 +49,7 @@ public class SchemaFileValidator {
 
     private SchemaFileValidator(String baseFilePath) {
         if (!baseFilePath.endsWith("json")) {
-            throw new RuntimeException("The provided filepath is not a JSON Schema file: " + baseFilePath);
+            throw new RuntimeException("expected json schema, got: " + baseFilePath);
         }
 
         RetrievalUriResolver schemaResolver = new RetrievalUriResolver(baseFilePath);
@@ -67,7 +67,7 @@ public class SchemaFileValidator {
                             }
                             return null;
                         } catch (IOException e) {
-                            throw new RuntimeException("Failed to load schema: " + uri, e);
+                            throw new RuntimeException("failed to load schema: " + uri, e);
                         }
                     })
                     .schemaRegistryConfig(config)
@@ -96,7 +96,7 @@ public class SchemaFileValidator {
                 List<String> allErrors = new ArrayList<>();
                 collectErrors(result, allErrors);
 
-                StringBuilder errorMessage = new StringBuilder("Failed to meet schema requirements, \n");
+                StringBuilder errorMessage = new StringBuilder("Failed \n");
                 for (String err : allErrors) {
                     errorMessage.append("- ").append(err).append("\n");
                 }
@@ -106,10 +106,10 @@ public class SchemaFileValidator {
             return null;
         }
         catch (SchemaException e) {
-            return DiagnosticLog.createJsonError("Schema processing error: " + e.getMessage());
+            return DiagnosticLog.createJsonError("schema processing error: " + e.getMessage());
         }
         catch (java.lang.RuntimeException e) {
-            return DiagnosticLog.createJsonError("Schema validation error: " + e.getMessage());
+            return DiagnosticLog.createJsonError("schema validation error: " + e.getMessage());
         }
     }
 
