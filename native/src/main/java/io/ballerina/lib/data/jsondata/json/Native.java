@@ -90,6 +90,9 @@ public class Native {
         if (schema instanceof BString) {
             String schemaStr = ((BString) schema).getValue();
             java.io.File file = new java.io.File(schemaStr);
+            if (file.isDirectory()) {
+                return DiagnosticLog.createJsonError("schema cannot be a directory");
+            }
             if (file.exists() && file.isFile()) {
                 try {
                     SchemaFileValidator validator = SchemaFileValidator.getInstance(schemaStr);

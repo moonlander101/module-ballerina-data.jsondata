@@ -24,6 +24,7 @@ import com.networknt.schema.regex.JoniRegularExpressionFactory;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.runtime.api.utils.StringUtils;
+import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BString;
 
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ public class SchemaStringValidator {
     }
 
 
-    public Object validate(Object jsonValue, BString schemaString) {
+    public BError validate(Object jsonValue, BString schemaString) {
         try {
             String inputString = StringUtils.getJsonString(jsonValue);
             String schemaStr = schemaString.getValue();
