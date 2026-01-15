@@ -88,16 +88,8 @@ public class Native {
     public static Object validate(Object jsonValue, Object schema) {
         Object err = null;
         if (schema instanceof BString) {
-            String filePath = ((BString) schema).getValue();
-            java.io.File file = new java.io.File(filePath);
-            if (!file.exists()) {
-                return DiagnosticLog.createJsonError("schema file does not exist");
-            }
-            if (file.isDirectory()) {
-                return DiagnosticLog.createJsonError("schema cannot be a directory");
-            }
             try {
-                SchemaFileValidator validator = SchemaFileValidator.getInstance(filePath);
+                SchemaFileValidator validator = SchemaFileValidator.getInstance((BString) schema);
                 err = validator.validate(jsonValue, (BString) schema);
             } catch (Exception e) {
                 err = DiagnosticLog.createJsonError(e.getMessage());
@@ -106,8 +98,6 @@ public class Native {
             err = DiagnosticLog.createJsonError("schema as json validation not supported yet");
         } else if (schema instanceof BTypedesc) {
             err = DiagnosticLog.createJsonError("type validation not supported yet");
-        } else {
-            err = DiagnosticLog.createJsonError("invalid schema type: " + TypeUtils.getType(schema).getName());
         }
         return err;
     }
