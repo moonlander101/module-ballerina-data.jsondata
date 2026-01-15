@@ -39,20 +39,37 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SchemaFileValidator {
     private final SchemaRegistry schemaRegistry;
+    private static SchemaFileValidator instance;
 
-    public static SchemaFileValidator getInstance(String firstFilePath) {
-        return new SchemaFileValidator(firstFilePath);
+    public static SchemaFileValidator getInstance(BString firstFilePath) {
+        if (instance == null) {
+            instance = new SchemaFileValidator(firstFilePath.getValue());
+        }
+        return instance;
     }
 
     private SchemaFileValidator(String baseFilePath) {
+        if (baseFilePath == null || baseFilePath.isEmpty()) {
+            throw new RuntimeException("schema file path cannot be null or empty");
+        }
         if (!baseFilePath.endsWith("json")) {
             throw new RuntimeException("expected json schema, got: " + baseFilePath);
+        }
+
+        Path absolutePath = Paths.get(baseFilePath).toAbsolutePath().normalize();
+
+        if (!Files.exists(absolutePath)) {
+            throw new RuntimeException("schema file does not exist: " + baseFilePath);
+        }
+        if (Files.isDirectory(absolutePath)) {
+            throw new RuntimeException("the provided path is a directory: " + baseFilePath);
         }
 
         RetrievalUriResolver schemaResolver = new RetrievalUriResolver(baseFilePath);
