@@ -30,14 +30,14 @@ import io.ballerina.runtime.api.values.BString;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SchemaStringValidator {
+public class SchemaJsonValidator {
     private final SchemaRegistry registry;
 
-    public static SchemaStringValidator getInstance() {
-        return new SchemaStringValidator();
+    public static SchemaJsonValidator getInstance() {
+        return new SchemaJsonValidator();
     }
 
-    private SchemaStringValidator() {
+    private SchemaJsonValidator() {
         SchemaRegistryConfig config = SchemaRegistryConfig.builder()
                 .regularExpressionFactory(JoniRegularExpressionFactory.getInstance())
                 .build();

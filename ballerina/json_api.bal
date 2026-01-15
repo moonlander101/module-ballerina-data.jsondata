@@ -86,8 +86,8 @@ public type Options record {
 #
 # + jsonValue - The `json` input value
 # + schema - The path to a JSON Schema or the json schema itself (string) or the Ballerina `typedesc<json>` to validate against
-# + return - An `Error` if validation fails, else
-public isolated function validate(json jsonValue, string|typedesc<json> schema)
+# + return - A `jsondata:Error` if validation fails, else returns `nil`
+public isolated function validate(json jsonValue, string|json|json[]|typedesc<json> schema)
         returns Error? = @java:Method {'class: "io.ballerina.lib.data.jsondata.json.Native"} external;
 
 # Defines the name of the JSON Object key.
