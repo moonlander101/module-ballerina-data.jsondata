@@ -20,7 +20,7 @@ package io.ballerina.lib.data.jsondata.json;
 
 import io.ballerina.lib.data.jsondata.io.BallerinaByteBlockInputStream;
 import io.ballerina.lib.data.jsondata.json.schema.SchemaFileValidator;
-import io.ballerina.lib.data.jsondata.json.schema.SchemaStringValidator;
+import io.ballerina.lib.data.jsondata.json.schema.SchemaJsonValidator;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
@@ -88,28 +88,26 @@ public class Native {
     public static Object validate(Object jsonValue, Object schema) {
         Object err = null;
         if (schema instanceof BString) {
-            String schemaStr = ((BString) schema).getValue();
-            java.io.File file = new java.io.File(schemaStr);
+            String filePath = ((BString) schema).getValue();
+            java.io.File file = new java.io.File(filePath);
+            if (!file.exists()) {
+                return DiagnosticLog.createJsonError("schema file does not exist");
+            }
             if (file.isDirectory()) {
                 return DiagnosticLog.createJsonError("schema cannot be a directory");
             }
-            if (file.exists() && file.isFile()) {
-                try {
-                    SchemaFileValidator validator = SchemaFileValidator.getInstance(schemaStr);
-                    err = validator.validate(jsonValue, (BString) schema);
-                } catch (Exception e) {
-                    err = DiagnosticLog.createJsonError(e.getMessage());
-                }
-            } else {
-                try {
-                    SchemaStringValidator validator = SchemaStringValidator.getInstance();
-                    err = validator.validate(jsonValue, (BString) schema);
-                } catch (Exception e) {
-                    err = DiagnosticLog.createJsonError(e.getMessage());
-                }
+            try {
+                SchemaFileValidator validator = SchemaFileValidator.getInstance(filePath);
+                err = validator.validate(jsonValue, (BString) schema);
+            } catch (Exception e) {
+                err = DiagnosticLog.createJsonError(e.getMessage());
             }
+        } else if (schema instanceof BMap || schema instanceof BArray) {
+            err = DiagnosticLog.createJsonError("schema as json validation not supported yet");
+        } else if (schema instanceof BTypedesc) {
+            err = DiagnosticLog.createJsonError("type validation not supported yet");
         } else {
-            err = DiagnosticLog.createJsonError("type validation not done yet");
+            err = DiagnosticLog.createJsonError("invalid schema type: " + TypeUtils.getType(schema).getName());
         }
         return err;
     }
