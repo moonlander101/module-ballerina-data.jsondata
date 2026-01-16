@@ -94,11 +94,37 @@ public class Native {
             } catch (Exception e) {
                 err = DiagnosticLog.createJsonError(e.getMessage());
             }
-        } else if (schema instanceof BMap || schema instanceof BArray) {
-            err = DiagnosticLog.createJsonError("schema as json validation not supported yet");
+        } else if (schema instanceof BMap) {
+            try {
+                String schemaStr = StringUtils.getJsonString(schema);
+                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
+                err = validator.validate(jsonValue, schemaStr);
+            } catch (Exception e) {
+                err = DiagnosticLog.createJsonError("schema validation error: " + e.getMessage());
+            }
+        } else if (schema instanceof BArray) {
+            try {
+                BArray schemaArray = (BArray) schema;
+                int length = (int) schemaArray.getLength();
+                if (length == 0) {
+                    return DiagnosticLog.createJsonError("schema array cannot be empty");
+                }
+
+                String[] schemaStrings = new String[length];
+                for (int i = 0; i < length; i++) {
+                    schemaStrings[i] = StringUtils.getJsonString(schemaArray.get(i));
+                }
+                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStrings);
+                err = validator.validate(jsonValue, schemaStrings[0]);
+            } catch (Exception e) {
+                err = DiagnosticLog.createJsonError("schema validation error: " + e.getMessage());
+            }
         } else if (schema instanceof BTypedesc) {
             err = DiagnosticLog.createJsonError("type validation not supported yet");
+        } else {
+            err = DiagnosticLog.createJsonError("invalid schema type: expected string, json, or json[]");
         }
+        
         return err;
     }
 

@@ -28,7 +28,6 @@ import com.networknt.schema.SchemaRegistryConfig;
 import com.networknt.schema.SpecificationVersion;
 import com.networknt.schema.output.OutputUnit;
 import com.networknt.schema.regex.JoniRegularExpressionFactory;
-
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.runtime.api.utils.StringUtils;
@@ -130,8 +129,7 @@ public class SchemaFileValidator {
             }
 
             return null;
-        }
-        catch (SchemaException e) {
+        } catch (SchemaException e) {
             if (e.getCause() instanceof FileNotFoundException ex) {
                 return DiagnosticLog.error(
                         DiagnosticErrorCode.SCHEMA_FILE_NOT_FOUND,
@@ -139,8 +137,7 @@ public class SchemaFileValidator {
                 );
             }
             return DiagnosticLog.createJsonError("schema processing error: " + e.getMessage());
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return DiagnosticLog.createJsonError("schema validation error: " + e.getMessage());
         }
     }
