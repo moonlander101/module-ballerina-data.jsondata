@@ -30,15 +30,23 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 public class RetrievalUriResolver implements SchemaIdResolver {
+    private static final String SCHEMA_ROOT_FOLDER = "schemas";
     private final Map<String, String> idToPath = new HashMap<>();
 
     public RetrievalUriResolver(String firstFilePath) {
         Path filePath = new File(firstFilePath).toPath().toAbsolutePath().normalize();
-        if (Files.isDirectory(filePath))  {
-            throw new RuntimeException("The provided path is a directory, expected a file path: " + firstFilePath);
+
+        while (filePath.getFileName() != null) {
+            if (filePath.getFileName().toString().equals(SCHEMA_ROOT_FOLDER)) {
+                initialDiscovery(filePath);
+                return;
+            }
+            filePath = filePath.getParent();
         }
-        Path rootDir = filePath.getParent();
-        initialDiscovery(rootDir);
+        throw new RuntimeException(
+                "could not find schema root folder." +
+                " please ensure all schemas reside in the 'schemas' folder of the project"
+        );
     }
 
     @Override
