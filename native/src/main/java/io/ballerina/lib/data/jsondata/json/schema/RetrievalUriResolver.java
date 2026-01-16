@@ -30,23 +30,15 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 public class RetrievalUriResolver implements SchemaIdResolver {
-    private static final String SCHEMA_ROOT_FOLDER = "schemas";
     private final Map<String, String> idToPath = new HashMap<>();
 
     public RetrievalUriResolver(String firstFilePath) {
         Path filePath = new File(firstFilePath).toPath().toAbsolutePath().normalize();
-
-        while (filePath.getFileName() != null) {
-            if (filePath.getFileName().toString().equals(SCHEMA_ROOT_FOLDER)) {
-                initialDiscovery(filePath);
-                return;
-            }
-            filePath = filePath.getParent();
+        if (Files.isDirectory(filePath))  {
+            throw new RuntimeException("The provided path is a directory, expected a file path: " + firstFilePath);
         }
-        throw new RuntimeException(
-                "could not find schema root folder." +
-                " please ensure all schemas reside in the 'schemas' folder of the project"
-        );
+        Path rootDir = filePath.getParent();
+        initialDiscovery(rootDir);
     }
 
     @Override
@@ -60,9 +52,11 @@ public class RetrievalUriResolver implements SchemaIdResolver {
     }
 
     public void initialDiscovery(Path rootDir) {
-        try (Stream<Path> paths = Files.walk(rootDir)) {
+        int MAX_DEPTH = 2;
+        try (Stream<Path> paths = Files.walk(rootDir, MAX_DEPTH + 1)) {
             paths.filter(path -> path.toString().endsWith(".json"))
                     .forEach(path -> {
+                        System.out.println(path);
                         String topLevelId = extractRootIdFromJson(path);
                         if (topLevelId != null && !topLevelId.isEmpty()) {
                             String normalizedUri = path.toUri().normalize().toString();
