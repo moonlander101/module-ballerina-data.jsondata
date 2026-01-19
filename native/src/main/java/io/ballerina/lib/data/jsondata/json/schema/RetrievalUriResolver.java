@@ -81,9 +81,9 @@ public class RetrievalUriResolver implements SchemaIdResolver {
                     return content.substring(startQuoteIndex + 1, endQuoteIndex);
                 }
             }
+            throw new RuntimeException("No $id found in JSON file: " + jsonFilePath);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read JSON file: " + jsonFilePath, e);
         }
-        return null;
     }
 }
