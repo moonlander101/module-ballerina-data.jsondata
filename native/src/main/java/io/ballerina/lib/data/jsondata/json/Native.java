@@ -115,7 +115,9 @@ public class Native {
                     schemaStrings[i] = StringUtils.getJsonString(schemaArray.get(i));
                 }
                 SchemaJsonValidator validator = new SchemaJsonValidator(schemaStrings);
-                err = validator.validate(jsonValue, schemaStrings[0]);
+
+                String rootSchema = validator.findRootSchema(schemaStrings);
+                err = validator.validate(jsonValue, rootSchema);
             } catch (Exception e) {
                 err = DiagnosticLog.createJsonError("schema validation error: " + e.getMessage());
             }
