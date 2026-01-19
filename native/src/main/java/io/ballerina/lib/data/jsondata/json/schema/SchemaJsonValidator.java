@@ -18,13 +18,7 @@
 
 package io.ballerina.lib.data.jsondata.json.schema;
 
-import com.networknt.schema.InputFormat;
-import com.networknt.schema.OutputFormat;
-import com.networknt.schema.Schema;
-import com.networknt.schema.SchemaException;
-import com.networknt.schema.SchemaRegistry;
-import com.networknt.schema.SchemaRegistryConfig;
-import com.networknt.schema.SpecificationVersion;
+import com.networknt.schema.*;
 import com.networknt.schema.output.OutputUnit;
 import com.networknt.schema.regex.JoniRegularExpressionFactory;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
@@ -75,21 +69,17 @@ public class SchemaJsonValidator {
 
     private Map<String, String> buildSchemaMap(String[] schemas) {
         Map<String, String> schemaMap = new HashMap<>();
-        
-        for (int i = 0; i < schemas.length; i++) {
-            String schemaStr = schemas[i];
-            
-            // Extract $id using simple string parsing (similar to RetrievalUriResolver)
+
+        for (String schemaStr : schemas) {
             String id = extractSchemaId(schemaStr);
-            
+
             if (id == null || id.isEmpty()) {
                 throw new RuntimeException(
-                        "for multiple schemas, please ensure all $id values are URIs with a scheme " +
+                        "for multiple schemas, please ensure all $id values are absolute URIs" +
                         "(e.g., 'http://example.com/schema.json', 'https://example.com/user.json'). "
                 );
             }
-            
-            // Validate that the $id is an absolute URI with a scheme
+
             if (!isAbsoluteUri(id)) {
                 throw new RuntimeException(
                         "found schema with relative $id '" + id + "'. " +
@@ -97,7 +87,7 @@ public class SchemaJsonValidator {
                         "(e.g., 'http://example.com/schema.json', 'https://example.com/user.json'). "
                 );
             }
-            
+
             schemaMap.put(id, schemaStr);
         }
         
