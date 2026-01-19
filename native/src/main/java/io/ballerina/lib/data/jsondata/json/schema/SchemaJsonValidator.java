@@ -25,6 +25,8 @@ import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BError;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -65,6 +67,47 @@ public class SchemaJsonValidator {
                         .schemas(schemaMap)
                         .schemaRegistryConfig(config)
         );
+    }
+
+    public String findRootSchema(String[] schemas) {
+        HashMap<String, String> idToSchemaMap = new HashMap<>();
+        HashMap<String, Boolean> isRoot = new HashMap<>();
+        if (schemas == null || schemas.length == 0) {
+            throw new IllegalArgumentException("schemas array cannot be null or empty");
+        }
+
+        for (String schema : schemas) {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode jsonSchema = mapper.readTree(schema);
+
+            String id = jsonSchema.get("$id").asString();
+            idToSchemaMap.put(id, schema);
+            if (!isRoot.containsKey(id)) {
+                isRoot.put(id, true);
+            }
+
+            List<JsonNode> values = jsonSchema.findValues("$ref");
+
+            for (JsonNode ref : values) {
+                String refVal = ref.asString();
+                String absoluteRef = AbsoluteIri.resolve(id, refVal);
+                isRoot.put(absoluteRef, false);
+            }
+
+        }
+
+        int c = 0;
+        String rootId = "";
+        for (Map.Entry<String, Boolean> entry : isRoot.entrySet()) {
+            if (entry.getValue() == true) {
+                c += 1;
+                rootId = entry.getKey();
+            }
+        }
+        if (c != 1) {
+            throw new RuntimeException("more than one root schema exists, please ensure there is exactly one root schema");
+        }
+        return idToSchemaMap.get(rootId);
     }
 
     private Map<String, String> buildSchemaMap(String[] schemas) {
