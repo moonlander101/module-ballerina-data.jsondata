@@ -50,7 +50,7 @@ public class SchemaJsonValidator {
 
     public SchemaJsonValidator(String[] schemas) {
         if (schemas == null || schemas.length == 0) {
-            throw new IllegalArgumentException("schemas array cannot be null or empty");
+            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMAS_ARRAY_NULL_OR_EMPTY);
         }
 
         // all schemas must have $id for the multiple schema case
@@ -71,7 +71,7 @@ public class SchemaJsonValidator {
         HashMap<String, Integer> idToSchemaMap = new HashMap<>();
         HashMap<String, Boolean> isRoot = new HashMap<>();
         if (schemas == null || schemas.length == 0) {
-            throw new IllegalArgumentException("schemas array cannot be null or empty");
+            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMAS_ARRAY_NULL_OR_EMPTY);
         }
 
         for (int i = 0; i < schemas.length; i++) {
@@ -104,7 +104,7 @@ public class SchemaJsonValidator {
             }
         }
         if (c != 1) {
-            throw new RuntimeException("more than one root schema exists, please ensure there is exactly one root schema");
+            throw DiagnosticLog.error(DiagnosticErrorCode.MULTIPLE_ROOT_SCHEMAS);
         }
         return schemas[idToSchemaMap.get(rootId)];
     }
@@ -116,18 +116,11 @@ public class SchemaJsonValidator {
             String id = extractSchemaId(schemaStr);
 
             if (id == null || id.isEmpty()) {
-                throw new RuntimeException(
-                        "for multiple schemas, please ensure all $id values are absolute URIs" +
-                        "(e.g., 'http://example.com/schema.json', 'https://example.com/user.json'). "
-                );
+                throw DiagnosticLog.error(DiagnosticErrorCode.MISSING_SCHEMA_ID);
             }
 
             if (!isAbsoluteUri(id)) {
-                throw new RuntimeException(
-                        "found schema with relative $id '" + id + "'. " +
-                        "for multiple schemas, please ensure all $id values are URIs with a scheme " +
-                        "(e.g., 'http://example.com/schema.json', 'https://example.com/user.json'). "
-                );
+                throw DiagnosticLog.error(DiagnosticErrorCode.RELATIVE_SCHEMA_ID, id);
             }
 
             schemaMap.put(id, schemaStr);
