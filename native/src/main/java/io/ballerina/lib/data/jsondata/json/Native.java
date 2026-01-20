@@ -87,23 +87,16 @@ public class Native {
 
     public static Object validate(Object jsonValue, Object schema) {
         Object err = null;
-        if (schema instanceof BString) {
-            try {
+        try {
+            if (schema instanceof BString) {
                 SchemaFileValidator validator = SchemaFileValidator.getInstance((BString) schema);
                 err = validator.validate(jsonValue, (BString) schema);
-            } catch (Exception e) {
-                err = DiagnosticLog.createJsonError(e.getMessage());
-            }
-        } else if (schema instanceof BMap) {
-            try {
+            } else if (schema instanceof BMap || schema instanceof Boolean) {
                 String schemaStr = StringUtils.getJsonString(schema);
+
                 SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
                 err = validator.validate(jsonValue, schemaStr);
-            } catch (Exception e) {
-                err = DiagnosticLog.createJsonError("schema validation error: " + e.getMessage());
-            }
-        } else if (schema instanceof BArray) {
-            try {
+            } else if (schema instanceof BArray) {
                 BArray schemaArray = (BArray) schema;
                 int length = (int) schemaArray.getLength();
                 if (length == 0) {
@@ -114,19 +107,19 @@ public class Native {
                 for (int i = 0; i < length; i++) {
                     schemaStrings[i] = StringUtils.getJsonString(schemaArray.get(i));
                 }
-                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStrings);
 
+                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStrings);
                 String rootSchema = validator.findRootSchema(schemaStrings);
                 err = validator.validate(jsonValue, rootSchema);
-            } catch (Exception e) {
-                err = DiagnosticLog.createJsonError("schema validation error: " + e.getMessage());
+            } else if (schema instanceof BTypedesc) {
+                err = DiagnosticLog.createJsonError("type validation not supported yet");
+            } else {
+                err = DiagnosticLog.createJsonError("invalid schema type: expected string, json, or json[]: " +
+                        TypeUtils.getType(schema).getName());
             }
-        } else if (schema instanceof BTypedesc) {
-            err = DiagnosticLog.createJsonError("type validation not supported yet");
-        } else {
-            err = DiagnosticLog.createJsonError("invalid schema type: expected string, json, or json[]");
+        } catch (Exception e) {
+            err = DiagnosticLog.createJsonError("schema processing error: " + e.getMessage());
         }
-        
         return err;
     }
 

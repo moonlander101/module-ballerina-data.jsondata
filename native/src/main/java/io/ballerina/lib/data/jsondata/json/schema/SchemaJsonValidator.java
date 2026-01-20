@@ -46,8 +46,6 @@ public class SchemaJsonValidator {
                 SpecificationVersion.DRAFT_2020_12,
                 builder -> builder.schemaRegistryConfig(config)
         );
-
-        this.registry.getSchema(schema);
     }
 
     public SchemaJsonValidator(String[] schemas) {
@@ -70,18 +68,19 @@ public class SchemaJsonValidator {
     }
 
     public String findRootSchema(String[] schemas) {
-        HashMap<String, String> idToSchemaMap = new HashMap<>();
+        HashMap<String, Integer> idToSchemaMap = new HashMap<>();
         HashMap<String, Boolean> isRoot = new HashMap<>();
         if (schemas == null || schemas.length == 0) {
             throw new IllegalArgumentException("schemas array cannot be null or empty");
         }
 
-        for (String schema : schemas) {
+        for (int i = 0; i < schemas.length; i++) {
+            String schema = schemas[i];
             ObjectMapper mapper = new ObjectMapper();
             JsonNode jsonSchema = mapper.readTree(schema);
 
             String id = jsonSchema.get("$id").asString();
-            idToSchemaMap.put(id, schema);
+            idToSchemaMap.put(id, i);
             if (!isRoot.containsKey(id)) {
                 isRoot.put(id, true);
             }
@@ -107,7 +106,7 @@ public class SchemaJsonValidator {
         if (c != 1) {
             throw new RuntimeException("more than one root schema exists, please ensure there is exactly one root schema");
         }
-        return idToSchemaMap.get(rootId);
+        return schemas[idToSchemaMap.get(rootId)];
     }
 
     private Map<String, String> buildSchemaMap(String[] schemas) {
