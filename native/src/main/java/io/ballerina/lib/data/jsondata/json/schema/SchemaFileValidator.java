@@ -74,6 +74,7 @@ public class SchemaFileValidator {
         RetrievalUriResolver schemaResolver = new RetrievalUriResolver(baseFilePath);
         SchemaRegistryConfig config = SchemaRegistryConfig.builder()
                 .regularExpressionFactory(JoniRegularExpressionFactory.getInstance())
+                .preloadSchema(false)
                 .build();
         this.schemaRegistry = SchemaRegistry.withDefaultDialect(
                 SpecificationVersion.DRAFT_2020_12,
@@ -100,8 +101,9 @@ public class SchemaFileValidator {
 
             File schemaFile = new File(schemaPathStr).getAbsoluteFile();
             String schemaUri = schemaFile.toURI().normalize().toString();
+            System.out.println("Before registry");
             Schema schemaObj = this.schemaRegistry.getSchema(SchemaLocation.of(schemaUri));
-
+            System.out.println("After registry, before call to validate()");
             OutputUnit result = schemaObj.validate(inputString,
                     InputFormat.JSON, OutputFormat.HIERARCHICAL, executionContext -> {
                         executionContext.executionConfig(config -> config
@@ -110,7 +112,7 @@ public class SchemaFileValidator {
                                 .annotationCollectionFilter(keyword -> true)
                         );
                     });
-
+            System.out.println("After validation");
             if (!result.isValid()) {
                 List<String> allErrors = new ArrayList<>();
                 collectErrors(result, allErrors);

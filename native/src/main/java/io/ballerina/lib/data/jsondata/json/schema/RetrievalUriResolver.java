@@ -20,6 +20,8 @@ package io.ballerina.lib.data.jsondata.json.schema;
 
 import com.networknt.schema.AbsoluteIri;
 import com.networknt.schema.resource.SchemaIdResolver;
+import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
+import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 
 import java.io.File;
 import java.io.IOException;
@@ -81,9 +83,9 @@ public class RetrievalUriResolver implements SchemaIdResolver {
                     return content.substring(startQuoteIndex + 1, endQuoteIndex);
                 }
             }
-            throw new RuntimeException("No $id found in JSON file: " + jsonFilePath);
+            throw DiagnosticLog.error(DiagnosticErrorCode.MISSING_SCHEMA_ID);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read JSON file: " + jsonFilePath, e);
+            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_LOADING_FAILED, jsonFilePath.toString());
         }
     }
 }

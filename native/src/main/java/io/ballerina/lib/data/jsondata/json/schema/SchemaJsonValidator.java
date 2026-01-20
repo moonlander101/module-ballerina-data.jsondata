@@ -95,15 +95,15 @@ public class SchemaJsonValidator {
 
         }
 
-        int c = 0;
+        int schemaCount = 0;
         String rootId = "";
         for (Map.Entry<String, Boolean> entry : isRoot.entrySet()) {
             if (entry.getValue() == true) {
-                c += 1;
+                schemaCount += 1;
                 rootId = entry.getKey();
             }
         }
-        if (c != 1) {
+        if (schemaCount != 1) {
             throw DiagnosticLog.error(DiagnosticErrorCode.MULTIPLE_ROOT_SCHEMAS);
         }
         return schemas[idToSchemaMap.get(rootId)];
