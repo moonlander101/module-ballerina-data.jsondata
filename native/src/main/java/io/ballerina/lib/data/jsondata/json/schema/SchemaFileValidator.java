@@ -56,19 +56,19 @@ public class SchemaFileValidator {
 
     private SchemaFileValidator(String baseFilePath) {
         if (baseFilePath == null || baseFilePath.isEmpty()) {
-            throw new RuntimeException("schema file path cannot be null or empty");
+            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_PATH_NULL_OR_EMPTY);
         }
         if (!baseFilePath.endsWith("json")) {
-            throw new RuntimeException("expected json schema, got: " + baseFilePath);
+            throw DiagnosticLog.error(DiagnosticErrorCode.INVALID_SCHEMA_FILE_TYPE, baseFilePath);
         }
 
         Path absolutePath = Paths.get(baseFilePath).toAbsolutePath().normalize();
 
         if (!Files.exists(absolutePath)) {
-            throw new RuntimeException("schema file does not exist: " + baseFilePath);
+            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_FILE_NOT_EXISTS, baseFilePath);
         }
         if (Files.isDirectory(absolutePath)) {
-            throw new RuntimeException("the provided path is a directory: " + baseFilePath);
+            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_PATH_IS_DIRECTORY, baseFilePath);
         }
 
         RetrievalUriResolver schemaResolver = new RetrievalUriResolver(baseFilePath);
@@ -86,7 +86,7 @@ public class SchemaFileValidator {
                             }
                             return null;
                         } catch (IOException e) {
-                            throw new RuntimeException("failed to load schema: " + uri, e);
+                            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_LOADING_FAILED, uri);
                         }
                     })
                     .schemaRegistryConfig(config)

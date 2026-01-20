@@ -40,7 +40,16 @@ public enum DiagnosticErrorCode {
     CAN_NOT_READ_STREAM("JSON_ERROR_013", "cannot.read.stream"),
     CYCLIC_REFERENCE("JSON_ERROR_014", "cyclic.reference"),
     SCHEMA_FILE_NOT_FOUND("JSON_ERROR_015", "schema.file.not.found"),
-    SCHEMA_VALIDATION_FAILED("JSON_ERROR_016", "schema.validation.failed");
+    SCHEMA_VALIDATION_FAILED("JSON_ERROR_016", "schema.validation.failed"),
+    SCHEMA_PATH_NULL_OR_EMPTY("JSON_ERROR_017", "schema.path.null.or.empty"),
+    INVALID_SCHEMA_FILE_TYPE("JSON_ERROR_018", "invalid.schema.file.type"),
+    SCHEMA_FILE_NOT_EXISTS("JSON_ERROR_019", "schema.file.not.exists"),
+    SCHEMA_PATH_IS_DIRECTORY("JSON_ERROR_020", "schema.path.is.directory"),
+    SCHEMA_LOADING_FAILED("JSON_ERROR_021", "schema.loading.failed"),
+    SCHEMAS_ARRAY_NULL_OR_EMPTY("JSON_ERROR_022", "schemas.array.null.or.empty"),
+    MULTIPLE_ROOT_SCHEMAS("JSON_ERROR_023", "multiple.root.schemas"),
+    MISSING_SCHEMA_ID("JSON_ERROR_024", "missing.schema.id"),
+    RELATIVE_SCHEMA_ID("JSON_ERROR_025", "relative.schema.id");
 
     String diagnosticId;
     String messageKey;
