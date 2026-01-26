@@ -24,7 +24,6 @@ package io.ballerina.lib.data.jsondata.utils;
  * @since 0.1.0
  */
 public enum DiagnosticErrorCode {
-
     UNSUPPORTED_TYPE("JSON_ERROR_001", "unsupported.type"),
     JSON_READER_FAILURE("JSON_ERROR_002", "json.reader.failure"),
     JSON_PARSER_EXCEPTION("JSON_ERROR_003", "json.parser.exception"),
@@ -43,13 +42,12 @@ public enum DiagnosticErrorCode {
     SCHEMA_VALIDATION_FAILED("JSON_ERROR_016", "schema.validation.failed"),
     SCHEMA_PATH_NULL_OR_EMPTY("JSON_ERROR_017", "schema.path.null.or.empty"),
     INVALID_SCHEMA_FILE_TYPE("JSON_ERROR_018", "invalid.schema.file.type"),
-    SCHEMA_FILE_NOT_EXISTS("JSON_ERROR_019", "schema.file.not.exists"),
-    SCHEMA_PATH_IS_DIRECTORY("JSON_ERROR_020", "schema.path.is.directory"),
-    SCHEMA_LOADING_FAILED("JSON_ERROR_021", "schema.loading.failed"),
-    SCHEMAS_ARRAY_NULL_OR_EMPTY("JSON_ERROR_022", "schemas.array.null.or.empty"),
-    MULTIPLE_ROOT_SCHEMAS("JSON_ERROR_023", "multiple.root.schemas"),
-    MISSING_SCHEMA_ID("JSON_ERROR_024", "missing.schema.id"),
-    RELATIVE_SCHEMA_ID("JSON_ERROR_025", "relative.schema.id");
+    SCHEMA_PATH_IS_DIRECTORY("JSON_ERROR_019", "schema.path.is.directory"),
+    SCHEMA_LOADING_FAILED("JSON_ERROR_020", "schema.loading.failed"),
+    SCHEMAS_ARRAY_NULL_OR_EMPTY("JSON_ERROR_021", "schemas.array.null.or.empty"),
+    MULTIPLE_ROOT_SCHEMAS("JSON_ERROR_022", "multiple.root.schemas"),
+    MISSING_SCHEMA_ID("JSON_ERROR_023", "missing.schema.id"),
+    RELATIVE_SCHEMA_ID("JSON_ERROR_024", "relative.schema.id");
 
     String diagnosticId;
     String messageKey;

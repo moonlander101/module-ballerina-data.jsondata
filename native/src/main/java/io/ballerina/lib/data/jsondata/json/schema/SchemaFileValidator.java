@@ -64,7 +64,7 @@ public class SchemaFileValidator {
         Path absolutePath = Paths.get(baseFilePath).toAbsolutePath().normalize();
 
         if (!Files.exists(absolutePath)) {
-            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_FILE_NOT_EXISTS, baseFilePath);
+            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_FILE_NOT_FOUND, baseFilePath);
         }
         if (Files.isDirectory(absolutePath)) {
             throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_PATH_IS_DIRECTORY, baseFilePath);
@@ -97,6 +97,22 @@ public class SchemaFileValidator {
         try {
             String inputString = StringUtils.getJsonString(jsonValue);
             String schemaPathStr = schema.getValue();
+            if (schemaPathStr == null || schemaPathStr.isEmpty()) {
+                throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_PATH_NULL_OR_EMPTY);
+            }
+            if (!schemaPathStr.endsWith("json")) {
+                throw DiagnosticLog.error(DiagnosticErrorCode.INVALID_SCHEMA_FILE_TYPE, schemaPathStr);
+            }
+
+            Path absolutePath = Paths.get(schemaPathStr).toAbsolutePath().normalize();
+
+            if (!Files.exists(absolutePath)) {
+                throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_FILE_NOT_FOUND, schemaPathStr);
+            }
+            if (Files.isDirectory(absolutePath)) {
+                throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_PATH_IS_DIRECTORY, schemaPathStr);
+            }
+
 
             File schemaFile = new File(schemaPathStr).getAbsoluteFile();
             String schemaUri = schemaFile.toURI().normalize().toString();
