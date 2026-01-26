@@ -96,8 +96,7 @@ public class Native {
 
                 SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
                 err = validator.validate(jsonValue, schemaStr);
-            } else if (schema instanceof BArray) {
-                BArray schemaArray = (BArray) schema;
+            } else if (schema instanceof BArray schemaArray) {
                 int length = (int) schemaArray.getLength();
                 if (length == 0) {
                     return DiagnosticLog.createJsonError("schema array cannot be empty");
@@ -117,6 +116,8 @@ public class Native {
                 err = DiagnosticLog.createJsonError("invalid schema type: expected string, json, or json[]: " +
                         TypeUtils.getType(schema).getName());
             }
+        } catch (BError e) {
+            return e;
         } catch (Exception e) {
             err = DiagnosticLog.createJsonError("schema processing error: " + e.getMessage());
         }

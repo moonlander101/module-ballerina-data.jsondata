@@ -22,9 +22,9 @@ import com.networknt.schema.AbsoluteIri;
 import com.networknt.schema.resource.SchemaIdResolver;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -35,9 +35,9 @@ public class RetrievalUriResolver implements SchemaIdResolver {
     private final Map<String, String> idToPath = new HashMap<>();
 
     public RetrievalUriResolver(String firstFilePath) {
-        Path filePath = new File(firstFilePath).toPath().toAbsolutePath().normalize();
+        Path filePath = new File(firstFilePath).toPath();
         if (Files.isDirectory(filePath))  {
-            throw new RuntimeException("The provided path is a directory, expected a file path: " + firstFilePath);
+            throw DiagnosticLog.error(DiagnosticErrorCode.INVALID_SCHEMA_FILE_TYPE, firstFilePath);
         }
         Path rootDir = filePath.getParent();
         initialDiscovery(rootDir);
@@ -58,9 +58,8 @@ public class RetrievalUriResolver implements SchemaIdResolver {
         try (Stream<Path> paths = Files.walk(rootDir, MAX_DEPTH + 1)) {
             paths.filter(path -> path.toString().endsWith(".json"))
                     .forEach(path -> {
-                        System.out.println(path);
-                        String topLevelId = extractRootIdFromJson(path);
-                        if (topLevelId != null && !topLevelId.isEmpty()) {
+                        String topLevelId = SchemaValidatorUtils.extractRootIdFromJson(path);
+                        if (!topLevelId.isEmpty()) {
                             String normalizedUri = path.toUri().normalize().toString();
                             this.idToPath.put(topLevelId, normalizedUri);
                         }
@@ -68,24 +67,6 @@ public class RetrievalUriResolver implements SchemaIdResolver {
 
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    public String extractRootIdFromJson(Path jsonFilePath) {
-        try {
-            String content = Files.readString(jsonFilePath);
-            int idIndex = content.indexOf("\"$id\"");
-            if (idIndex != -1) {
-                int colonIndex = content.indexOf(":", idIndex);
-                int startQuoteIndex = content.indexOf("\"", colonIndex);
-                int endQuoteIndex = content.indexOf("\"", startQuoteIndex + 1);
-                if (startQuoteIndex != -1 && endQuoteIndex != -1) {
-                    return content.substring(startQuoteIndex + 1, endQuoteIndex);
-                }
-            }
-            throw DiagnosticLog.error(DiagnosticErrorCode.MISSING_SCHEMA_ID);
-        } catch (IOException e) {
-            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_LOADING_FAILED, jsonFilePath.toString());
         }
     }
 }

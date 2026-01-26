@@ -30,6 +30,7 @@ import com.networknt.schema.output.OutputUnit;
 import com.networknt.schema.regex.JoniRegularExpressionFactory;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BString;
@@ -40,8 +41,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 
 public class SchemaFileValidator {
     private final SchemaRegistry schemaRegistry;
@@ -101,9 +100,7 @@ public class SchemaFileValidator {
 
             File schemaFile = new File(schemaPathStr).getAbsoluteFile();
             String schemaUri = schemaFile.toURI().normalize().toString();
-            System.out.println("Before registry");
             Schema schemaObj = this.schemaRegistry.getSchema(SchemaLocation.of(schemaUri));
-            System.out.println("After registry, before call to validate()");
             OutputUnit result = schemaObj.validate(inputString,
                     InputFormat.JSON, OutputFormat.HIERARCHICAL, executionContext -> {
                         executionContext.executionConfig(config -> config
@@ -112,21 +109,12 @@ public class SchemaFileValidator {
                                 .annotationCollectionFilter(keyword -> true)
                         );
                     });
-            System.out.println("After validation");
-            if (!result.isValid()) {
-                List<String> allErrors = new ArrayList<>();
-                collectErrors(result, allErrors);
 
-                StringBuilder errorMessage = new StringBuilder();
-                for (int i = 0; i < allErrors.size(); i++) {
-                    if (i > 0) {
-                        errorMessage.append("\n");
-                    }
-                    errorMessage.append("- ").append(allErrors.get(i));
-                }
+            if (!result.isValid()) {
+                String errMessage = SchemaValidatorUtils.createErrorMessage(result);
                 return DiagnosticLog.error(
                         DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
-                        errorMessage.toString()
+                        errMessage
                 );
             }
 
@@ -143,21 +131,4 @@ public class SchemaFileValidator {
             return DiagnosticLog.createJsonError("schema validation error: " + e.getMessage());
         }
     }
-
-    private void collectErrors(OutputUnit unit, List<String> errorList) {
-        if (unit.getErrors() != null && !unit.getErrors().isEmpty()) {
-            unit.getErrors().forEach((keyword, message) -> {
-                errorList.add(String.format("At %s: [%s] %s",
-                        unit.getInstanceLocation(), keyword, message));
-            });
-        }
-
-        if (unit.getDetails() != null) {
-            for (OutputUnit child : unit.getDetails()) {
-                collectErrors(child, errorList);
-            }
-        }
-    }
 }
-
-

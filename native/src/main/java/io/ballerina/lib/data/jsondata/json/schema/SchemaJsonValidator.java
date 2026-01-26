@@ -23,6 +23,7 @@ import com.networknt.schema.output.OutputUnit;
 import com.networknt.schema.regex.JoniRegularExpressionFactory;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BError;
 import tools.jackson.databind.JsonNode;
@@ -74,9 +75,9 @@ public class SchemaJsonValidator {
             throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMAS_ARRAY_NULL_OR_EMPTY);
         }
 
+        ObjectMapper mapper = new ObjectMapper();
         for (int i = 0; i < schemas.length; i++) {
             String schema = schemas[i];
-            ObjectMapper mapper = new ObjectMapper();
             JsonNode jsonSchema = mapper.readTree(schema);
 
             String id = jsonSchema.get("$id").asString();
@@ -92,7 +93,6 @@ public class SchemaJsonValidator {
                 String absoluteRef = AbsoluteIri.resolve(id, refVal);
                 isRoot.put(absoluteRef, false);
             }
-
         }
 
         int schemaCount = 0;
@@ -113,13 +113,8 @@ public class SchemaJsonValidator {
         Map<String, String> schemaMap = new HashMap<>();
 
         for (String schemaStr : schemas) {
-            String id = extractSchemaId(schemaStr);
-
-            if (id == null || id.isEmpty()) {
-                throw DiagnosticLog.error(DiagnosticErrorCode.MISSING_SCHEMA_ID);
-            }
-
-            if (!isAbsoluteUri(id)) {
+            String id = SchemaValidatorUtils.extractRootIdFromJson(schemaStr);
+            if (!SchemaValidatorUtils.isAbsoluteUri(id)) {
                 throw DiagnosticLog.error(DiagnosticErrorCode.RELATIVE_SCHEMA_ID, id);
             }
 
@@ -127,23 +122,6 @@ public class SchemaJsonValidator {
         }
         
         return schemaMap;
-    }
-
-    private String extractSchemaId(String schemaContent) {
-        int idIndex = schemaContent.indexOf("\"$id\"");
-        if (idIndex != -1) {
-            int colonIndex = schemaContent.indexOf(":", idIndex);
-            int startQuoteIndex = schemaContent.indexOf("\"", colonIndex);
-            int endQuoteIndex = schemaContent.indexOf("\"", startQuoteIndex + 1);
-            if (startQuoteIndex != -1 && endQuoteIndex != -1) {
-                return schemaContent.substring(startQuoteIndex + 1, endQuoteIndex);
-            }
-        }
-        return null;
-    }
-
-    private boolean isAbsoluteUri(String id) {
-        return id != null && id.matches("^[a-zA-Z][a-zA-Z0-9+.-]*://.*");
     }
 
     public BError validate(Object jsonValue, String schemaString) {
@@ -161,46 +139,22 @@ public class SchemaJsonValidator {
                     });
 
             if (!result.isValid()) {
-                List<String> allErrors = new ArrayList<>();
-                collectErrors(result, allErrors);
-
-                StringBuilder errorMessage = new StringBuilder();
-                for (int i = 0; i < allErrors.size(); i++) {
-                    if (i > 0) {
-                        errorMessage.append("\n");
-                    }
-                    errorMessage.append("- ").append(allErrors.get(i));
-                }
+                String errorMessage = SchemaValidatorUtils.createErrorMessage(result);
                 return DiagnosticLog.error(
                         DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
-                        errorMessage.toString()
+                        errorMessage
                 );
             }
 
             return null;
         } catch (SchemaException e) {
             if (e.getCause() instanceof FileNotFoundException ex) {
-                return DiagnosticLog.createJsonError("schema file not found: " + ex.getMessage());
+                return DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_FILE_NOT_EXISTS, ex.getMessage());
             } else {
                 return DiagnosticLog.createJsonError("schema error: " + e.getMessage());
             }
         } catch (Exception e) {
             return DiagnosticLog.createJsonError("schema processing error: " + e.getMessage());
-        }
-    }
-
-    private void collectErrors(OutputUnit unit, List<String> errorList) {
-        if (unit.getErrors() != null && !unit.getErrors().isEmpty()) {
-            unit.getErrors().forEach((keyword, message) -> {
-                errorList.add(String.format("At %s: [%s] %s",
-                        unit.getInstanceLocation(), keyword, message));
-            });
-        }
-
-        if (unit.getDetails() != null) {
-            for (OutputUnit child : unit.getDetails()) {
-                collectErrors(child, errorList);
-            }
         }
     }
 }
