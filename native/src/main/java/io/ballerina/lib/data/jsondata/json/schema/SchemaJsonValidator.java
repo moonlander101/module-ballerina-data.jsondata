@@ -149,7 +149,7 @@ public class SchemaJsonValidator {
             return null;
         } catch (SchemaException e) {
             if (e.getCause() instanceof FileNotFoundException ex) {
-                return DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_FILE_NOT_EXISTS, ex.getMessage());
+                return DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_FILE_NOT_FOUND, ex.getMessage());
             } else {
                 return DiagnosticLog.createJsonError("schema error: " + e.getMessage());
             }
