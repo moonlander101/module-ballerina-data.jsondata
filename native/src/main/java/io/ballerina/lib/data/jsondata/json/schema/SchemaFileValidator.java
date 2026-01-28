@@ -98,8 +98,19 @@ public class SchemaFileValidator {
             String inputString = StringUtils.getJsonString(jsonValue);
             String schemaPathStr = schema.getValue();
 
-            File schemaFile = new File(schemaPathStr).getAbsoluteFile();
-            String schemaUri = schemaFile.toURI().normalize().toString();
+            if (!schemaPathStr.endsWith("json")) {
+                throw DiagnosticLog.error(DiagnosticErrorCode.INVALID_SCHEMA_FILE_TYPE, schemaPathStr);
+            }
+
+            Path absolutePath = Paths.get(schemaPathStr).toAbsolutePath().normalize();
+            if (!Files.exists(absolutePath)) {
+                throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_FILE_NOT_EXISTS, schemaPathStr);
+            }
+            if (Files.isDirectory(absolutePath)) {
+                throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_PATH_IS_DIRECTORY, schemaPathStr);
+            }
+
+            String schemaUri = absolutePath.toUri().toString();
             Schema schemaObj = this.schemaRegistry.getSchema(SchemaLocation.of(schemaUri));
             OutputUnit result = schemaObj.validate(inputString,
                     InputFormat.JSON, OutputFormat.HIERARCHICAL, executionContext -> {

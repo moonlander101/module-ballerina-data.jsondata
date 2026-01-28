@@ -15,7 +15,6 @@
 // under the License.
 
 import ballerina/test;
-import ballerina/io;
 
 function dataProviderForSchemaFilePaths() returns [json, string, boolean][] {
     json validProduct = {
@@ -50,9 +49,126 @@ isolated function testSchemaFilePathHandling(json inputData, string schemaPath, 
     Error? result = validate(inputData, schemaPath);
     
     if shouldPass {
-        io:println(result);
         test:assertTrue(result is (),  "Valid schema path should not throw error");
     } else {
         test:assertTrue(result is Error, "Invalid schema path should throw error");
     }
 }
+
+function dataProviderForSchemaFileValidation() returns [json, string, boolean][] {
+    json validProduct1 = {
+        "product_id": "1024",
+        "product_name": "Devant",
+        "tags": ["integration"]
+    };
+
+    json validProduct2 = {
+        "product_id": "2048",
+        "product_name": "Choreo",
+        "tags": ["integration", "enterprise"]
+    };
+
+    json invalidProduct1 = {
+        "product_id": 1024,
+        "product_name": "Devant",
+        "tags": "integration"
+    };
+
+    json invalidProduct2 = {
+        "product_name": "Devant",
+        "tags": ["integration"]
+    };
+
+    json validSubscription = {
+        "plan": "enterprise",
+        "start_date": "2023-01-01",
+        "end_date": "2024-01-01",
+        "auto_renew": true,
+        "features": ["api_access", "advanced_analytics"]
+    };
+
+    json validSubscription2 = {
+        "plan": "free",
+        "start_date": "2023-01-01"
+    };
+
+    json invalidSubscription1 = {
+        "plan": "enterprise"
+    };
+
+    json invalidSubscription2 = {
+        "plan": "ultimate",
+        "start_date": "2023-01-01"
+    };
+
+    json validUser1 = {
+        "username": "john_doe",
+        "email": "john@example.com",
+        "role": "admin",
+        "nickname": "Johnny",
+        "subscription": {
+            "plan": "enterprise",
+            "start_date": "2023-01-01",
+            "end_date": "2024-01-01",
+            "auto_renew": true
+        },
+        "profile": {
+            "avatar": "https://example.com/avatar.jpg",
+            "bio": "Software developer",
+            "location": "San Francisco"
+        },
+        "created_at": "2023-01-01T10:00:00Z",
+        "is_active": true,
+        "preferences": {
+            "theme": "dark",
+            "language": "en-US",
+            "notifications": true
+        }
+    };
+
+    json validUser2 = {
+        "username": "user123",
+        "email": "test@domain.com",
+        "role": "user"
+    };
+
+    json invalidUser1 = {
+        "username": "admin_user",
+        "role": "admin"
+    };
+
+    json invalidUser2 = {
+        "username": "test user",
+        "email": "test@example.com",
+        "role": "user"
+    };
+
+    return [
+        [validProduct1, "tests/resources/schemas/product.json", true],
+        [validProduct2, "tests/resources/schemas/product.json", true],
+        [invalidProduct1, "tests/resources/schemas/product.json", false],
+        [invalidProduct2, "tests/resources/schemas/product.json", false],
+        [validSubscription, "tests/resources/schemas/common/subscription.json", true],
+        [validSubscription2, "tests/resources/schemas/common/subscription.json", true],
+        [invalidSubscription1, "tests/resources/schemas/common/subscription.json", false],
+        [invalidSubscription2, "tests/resources/schemas/common/subscription.json", false],
+        [validUser1, "tests/resources/schemas/user.json", true],
+        [validUser2, "tests/resources/schemas/user.json", true],
+        [invalidUser1, "tests/resources/schemas/user.json", false],
+        [invalidUser2, "tests/resources/schemas/user.json", false]
+    ];
+}
+
+@test:Config {
+    dataProvider: dataProviderForSchemaFileValidation
+}
+isolated function testSchemaFileValidation(json inputData, string schemaPath, boolean shouldPass) {
+    Error? result = validate(inputData, schemaPath);
+
+    if shouldPass {
+        test:assertTrue(result is (),  "Valid data should pass schema validation");
+    } else {
+        test:assertTrue(result is Error, "Invalid data should fail schema validation");
+    }
+}
+
