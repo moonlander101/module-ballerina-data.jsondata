@@ -32,6 +32,7 @@ dependencies = [
 	{org = "ballerina", name = "lang.int"},
 	{org = "ballerina", name = "lang.object"},
 	{org = "ballerina", name = "lang.value"},
+	{org = "ballerina", name = "random"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerina", name = "time"}
 ]
@@ -158,6 +159,19 @@ scope = "testOnly"
 dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"}
+]
+
+[[package]]
+org = "ballerina"
+name = "random"
+version = "1.7.0"
+scope = "testOnly"
+dependencies = [
+	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "time"}
+]
+modules = [
+	{org = "ballerina", packageName = "random", moduleName = "random"}
 ]
 
 [[package]]
