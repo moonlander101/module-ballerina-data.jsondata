@@ -32,13 +32,13 @@ function dataProviderForSchemaFilePaths() returns [json, string, boolean][] {
     };
     
     return [
-        [validProduct, "tests/resources/schemas/product.json", true],
-        [validSubscription, "tests/resources/schemas/common/subscription.json", true],
-        [validProduct, "tests/resources/schemas/nonexistent.json", false],
+        [validProduct, "tests/resources/schemas/path_handling/product.json", true],
+        [validSubscription, "tests/resources/schemas/path_handling/common/subscription.json", true],
+        [validProduct, "tests/resources/schemas/path_handling/nonexistent.json", false],
         [validProduct, "nonexistent/directory/product.json", false],
-        [validProduct, "tests/resources/schemas/schema.txt", false],
-        [validProduct, "tests/resources/schemas/schema.yaml", false],
-        [validProduct, "tests/resources/schemas/common", false]
+        [validProduct, "tests/resources/schemas/path_handling/schema.txt", false],
+        [validProduct, "tests/resources/schemas/path_handling/schema.yaml", false],
+        [validProduct, "tests/resources/schemas/path_handling/common", false]
     ];
 }
 
@@ -144,18 +144,18 @@ function dataProviderForSchemaFileValidation() returns [json, string, boolean][]
     };
 
     return [
-        [validProduct1, "tests/resources/schemas/product.json", true],
-        [validProduct2, "tests/resources/schemas/product.json", true],
-        [invalidProduct1, "tests/resources/schemas/product.json", false],
-        [invalidProduct2, "tests/resources/schemas/product.json", false],
-        [validSubscription, "tests/resources/schemas/common/subscription.json", true],
-        [validSubscription2, "tests/resources/schemas/common/subscription.json", true],
-        [invalidSubscription1, "tests/resources/schemas/common/subscription.json", false],
-        [invalidSubscription2, "tests/resources/schemas/common/subscription.json", false],
-        [validUser1, "tests/resources/schemas/user.json", true],
-        [validUser2, "tests/resources/schemas/user.json", true],
-        [invalidUser1, "tests/resources/schemas/user.json", false],
-        [invalidUser2, "tests/resources/schemas/user.json", false]
+        [validProduct1, "tests/resources/schemas/path_handling/product.json", true],
+        [validProduct2, "tests/resources/schemas/path_handling/product.json", true],
+        [invalidProduct1, "tests/resources/schemas/path_handling/product.json", false],
+        [invalidProduct2, "tests/resources/schemas/path_handling/product.json", false],
+        [validSubscription, "tests/resources/schemas/path_handling/common/subscription.json", true],
+        [validSubscription2, "tests/resources/schemas/path_handling/common/subscription.json", true],
+        [invalidSubscription1, "tests/resources/schemas/path_handling/common/subscription.json", false],
+        [invalidSubscription2, "tests/resources/schemas/path_handling/common/subscription.json", false],
+        [validUser1, "tests/resources/schemas/path_handling/user.json", true],
+        [validUser2, "tests/resources/schemas/path_handling/user.json", true],
+        [invalidUser1, "tests/resources/schemas/path_handling/user.json", false],
+        [invalidUser2, "tests/resources/schemas/path_handling/user.json", false]
     ];
 }
 
@@ -172,3 +172,31 @@ isolated function testSchemaFileValidation(json inputData, string schemaPath, bo
     }
 }
 
+function dataProviderForSchemaIdHandling() returns [json, string, boolean][] {
+    json req = {
+        "catagory_id" : "123",
+        "page_size" : 2,
+        "page_number" : 1
+    };
+
+    json res = {
+        "products": ["prod1", "prod2"]
+    };
+
+    return [
+        [req, "tests/resources/schemas/no_id/product_list_request.json", false],
+        [res, "tests/resources/schemas/relative_id/product_list_response.json", true]
+    ];
+}
+
+@test:Config {
+    dataProvider: dataProviderForSchemaIdHandling
+}
+isolated function testSchemaFileIdHandling(json inputData, string schemaPath, boolean shouldPass) {
+    Error? result = validate(inputData, schemaPath);
+    if shouldPass {
+        test:assertTrue(result is (),  "Valid data should pass schema validation");
+    } else {
+        test:assertTrue(result is Error, "Invalid data should fail schema validation");
+    }
+}
