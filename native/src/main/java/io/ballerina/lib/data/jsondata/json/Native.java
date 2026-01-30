@@ -91,11 +91,12 @@ public class Native {
             if (schema instanceof BString) {
                 SchemaFileValidator validator = SchemaFileValidator.getInstance((BString) schema);
                 err = validator.validate(jsonValue, (BString) schema);
+
             } else if (schema instanceof BMap || schema instanceof Boolean) {
                 String schemaStr = StringUtils.getJsonString(schema);
-
                 SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
                 err = validator.validate(jsonValue, schemaStr);
+
             } else if (schema instanceof BArray schemaArray) {
                 int length = (int) schemaArray.getLength();
                 if (length == 0) {
@@ -110,6 +111,7 @@ public class Native {
                 SchemaJsonValidator validator = new SchemaJsonValidator(schemaStrings);
                 String rootSchema = validator.findRootSchema(schemaStrings);
                 err = validator.validate(jsonValue, rootSchema);
+
             } else if (schema instanceof BTypedesc) {
                 err = DiagnosticLog.createJsonError("type validation not supported yet");
             } else {

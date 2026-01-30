@@ -164,7 +164,6 @@ function dataProviderForSchemaFileValidation() returns [json, string, boolean][]
 }
 isolated function testSchemaFileValidation(json inputData, string schemaPath, boolean shouldPass) {
     Error? result = validate(inputData, schemaPath);
-
     if shouldPass {
         test:assertTrue(result is (),  "Valid data should pass schema validation");
     } else {
