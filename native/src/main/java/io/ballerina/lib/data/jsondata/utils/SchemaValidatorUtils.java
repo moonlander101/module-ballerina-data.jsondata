@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SchemaValidatorUtils {
-    private final static String ABSOLUTE_URI_REGEX = "^[a-zA-Z][a-zA-Z0-9+.-]*://.*";
+    private final static String ABSOLUTE_URI_REGEX = "^(?:https?:\\/\\/|file:\\/\\/|urn:[a-z0-9][a-z0-9-]{0,31}:)[^\\s#]+$";
 
     public static String extractRootIdFromJson(Path jsonFilePath) {
         try {
