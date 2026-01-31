@@ -47,10 +47,7 @@ public class SchemaFileValidator {
     private static SchemaFileValidator instance;
 
     public static SchemaFileValidator getInstance(BString firstFilePath) {
-        if (instance == null) {
-            instance = new SchemaFileValidator(firstFilePath.getValue());
-        }
-        return instance;
+        return new SchemaFileValidator(firstFilePath.getValue());
     }
 
     private SchemaFileValidator(String baseFilePath) {

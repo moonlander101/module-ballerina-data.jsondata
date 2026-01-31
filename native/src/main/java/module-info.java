@@ -22,6 +22,10 @@ module io.ballerina.lib.data {
     requires io.ballerina.stdlib.constraint;
     requires junit;
     requires org.apache.commons.lang3;
+    requires com.networknt.schema;
+    requires tools.jackson.core;
+    requires tools.jackson.databind;
+    requires jdk.jshell;
     exports io.ballerina.lib.data.jsondata.json;
     exports io.ballerina.lib.data;
 }
