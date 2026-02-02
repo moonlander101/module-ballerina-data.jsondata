@@ -1,0 +1,14 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "maxProperties": 2
+  },
+  "valid": [
+    {"a": 1},
+    {"a": 1, "b": 2}
+  ],
+  "invalid": [
+    {"a": 1, "b": 2, "c": 3}
+  ]
+}

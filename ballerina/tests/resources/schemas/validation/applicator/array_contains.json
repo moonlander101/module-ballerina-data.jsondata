@@ -1,0 +1,16 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "contains": {
+      "type": "number",
+      "multipleOf": 5
+    }
+  },
+  "valid": [
+    [1, 2, 3, 5, 6]
+  ],
+  "invalid": [
+    [1, 2, 3, 4]
+  ]
+}

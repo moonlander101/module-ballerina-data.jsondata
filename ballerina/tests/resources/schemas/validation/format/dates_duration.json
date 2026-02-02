@@ -1,0 +1,13 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "format": "duration"
+  },
+  "valid": [
+    "P1Y2M3DT4H5M6S"
+  ],
+  "invalid": [
+    "not-a-duration"
+  ]
+}

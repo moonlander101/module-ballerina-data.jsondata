@@ -1,0 +1,14 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "minItems": 2
+  },
+  "valid": [
+    [1, 2],
+    [1, 2, 3]
+  ],
+  "invalid": [
+    [1]
+  ]
+}

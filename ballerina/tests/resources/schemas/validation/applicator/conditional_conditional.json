@@ -1,0 +1,24 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "if": {
+      "properties": {
+        "premium": {"const": true}
+      }
+    },
+    "then": {
+      "required": ["billing_info"]
+    },
+    "else": {
+      "required": ["email"]
+    }
+  },
+  "valid": [
+    {"premium": true, "billing_info": "xxx"},
+    {"premium": false, "email": "test@test.com"}
+  ],
+  "invalid": [
+    {"premium": true},
+    {"premium": false}
+  ]
+}

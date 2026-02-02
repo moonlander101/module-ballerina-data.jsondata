@@ -1,0 +1,14 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "number",
+    "maximum": 10
+  },
+  "valid": [
+    9,
+    10
+  ],
+  "invalid": [
+    11
+  ]
+}

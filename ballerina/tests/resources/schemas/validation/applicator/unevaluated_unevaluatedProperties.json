@@ -1,0 +1,16 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "name": {"type": "string"}
+    },
+    "unevaluatedProperties": false
+  },
+  "valid": [
+    {"name": "John"}
+  ],
+  "invalid": [
+    {"name": "John", "extra": "field"}
+  ]
+}

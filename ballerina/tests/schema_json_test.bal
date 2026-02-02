@@ -15,7 +15,6 @@
 // under the License.
 
 import ballerina/test;
-import ballerina/io;
 
 const productSchema = {
    "$schema" : "https://json-schema.org/draft/2020-12/schema",
@@ -372,7 +371,6 @@ function dataProviderForSchemaJsonIdHandling() returns [json, json, boolean][] {
 }
 isolated function testSchemaJsonIdHandling(json inputData, json schema, boolean shouldPass) {
     Error? result = validate(inputData, schema);
-    io:println(result);
     if shouldPass {
         test:assertTrue(result is (),  "Valid schema array should pass");
     } else {

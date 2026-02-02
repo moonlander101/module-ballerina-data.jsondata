@@ -1,0 +1,20 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "credit_card": {"type": "string"}
+    },
+    "dependentSchemas": {
+      "credit_card": {
+        "required": ["security_code"]
+      }
+    }
+  },
+  "valid": [
+    {"credit_card": "1234", "security_code": "567"}
+  ],
+  "invalid": [
+    {"credit_card": "1234"}
+  ]
+}

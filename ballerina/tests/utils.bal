@@ -26,3 +26,8 @@ isolated function getJsonContentFromFile(string fileName) returns json|error {
     string path = check file:joinPath("tests", "resources", "input_files", fileName);
     return io:fileReadJson(path);
 }
+
+isolated function getJsonSchemaTestContentFromFile(string fileName) returns json|error {
+    string path = check file:joinPath("tests", "resources", "schemas", fileName);
+    return io:fileReadJson(path);
+}

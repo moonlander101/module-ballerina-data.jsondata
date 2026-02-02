@@ -1,0 +1,12 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "null"
+  },
+  "valid": [
+    null
+  ],
+  "invalid": [
+    "not null"
+  ]
+}

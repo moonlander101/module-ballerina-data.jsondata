@@ -1,0 +1,13 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "format": "ipv6"
+  },
+  "valid": [
+    "::1"
+  ],
+  "invalid": [
+    "not-ipv6"
+  ]
+}
