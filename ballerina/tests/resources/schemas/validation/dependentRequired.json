@@ -3,17 +3,29 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "properties": {
-      "credit_card": {"type": "string"},
-      "billing_address": {"type": "string"}
+      "credit_card": {
+        "type": "string"
+      },
+      "billing_address": {
+        "type": "string"
+      }
     },
     "dependentRequired": {
-      "credit_card": ["billing_address"]
-    }
+      "credit_card": [
+        "billing_address"
+      ]
+    },
+    "$id": "http://data.jsondata/schemas/dependentRequired.json"
   },
   "valid": [
-    {"credit_card": "1234", "billing_address": "123 Main St"}
+    {
+      "credit_card": "1234",
+      "billing_address": "123 Main St"
+    }
   ],
   "invalid": [
-    {"credit_card": "1234"}
+    {
+      "credit_card": "1234"
+    }
   ]
 }

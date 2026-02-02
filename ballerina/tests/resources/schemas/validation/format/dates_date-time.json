@@ -2,7 +2,8 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "string",
-    "format": "date-time"
+    "format": "date-time",
+    "$id": "http://data.jsondata/schemas/format/dates_date-time.json"
   },
   "valid": [
     "2023-01-15T10:30:00Z"

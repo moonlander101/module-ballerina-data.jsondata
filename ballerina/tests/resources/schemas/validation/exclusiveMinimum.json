@@ -2,7 +2,8 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "number",
-    "exclusiveMinimum": 10
+    "exclusiveMinimum": 10,
+    "$id": "http://data.jsondata/schemas/exclusiveMinimum.json"
   },
   "valid": [
     11

@@ -3,18 +3,28 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "properties": {
-      "credit_card": {"type": "string"}
+      "credit_card": {
+        "type": "string"
+      }
     },
     "dependentSchemas": {
       "credit_card": {
-        "required": ["security_code"]
+        "required": [
+          "security_code"
+        ]
       }
-    }
+    },
+    "$id": "http://data.jsondata/schemas/applicator/conditional_dependentSchemas.json"
   },
   "valid": [
-    {"credit_card": "1234", "security_code": "567"}
+    {
+      "credit_card": "1234",
+      "security_code": "567"
+    }
   ],
   "invalid": [
-    {"credit_card": "1234"}
+    {
+      "credit_card": "1234"
+    }
   ]
 }

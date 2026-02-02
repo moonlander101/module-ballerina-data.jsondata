@@ -4,12 +4,17 @@
     "type": "object",
     "propertyNames": {
       "pattern": "^[a-z_]+$"
-    }
+    },
+    "$id": "http://data.jsondata/schemas/applicator/object_propertyNames.json"
   },
   "valid": [
-    {"_key": "value"}
+    {
+      "_key": "value"
+    }
   ],
   "invalid": [
-    {"key-with-dash": "value"}
+    {
+      "key-with-dash": "value"
+    }
   ]
 }

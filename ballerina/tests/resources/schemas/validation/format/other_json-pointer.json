@@ -2,7 +2,8 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "string",
-    "format": "json-pointer"
+    "format": "json-pointer",
+    "$id": "http://data.jsondata/schemas/format/other_json-pointer.json"
   },
   "valid": [
     "/foo"

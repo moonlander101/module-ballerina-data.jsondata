@@ -2,7 +2,8 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "string",
-    "maxLength": 5
+    "maxLength": 5,
+    "$id": "http://data.jsondata/schemas/maxLength.json"
   },
   "valid": [
     "hi",

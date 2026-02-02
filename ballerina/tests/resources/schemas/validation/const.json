@@ -1,7 +1,8 @@
 {
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "const": "fixed-value"
+    "const": "fixed-value",
+    "$id": "http://data.jsondata/schemas/const.json"
   },
   "valid": [
     "fixed-value"

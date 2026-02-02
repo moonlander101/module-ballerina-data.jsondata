@@ -2,9 +2,14 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "oneOf": [
-      {"type": "string"},
-      {"type": "number"}
-    ]
+      {
+        "type": "string"
+      },
+      {
+        "type": "number"
+      }
+    ],
+    "$id": "http://data.jsondata/schemas/applicator/logic_oneOf.json"
   },
   "valid": [
     "test"

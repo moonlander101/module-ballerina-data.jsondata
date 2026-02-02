@@ -1,7 +1,8 @@
 {
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "type": "string"
+    "type": "string",
+    "$id": "http://data.jsondata/schemas/type_string.json"
   },
   "valid": [
     "Hello, World!"

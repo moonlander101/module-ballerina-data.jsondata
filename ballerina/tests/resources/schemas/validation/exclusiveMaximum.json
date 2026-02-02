@@ -2,7 +2,8 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "number",
-    "exclusiveMaximum": 10
+    "exclusiveMaximum": 10,
+    "$id": "http://data.jsondata/schemas/exclusiveMaximum.json"
   },
   "valid": [
     9

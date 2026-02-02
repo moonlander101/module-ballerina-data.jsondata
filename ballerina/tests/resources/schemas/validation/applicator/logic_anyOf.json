@@ -2,9 +2,14 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "anyOf": [
-      {"type": "string"},
-      {"type": "number"}
-    ]
+      {
+        "type": "string"
+      },
+      {
+        "type": "number"
+      }
+    ],
+    "$id": "http://data.jsondata/schemas/applicator/logic_anyOf.json"
   },
   "valid": [
     "hello",

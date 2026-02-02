@@ -3,14 +3,21 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "patternProperties": {
-      "^S_": { "type": "string" }
+      "^S_": {
+        "type": "string"
+      }
     },
-    "additionalProperties": false
+    "additionalProperties": false,
+    "$id": "http://data.jsondata/schemas/applicator/object_patternProperties.json"
   },
   "valid": [
-    { "S_1": "foo" }
+    {
+      "S_1": "foo"
+    }
   ],
   "invalid": [
-    { "foo": "bar" }
+    {
+      "foo": "bar"
+    }
   ]
 }

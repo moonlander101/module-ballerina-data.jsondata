@@ -3,14 +3,22 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "array",
     "prefixItems": [
-      {"type": "string"}
+      {
+        "type": "string"
+      }
     ],
-    "unevaluatedItems": false
+    "unevaluatedItems": false,
+    "$id": "http://data.jsondata/schemas/applicator/unevaluated_unevaluatedItems.json"
   },
   "valid": [
-    ["hello"]
+    [
+      "hello"
+    ]
   ],
   "invalid": [
-    ["hello", "world"]
+    [
+      "hello",
+      "world"
+    ]
   ]
 }

@@ -3,22 +3,39 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "if": {
       "properties": {
-        "premium": {"const": true}
+        "premium": {
+          "const": true
+        }
       }
     },
     "then": {
-      "required": ["billing_info"]
+      "required": [
+        "billing_info"
+      ]
     },
     "else": {
-      "required": ["email"]
-    }
+      "required": [
+        "email"
+      ]
+    },
+    "$id": "http://data.jsondata/schemas/applicator/conditional_conditional.json"
   },
   "valid": [
-    {"premium": true, "billing_info": "xxx"},
-    {"premium": false, "email": "test@test.com"}
+    {
+      "premium": true,
+      "billing_info": "xxx"
+    },
+    {
+      "premium": false,
+      "email": "test@test.com"
+    }
   ],
   "invalid": [
-    {"premium": true},
-    {"premium": false}
+    {
+      "premium": true
+    },
+    {
+      "premium": false
+    }
   ]
 }

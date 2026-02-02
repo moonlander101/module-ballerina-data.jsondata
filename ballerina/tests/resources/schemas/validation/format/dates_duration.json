@@ -2,7 +2,8 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "string",
-    "format": "duration"
+    "format": "duration",
+    "$id": "http://data.jsondata/schemas/format/dates_duration.json"
   },
   "valid": [
     "P1Y2M3DT4H5M6S"

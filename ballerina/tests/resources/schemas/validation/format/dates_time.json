@@ -2,10 +2,11 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "string",
-    "format": "time"
+    "format": "time",
+    "$id": "http://data.jsondata/schemas/format/dates_time.json"
   },
   "valid": [
-    "10:30:00Z" 
+    "10:30:00Z"
   ],
   "invalid": [
     "not a time",

@@ -1,7 +1,11 @@
 {
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "type": ["string", "null"]
+    "type": [
+      "string",
+      "null"
+    ],
+    "$id": "http://data.jsondata/schemas/type_array_of_types.json"
   },
   "valid": [
     "hello",
