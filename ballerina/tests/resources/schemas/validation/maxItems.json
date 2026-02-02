@@ -2,13 +2,25 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "array",
-    "maxItems": 3
+    "maxItems": 3,
+    "$id": "http://data.jsondata/schemas/maxItems.json"
   },
   "valid": [
-    [1],
-    [1, 2, 3]
+    [
+      1
+    ],
+    [
+      1,
+      2,
+      3
+    ]
   ],
   "invalid": [
-    [1, 2, 3, 4]
+    [
+      1,
+      2,
+      3,
+      4
+    ]
   ]
 }

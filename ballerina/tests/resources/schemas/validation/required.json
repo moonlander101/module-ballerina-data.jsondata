@@ -3,15 +3,28 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "properties": {
-      "name": {"type": "string"},
-      "email": {"type": "string"}
+      "name": {
+        "type": "string"
+      },
+      "email": {
+        "type": "string"
+      }
     },
-    "required": ["name", "email"]
+    "required": [
+      "name",
+      "email"
+    ],
+    "$id": "http://data.jsondata/schemas/required.json"
   },
   "valid": [
-    {"name": "John", "email": "john@example.com"}
+    {
+      "name": "John",
+      "email": "john@example.com"
+    }
   ],
   "invalid": [
-    {"name": "John"}
+    {
+      "name": "John"
+    }
   ]
 }

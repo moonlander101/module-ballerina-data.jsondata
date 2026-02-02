@@ -9,12 +9,22 @@
       "type": "integer",
       "multipleOf": 5
     },
-    "maxContains": 1
+    "maxContains": 1,
+    "$id": "http://data.jsondata/schemas/maxContains.json"
   },
   "valid": [
-    [1, 2, 3, 5]
+    [
+      1,
+      2,
+      3,
+      5
+    ]
   ],
   "invalid": [
-    [5, 10, 15]
+    [
+      5,
+      10,
+      15
+    ]
   ]
 }

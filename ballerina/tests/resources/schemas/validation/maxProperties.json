@@ -2,13 +2,23 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
-    "maxProperties": 2
+    "maxProperties": 2,
+    "$id": "http://data.jsondata/schemas/maxProperties.json"
   },
   "valid": [
-    {"a": 1},
-    {"a": 1, "b": 2}
+    {
+      "a": 1
+    },
+    {
+      "a": 1,
+      "b": 2
+    }
   ],
   "invalid": [
-    {"a": 1, "b": 2, "c": 3}
+    {
+      "a": 1,
+      "b": 2,
+      "c": 3
+    }
   ]
 }

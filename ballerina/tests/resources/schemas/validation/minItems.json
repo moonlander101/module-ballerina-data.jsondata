@@ -2,13 +2,23 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "array",
-    "minItems": 2
+    "minItems": 2,
+    "$id": "http://data.jsondata/schemas/minItems.json"
   },
   "valid": [
-    [1, 2],
-    [1, 2, 3]
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      2,
+      3
+    ]
   ],
   "invalid": [
-    [1]
+    [
+      1
+    ]
   ]
 }

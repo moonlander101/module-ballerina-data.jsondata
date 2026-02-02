@@ -2,7 +2,8 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "string",
-    "format": "uri"
+    "format": "uri",
+    "$id": "http://data.jsondata/schemas/format/uri_uri.json"
   },
   "valid": [
     "http://example.com"

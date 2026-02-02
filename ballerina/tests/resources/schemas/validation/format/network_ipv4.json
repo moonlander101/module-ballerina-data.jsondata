@@ -2,7 +2,8 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "string",
-    "format": "ipv4"
+    "format": "ipv4",
+    "$id": "http://data.jsondata/schemas/format/network_ipv4.json"
   },
   "valid": [
     "192.168.1.1"

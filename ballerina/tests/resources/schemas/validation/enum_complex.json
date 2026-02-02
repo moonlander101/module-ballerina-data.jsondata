@@ -2,14 +2,27 @@
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "enum": [
-      {"name": "John", "age": 30},
-      {"name": "Jane", "age": 25}
-    ]
+      {
+        "name": "John",
+        "age": 30
+      },
+      {
+        "name": "Jane",
+        "age": 25
+      }
+    ],
+    "$id": "http://data.jsondata/schemas/enum_complex.json"
   },
   "valid": [
-    {"name": "John", "age": 30}
+    {
+      "name": "John",
+      "age": 30
+    }
   ],
   "invalid": [
-    {"name": "Bob", "age": 40}
+    {
+      "name": "Bob",
+      "age": 40
+    }
   ]
 }

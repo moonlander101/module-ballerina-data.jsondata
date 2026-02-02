@@ -9,12 +9,20 @@
       "type": "integer",
       "multipleOf": 5
     },
-    "minContains": 2
+    "minContains": 2,
+    "$id": "http://data.jsondata/schemas/minContains.json"
   },
   "valid": [
-    [1, 5, 10]
+    [
+      1,
+      5,
+      10
+    ]
   ],
   "invalid": [
-    [1, 5]
+    [
+      1,
+      5
+    ]
   ]
 }
