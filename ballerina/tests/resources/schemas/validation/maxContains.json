@@ -1,0 +1,20 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "items": {
+      "type": "number"
+    },
+    "contains": {
+      "type": "integer",
+      "multipleOf": 5
+    },
+    "maxContains": 1
+  },
+  "valid": [
+    [1, 2, 3, 5]
+  ],
+  "invalid": [
+    [5, 10, 15]
+  ]
+}

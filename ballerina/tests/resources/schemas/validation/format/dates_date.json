@@ -1,0 +1,13 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "format": "date"
+  },
+  "valid": [
+    "2023-01-15"
+  ],
+  "invalid": [
+    "not-a-date"
+  ]
+}

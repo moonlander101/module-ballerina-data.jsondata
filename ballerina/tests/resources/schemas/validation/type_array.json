@@ -1,0 +1,12 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array"
+  },
+  "valid": [
+    [1, 2, 3]
+  ],
+  "invalid": [
+    "not an array"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object"
+  },
+  "valid": [
+    {"key": "value"}
+  ],
+  "invalid": [
+    "not an object"
+  ]
+}

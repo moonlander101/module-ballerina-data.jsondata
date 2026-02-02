@@ -1,0 +1,16 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "name": {"type": "string"},
+      "age": {"type": "number"}
+    }
+  },
+  "valid": [
+    {"name": "John", "age": 30}
+  ],
+  "invalid": [
+    {"name": "John", "age": "thirty"}
+  ]
+}

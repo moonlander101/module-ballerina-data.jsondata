@@ -1,0 +1,13 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "format": "uuid"
+  },
+  "valid": [
+    "123e4567-e89b-12d3-a456-426614174000"
+  ],
+  "invalid": [
+    "not-a-uuid"
+  ]
+}

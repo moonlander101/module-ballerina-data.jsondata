@@ -1,0 +1,12 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "enum": ["red", "green", "blue"]
+  },
+  "valid": [
+    "red"
+  ],
+  "invalid": [
+    "yellow"
+  ]
+}

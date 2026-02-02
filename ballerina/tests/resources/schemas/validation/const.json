@@ -1,0 +1,12 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "const": "fixed-value"
+  },
+  "valid": [
+    "fixed-value"
+  ],
+  "invalid": [
+    "different-value"
+  ]
+}
