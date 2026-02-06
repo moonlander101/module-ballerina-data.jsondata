@@ -18,7 +18,14 @@
 
 package io.ballerina.lib.data.jsondata.json.schema;
 
-import com.networknt.schema.*;
+import com.networknt.schema.AbsoluteIri;
+import com.networknt.schema.InputFormat;
+import com.networknt.schema.OutputFormat;
+import com.networknt.schema.SchemaException;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SchemaRegistryConfig;
+import com.networknt.schema.SpecificationVersion;
 import com.networknt.schema.output.OutputUnit;
 import com.networknt.schema.regex.JoniRegularExpressionFactory;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
@@ -37,7 +44,7 @@ import java.util.Map;
 
 public class SchemaJsonValidator {
     private final SchemaRegistry registry;
-
+    
     public SchemaJsonValidator(String schema) {
         SchemaRegistryConfig config = SchemaRegistryConfig.builder()
                 .regularExpressionFactory(JoniRegularExpressionFactory.getInstance())

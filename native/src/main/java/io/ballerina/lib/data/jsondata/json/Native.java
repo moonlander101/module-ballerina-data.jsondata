@@ -19,8 +19,7 @@
 package io.ballerina.lib.data.jsondata.json;
 
 import io.ballerina.lib.data.jsondata.io.BallerinaByteBlockInputStream;
-import io.ballerina.lib.data.jsondata.json.schema.SchemaFileValidator;
-import io.ballerina.lib.data.jsondata.json.schema.SchemaJsonValidator;
+import io.ballerina.lib.data.jsondata.json.schema.*;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
@@ -29,6 +28,7 @@ import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.PredefinedTypes;
 import io.ballerina.runtime.api.types.RecordType;
+import io.ballerina.runtime.api.types.Type;
 import io.ballerina.runtime.api.utils.JsonUtils;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.utils.TypeUtils;
@@ -91,11 +91,12 @@ public class Native {
             if (schema instanceof BString) {
                 SchemaFileValidator validator = SchemaFileValidator.getInstance((BString) schema);
                 err = validator.validate(jsonValue, (BString) schema);
+
             } else if (schema instanceof BMap || schema instanceof Boolean) {
                 String schemaStr = StringUtils.getJsonString(schema);
-
                 SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
                 err = validator.validate(jsonValue, schemaStr);
+
             } else if (schema instanceof BArray schemaArray) {
                 int length = (int) schemaArray.getLength();
                 if (length == 0) {
@@ -110,8 +111,20 @@ public class Native {
                 SchemaJsonValidator validator = new SchemaJsonValidator(schemaStrings);
                 String rootSchema = validator.findRootSchema(schemaStrings);
                 err = validator.validate(jsonValue, rootSchema);
+
             } else if (schema instanceof BTypedesc) {
-                err = DiagnosticLog.createJsonError("type validation not supported yet");
+                Type type = ((BTypedesc) schema).getDescribingType();
+                TypeParser tp = new TypeParser();
+                Object schemaObj = tp.parse(type);
+
+                if (schemaObj instanceof BError) {
+                    err = schemaObj;
+                } else if (schemaObj instanceof Schema) {
+                    Validator validator = new Validator(false);
+                    if (!validator.validate(jsonValue, (Schema) schemaObj)) {
+                        err = DiagnosticLog.createJsonError("json does not conform to the schema type");
+                    }
+                }
             } else {
                 err = DiagnosticLog.createJsonError("invalid schema type: expected string, json, or json[]: " +
                         TypeUtils.getType(schema).getName());
