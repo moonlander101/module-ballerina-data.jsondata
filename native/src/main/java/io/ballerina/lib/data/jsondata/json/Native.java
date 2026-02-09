@@ -119,9 +119,9 @@ public class Native {
 
                 if (schemaObj instanceof BError) {
                     err = schemaObj;
-                } else if (schemaObj instanceof Schema) {
+                } else {
                     Validator validator = new Validator(false);
-                    if (!validator.validate(jsonValue, (Schema) schemaObj)) {
+                    if (!validator.validate(jsonValue, schemaObj)) {
                         err = DiagnosticLog.createJsonError("json does not conform to the schema type");
                     }
                 }

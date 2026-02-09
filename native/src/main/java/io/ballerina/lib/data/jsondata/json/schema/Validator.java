@@ -10,11 +10,14 @@ public class Validator {
         this.failFast = failFast;
     }
 
-    public boolean validate(Object instance, Schema schema) {
+    public boolean validate(Object instance, Object schema) {
         boolean isValid = true;
 
-        for (String key : schema.getKeywords().keySet()) {
-            Keyword keyword = schema.getKeyword(key);
+        if (schema instanceof Boolean) {
+            return (boolean) schema;
+        }
+        for (String key : ((Schema) schema).getKeywords().keySet()) {
+            Keyword keyword = ((Schema) schema).getKeyword(key);
             if (keyword != null) {
                 isValid = isValid && keyword.evaluate(instance);
             }

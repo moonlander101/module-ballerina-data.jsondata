@@ -1,6 +1,7 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
 public class TypeKeyword extends Keyword {
@@ -9,6 +10,9 @@ public class TypeKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance) {
+        if (keywordValue == "null" && instance == null) {
+            return true;
+        }
         if (keywordValue == "string" && instance instanceof BString) {
             return true;
         }
@@ -25,7 +29,7 @@ public class TypeKeyword extends Keyword {
             return true;
         }
 
-        return keywordValue == "object" && instance instanceof io.ballerina.runtime.api.values.BMap;
+        return keywordValue == "object" && instance instanceof BMap<?,?>;
     }
 
     public TypeKeyword(Object typeName) {

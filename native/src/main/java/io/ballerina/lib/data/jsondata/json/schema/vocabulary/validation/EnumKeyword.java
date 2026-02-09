@@ -1,11 +1,13 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
+import java.util.Set;
+
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.JsonEqualityUtils;
 
 public class EnumKeyword extends Keyword {
     public static final String keywordName = "enum";
-    private final Object[] keywordValue;
+    private final Set<Object> keywordValue;
 
     @Override
     public boolean evaluate(Object instance) {
@@ -17,11 +19,11 @@ public class EnumKeyword extends Keyword {
         return false;
     }
 
-    public EnumKeyword(Object[] keywordValue) {
+    public EnumKeyword(Set<Object> keywordValue) {
         this.keywordValue = keywordValue;
     }
 
-    public Object[] getKeywordValue() {
+    public Set<Object> getKeywordValue() {
         return keywordValue;
     }
 }
