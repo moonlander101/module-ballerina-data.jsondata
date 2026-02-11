@@ -7,6 +7,7 @@ import io.ballerina.runtime.api.values.BString;
 public class JsonEqualityUtils {
     
     public static boolean deepEquals(Object value1, Object value2) {
+        System.out.println("Comparing: " + value1 + " and " + value2);
         if (value1 == value2) {
             return true;
         }
@@ -14,29 +15,32 @@ public class JsonEqualityUtils {
         if (value1 == null || value2 == null) {
             return false;
         }
+
+        if (value1 instanceof BMap<?, ?> map1 && value2 instanceof BMap<?, ?> map2) {
+            return mapsEqual((BMap<BString, Object>) map1, (BMap<BString, Object>) map2);
+        }
         
+        if (value1 instanceof BArray array1 && value2 instanceof BArray array2) {
+            return arraysEqual(array1, array2);
+        }
+
         Class<?> class1 = value1.getClass();
         Class<?> class2 = value2.getClass();
-        
+
         if (class1 != class2) {
+            if (class1 == Integer.class && class2 == Long.class) {
+                return ((Integer) value1).longValue() == (Long) value2;
+            } else if (class1 == Long.class && class2 == Integer.class) {
+                return (Long) value1 == ((Integer) value2).longValue();
+            }
             if (class1 == Long.class && class2 == Double.class) {
                 return ((Long) value1).doubleValue() == (Double) value2;
             } else if (class1 == Double.class && class2 == Long.class) {
                 return (Double) value1 == ((Long) value2).doubleValue();
             }
+
             return false;
         }
-        
-        if (value1 instanceof BMap<?, ?> map1) {
-            BMap<BString, Object> map2 = (BMap<BString, Object>) value2;
-            return mapsEqual((BMap<BString, Object>) map1, map2);
-        }
-        
-        if (value1 instanceof BArray array1) {
-            BArray array2 = (BArray) value2;
-            return arraysEqual(array1, array2);
-        }
-        
         return value1.equals(value2);
     }
     

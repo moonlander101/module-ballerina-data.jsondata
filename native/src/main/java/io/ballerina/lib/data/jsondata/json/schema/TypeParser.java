@@ -2,15 +2,25 @@ package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
+import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.runtime.api.creators.TypeCreator;
+import io.ballerina.runtime.api.creators.ValueCreator;
+import io.ballerina.runtime.api.flags.SymbolFlags;
 import io.ballerina.runtime.api.types.AnnotatableType;
+import io.ballerina.runtime.api.types.Field;
 import io.ballerina.runtime.api.types.FiniteType;
+import io.ballerina.runtime.api.types.IntersectionType;
+import io.ballerina.runtime.api.types.PredefinedTypes;
+import io.ballerina.runtime.api.types.RecordType;
+import io.ballerina.runtime.api.types.TupleType;
 import io.ballerina.runtime.api.types.Type;
 import io.ballerina.runtime.api.types.TypeTags;
 import io.ballerina.runtime.api.types.UnionType;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.utils.TypeUtils;
+import io.ballerina.runtime.api.values.BArray;
 import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
@@ -18,7 +28,9 @@ import io.ballerina.runtime.api.values.BString;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -28,7 +40,6 @@ import java.util.regex.Pattern;
 public class TypeParser {
     public Object parse(Type type) {
         Type referredType = TypeUtils.getReferredType(type);
-
         return switch (referredType.getTag()) {
             case TypeTags.UNION_TAG -> parseUnionType(type);
             case TypeTags.STRING_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG, TypeTags.BOOLEAN_TAG,
@@ -37,33 +48,39 @@ public class TypeParser {
         };
     }
 
-    public TypeKeyword extractTypeKeyword(Type type) {
+    public TypeKeyword extractTypeKeyword(ArrayList<Type> type) {
         TypeKeyword typeKeyword = null;
-        if (type.getTag() == TypeTags.INT_TAG) {
-            typeKeyword = new TypeKeyword("integer");
-        } else if (type.getTag() == TypeTags.FLOAT_TAG || type.getTag() == TypeTags.DECIMAL_TAG) {
-            typeKeyword = new TypeKeyword("number");
-        } else if (type.getTag() == TypeTags.STRING_TAG) {
-            typeKeyword = new TypeKeyword("string");
-        } else if (type.getTag() == TypeTags.BOOLEAN_TAG) {
-            typeKeyword = new TypeKeyword("boolean");
-        } else if (type.getTag() == TypeTags.JSON_TAG) {
-            typeKeyword = new TypeKeyword("json");
-        } else if (type.getTag() == TypeTags.NULL_TAG) {
-            typeKeyword = new TypeKeyword("null");
-        } else if (type.getTag() == TypeTags.NEVER_TAG) {
-            typeKeyword = new TypeKeyword("never");
+        ArrayList<String> typeNames = new ArrayList<>();
+        for (Type memberType : type) {
+            Type referredType = TypeUtils.getReferredType(memberType);
+            switch (referredType.getTag()) {
+                case TypeTags.STRING_TAG -> typeNames.add("string");
+                case TypeTags.INT_TAG -> typeNames.add("integer");
+                case TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG -> typeNames.add("number");
+                case TypeTags.BOOLEAN_TAG -> typeNames.add("boolean");
+                case TypeTags.JSON_TAG -> typeNames.add("object");
+                case TypeTags.NEVER_TAG -> typeNames.add("never");
+                case TypeTags.NULL_TAG -> typeNames.add("null");
+                default -> {}
+            }
+        }
+        if (!typeNames.isEmpty()) {
+            typeKeyword = new TypeKeyword(typeNames);
         }
         return typeKeyword;
     }
 
     public Object parseUnionType(Type type) {
-        if (!(type instanceof UnionType unionType)) {
+        Type referredType = TypeUtils.getReferredType(type);
+        if (!(referredType instanceof UnionType unionType)) {
             return null;
         }
         List<Type> memberTypes = unionType.getMemberTypes();
-
+        ArrayList<Type> basicTypeMembers = new ArrayList<>();
+        ArrayList<Type> constValues = new ArrayList<>();
         List<Object> memberSchemas = new ArrayList<>();
+        HashMap<String, Keyword> keywords = new HashMap<>();
+
         for (Type memberType : memberTypes) {
             if (memberType.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG) {
                 Object parsedMember = parse(memberType);
@@ -72,41 +89,112 @@ public class TypeParser {
                 } else {
                     return (BError) parsedMember;
                 }
+            } else if (
+                memberType.getTag() == TypeTags.INTERSECTION_TAG ||
+                memberType.getTag() == TypeTags.TUPLE_TAG ||
+                memberType.getTag() == TypeTags.FINITE_TYPE_TAG 
+            ) {
+                constValues.add(memberType);
+            } else {
+                basicTypeMembers.add(memberType);
             }
         }
-        return memberSchemas;
+
+        if (!basicTypeMembers.isEmpty()) {
+            TypeKeyword typeKeyword = extractTypeKeyword(basicTypeMembers);
+            if (typeKeyword != null) {
+                keywords.put(TypeKeyword.keywordName, typeKeyword);
+            }
+        }
+    
+        extractConstOrEnumKeyword(constValues, keywords);
+        extractKeywordsFromAnnotations(referredType, keywords);
+
+        return new Schema(keywords);
     }
 
-    public Keyword extractConstOrEnumKeyword(Type type) {
-        Type referredType = TypeUtils.getReferredType(type);
-        if (referredType instanceof FiniteType finiteType) {
-            Set<Object> valueSpace = finiteType.getValueSpace();
-
-            if (valueSpace.size() == 1) {
-                Object value = valueSpace.iterator().next();
-                return new ConstKeyword(value);
-            }
-        
-            if (valueSpace.size() > 1) {
-                return new EnumKeyword(valueSpace); 
+    public void extractConstOrEnumKeyword(ArrayList<Type> referredTypes, HashMap<String, Keyword> keywords) {
+        Set<Object> constValues = new HashSet<>();
+        for (Type type : referredTypes) {
+            Object constValue = extractConstValues(type);
+            if (constValue != null) {
+                if (constValue instanceof Set) {
+                    constValues.addAll((Set<?>) constValue);
+                } else {
+                    constValues.add(constValue);
+                }
             }
         }
+        if (constValues.size() == 1) {
+            Object constValue = constValues.iterator().next();
+            keywords.put(ConstKeyword.keywordName, new ConstKeyword(constValue));
+        } else if (constValues.size() > 1) {
+            keywords.put(EnumKeyword.keywordName, new EnumKeyword(constValues));
+        }
+    }
+
+    private Object extractConstValues(Type type) {
+        if (type.getTag() == TypeTags.INTERSECTION_TAG) {
+            Type effectiveType = ((IntersectionType) type).getEffectiveType();
+            return extractConstValues(effectiveType);
+        }
+        else if (type.getTag() == TypeTags.FINITE_TYPE_TAG) {
+            FiniteType finiteType = (FiniteType) type;
+            if (finiteType.getValueSpace().size() == 1) {
+                return finiteType.getValueSpace().iterator().next();
+            } else {
+                return new HashSet<>(finiteType.getValueSpace());
+            }
+        } 
+        else if (type.getTag() == TypeTags.RECORD_TYPE_TAG) {
+            RecordType recordType = (RecordType) type;
+            if ((recordType.getFlags() & SymbolFlags.READONLY) == SymbolFlags.READONLY) {
+                BMap<BString, Object> bMap = ValueCreator.createMapValue(Constants.JSON_MAP_TYPE);
+                for (Entry<String, Field> entry : recordType.getFields().entrySet()) {
+                    String fieldName = entry.getKey();
+                    Field field = entry.getValue();
+                    Object fieldValue = extractConstValues(field.getFieldType());
+                    bMap.put(StringUtils.fromString(fieldName), fieldValue);
+                }
+                return bMap;
+            }
+        }
+        else if (type.getTag() == TypeTags.TUPLE_TAG) {
+            TupleType tupleType = (TupleType) type;
+            BArray bArray = ValueCreator.createArrayValue(
+                    TypeCreator.createArrayType(PredefinedTypes.TYPE_ANY));
+
+            int index = 0;
+            for (Type memberType : tupleType.getTupleTypes()) {
+                Object memberValue = extractConstValues(memberType);
+                if (memberValue instanceof HashSet) {
+                    for (Object item : (HashSet<?>) memberValue) {
+                        bArray.add(index, item);
+                        index += 1;
+                    }
+                }
+                bArray.add(index, memberValue);
+                index += 1;
+            }
+            return bArray;
+        }
+
         return null;
     }
 
-    public HashMap<String, Keyword> extractKeywordsFromTypeAnnotations(Type type, HashMap<String, Keyword> keywords) {
+    public void extractKeywordsFromAnnotations(Type referredType, HashMap<String, Keyword> keywords) {
         if (keywords == null) {
             keywords = new HashMap<>();
         }
 
-        if (!(type instanceof AnnotatableType annotatableType)) {
-            return keywords;
+        if (!(referredType instanceof AnnotatableType annotatableType)) {
+            return;
         }
 
         BMap<BString, Object> annotations = annotatableType.getAnnotations();
 
         if (annotations.isEmpty()) {
-            return keywords;
+            return;
         }
 
         Pattern annotationNamePattern = Pattern.compile("([^:]+)$");
@@ -159,8 +247,6 @@ public class TypeParser {
                     break;
             }
         }
-
-        return keywords;
     }
 
     public Object parseBasicType(Type type) {
@@ -172,13 +258,14 @@ public class TypeParser {
             return false;
         }
 
-        TypeKeyword typeKeyword = extractTypeKeyword(referredType);
+        TypeKeyword typeKeyword = extractTypeKeyword(new ArrayList<>(List.of(referredType)));
         HashMap<String, Keyword> keywords = new HashMap<>();
         if (typeKeyword != null) {
             keywords.put(TypeKeyword.keywordName, typeKeyword);
         }
 
-        extractKeywordsFromTypeAnnotations(referredType, keywords);
+        extractConstOrEnumKeyword(new ArrayList<Type>(List.of(referredType)), keywords);
+        extractKeywordsFromAnnotations(referredType, keywords);
 
         return new Schema(keywords);
     }
