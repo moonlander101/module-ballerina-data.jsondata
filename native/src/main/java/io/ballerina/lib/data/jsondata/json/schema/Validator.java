@@ -12,7 +12,7 @@ public class Validator {
 
     public boolean validate(Object instance, Object schema) {
         boolean isValid = true;
-
+        System.out.println("Schema: " + schema);
         if (schema instanceof Boolean) {
             return (boolean) schema;
         }

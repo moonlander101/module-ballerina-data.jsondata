@@ -7,7 +7,7 @@ import io.ballerina.runtime.api.values.BString;
 public class JsonEqualityUtils {
     
     public static boolean deepEquals(Object value1, Object value2) {
-        System.out.println("Comparing: " + value1 + " and " + value2);
+//        System.out.println("Comparing: " + value1 + " and " + value2);
         if (value1 == value2) {
             return true;
         }
