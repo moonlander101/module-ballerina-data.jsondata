@@ -1,6 +1,9 @@
 package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AnyOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AllOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.OneOfKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
@@ -29,7 +32,6 @@ import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -93,9 +95,10 @@ public class TypeParser {
             return null;
         }
         HashMap<String, Keyword> keywords = new HashMap<>();
-        extractKeywordsFromAnnotations(referredType, keywords);
+        extractKeywordsFromAnnotations(type, keywords);
+        System.out.println("Extracted keywords from annotations for type: " + referredType + ", keywords: " + keywords.keySet());
 
-        List<Type> memberTypes = unionType.getMemberTypes();
+        List<Type> memberTypes = unionType.getOriginalMemberTypes();
         System.out.println("Parsing union type: " + referredType + ", with members: " + memberTypes);
 
         ArrayList<Type> basicTypeMembers = new ArrayList<>();
@@ -140,14 +143,49 @@ public class TypeParser {
             }
         }
 
-        if (!basicTypeMembers.isEmpty()) {
-            TypeKeyword typeKeyword = extractTypeKeyword(basicTypeMembers);
-            if (typeKeyword != null) {
-                keywords.put(TypeKeyword.keywordName, typeKeyword);
+        boolean isAllOf = keywords.containsKey(AllOfKeyword.keywordName);
+        boolean isOneOf = keywords.containsKey(OneOfKeyword.keywordName);
+
+        if (isAllOf || isOneOf) {
+            List<Object> wrapperList = new ArrayList<>(memberSchemas);
+
+            if (!basicTypeMembers.isEmpty()) {
+                TypeKeyword typeKeyword = extractTypeKeyword(basicTypeMembers);
+                if (typeKeyword != null) {
+                    HashMap<String, Keyword> typeKeywords = new HashMap<>();
+                    typeKeywords.put(TypeKeyword.keywordName, typeKeyword);
+                    wrapperList.add(new Schema(typeKeywords));
+                }
+            }
+
+            if (!constValues.isEmpty()) {
+                HashMap<String, Keyword> constKeywords = new HashMap<>();
+                extractConstOrEnumKeyword(constValues, constKeywords);
+                if (!constKeywords.isEmpty()) {
+                    wrapperList.add(new Schema(constKeywords));
+                }
+            }
+
+            if (isAllOf) {
+                keywords.put(AllOfKeyword.keywordName, new AllOfKeyword(wrapperList));
+                keywords.remove(OneOfKeyword.keywordName);
+            } else {
+                keywords.put(OneOfKeyword.keywordName, new OneOfKeyword(wrapperList));
+            }
+
+        } else {
+            if (!basicTypeMembers.isEmpty()) {
+                TypeKeyword typeKeyword = extractTypeKeyword(basicTypeMembers);
+                if (typeKeyword != null) {
+                    keywords.put(TypeKeyword.keywordName, typeKeyword);
+                }
+            }
+            extractConstOrEnumKeyword(constValues, keywords);
+
+            if (!memberSchemas.isEmpty()) {
+                keywords.put(AnyOfKeyword.keywordName, new AnyOfKeyword(memberSchemas));
             }
         }
-
-        extractConstOrEnumKeyword(constValues, keywords);
 
         return new Schema(keywords);
     }
@@ -275,8 +313,10 @@ public class TypeParser {
                 case "StringEncodedData":
                     break;
                 case "AllOf":
+                    keywords.put(AllOfKeyword.keywordName, new AllOfKeyword(new ArrayList<>()));
                     break;
                 case "OneOf":
+                    keywords.put(OneOfKeyword.keywordName, new AllOfKeyword(new ArrayList<>()));
                     break;
                 case "AnyOf":
                     break;
@@ -307,7 +347,29 @@ public class TypeParser {
             if (itemsSchema instanceof BError) {
                 return itemsSchema;
             }
+            System.out.println("Parsing array type: " + referredType + ", with element type: " + elementType + ", and items schema: " + itemsSchema);
             keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(itemsSchema));
+
+            if (arrayType.getSize() != -1) {
+                Long arraySize = (long) arrayType.getSize();
+                Long derivedMin = arraySize;
+                Long derivedMax = arraySize;
+
+                Keyword minKeyword = keywords.get(MinItemsKeyword.keywordName);
+                Keyword maxKeyword = keywords.get(MaxItemsKeyword.keywordName);
+                Long annotatedMin = minKeyword != null ? (Long) minKeyword.getKeywordValue() : null;
+                Long annotatedMax = maxKeyword != null ? (Long) maxKeyword.getKeywordValue() : null;
+
+                Long finalMin = mergeMinConstraints(annotatedMin, derivedMin);
+                Long finalMax = mergeMaxConstraints(annotatedMax, derivedMax);
+
+                if (finalMin != null) {
+                    keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(finalMin));
+                }
+                if (finalMax != null) {
+                    keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(finalMax));
+                }
+            }
         } else if (referredType.getTag() == TypeTags.TUPLE_TAG) {
             TupleType tupleType = (TupleType) referredType;
             List<Type> tupleTypes = tupleType.getTupleTypes();
@@ -458,7 +520,6 @@ public class TypeParser {
         String t1Name = type1.getName();
         String t2Name = type2.getName();
         if (t1Name != null && t2Name != null) {
-            System.out.println("Comparing type names: " + t1Name + ", " + t2Name);
             return t1Name.equals(t2Name) &&  t1.getTag() == t2.getTag();
         }
         return t1.getTag() == t2.getTag();
