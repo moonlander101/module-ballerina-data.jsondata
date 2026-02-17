@@ -1,5 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 public class MinimumKeyword extends Keyword {
@@ -7,13 +8,19 @@ public class MinimumKeyword extends Keyword {
     private final Double keywordValue;
 
     @Override
-    public boolean evaluate(Object instance) {
+    public boolean evaluate(Object instance, EvaluationContext context) {
+        boolean valid;
         if (instance instanceof Double) {
-            return (Double) instance >= keywordValue;
+            valid = (Double) instance >= keywordValue;
         } else if (instance instanceof Long) {
-            return (Long) instance >= keywordValue;
+            valid = (Long) instance >= keywordValue;
+        } else {
+            return false;
         }
-        return false;
+        if (!valid) {
+            context.addError("minimum", "At " + context.getInstanceLocation() + ": [minimum] value " + instance + " is less than minimum " + keywordValue);
+        }
+        return valid;
     }
 
     public MinimumKeyword(Double keywordValue) {

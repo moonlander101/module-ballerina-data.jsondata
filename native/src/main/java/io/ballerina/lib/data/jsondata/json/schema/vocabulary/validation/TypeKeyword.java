@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BArray;
 import io.ballerina.runtime.api.values.BMap;
@@ -15,7 +16,7 @@ public class TypeKeyword extends Keyword {
     public final Set<String> keywordValue;
 
     @Override
-    public boolean evaluate(Object instance) {
+    public boolean evaluate(Object instance, EvaluationContext context) {
         for (String keyword : keywordValue) {
             if (Objects.equals(keyword, "null") && instance == null) {
                 return true;
@@ -23,19 +24,19 @@ public class TypeKeyword extends Keyword {
             if (Objects.equals(keyword, "string") && instance instanceof BString) {
                 return true;
             }
-    
+
             if (Objects.equals(keyword, "integer") && instance instanceof Long) {
                 return true;
             }
-    
+
             if (Objects.equals(keyword, "number") && (instance instanceof Double || instance instanceof Long)) {
                 return true;
             }
-    
+
             if (Objects.equals(keyword, "boolean") && instance instanceof Boolean) {
                 return true;
             }
-    
+
             if (Objects.equals(keyword, "object") && instance instanceof BMap<?,?>) {
                 return true;
             }
@@ -44,6 +45,8 @@ public class TypeKeyword extends Keyword {
                 return true;
             }
         }
+        String actualType = instance == null ? "null" : instance.getClass().getSimpleName();
+        context.addError("type", "At " + context.getInstanceLocation() + ": [type] expected " + keywordValue + " but found " + actualType);
         return false;
     }
 

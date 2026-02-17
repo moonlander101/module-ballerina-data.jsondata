@@ -120,8 +120,12 @@ public class Native {
                     err = schemaObj;
                 } else {
                     Validator validator = new Validator(false);
-                    if (!validator.validate(jsonValue, schemaObj)) {
-                        err = DiagnosticLog.createJsonError("json does not conform to the schema type");
+                    EvaluationContext context = new EvaluationContext();
+                    if (!validator.validate(jsonValue, schemaObj, context)) {
+                        String errorMessage = String.join("\n- ", context.getErrors());
+                        err = DiagnosticLog.error(
+                            DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
+                            "- " + errorMessage);
                     }
                 }
             } else {

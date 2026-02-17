@@ -1,5 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BArray;
@@ -15,18 +16,21 @@ public class PrefixItemsKeyword extends Keyword {
     }
 
     @Override
-    public boolean evaluate(Object instance) {
+    public boolean evaluate(Object instance, EvaluationContext context) {
         if (!(instance instanceof BArray array)) {
             return true;
         }
-        Validator validator = new Validator(true);
+        Validator validator = new Validator(false);
         long size = Math.min(array.size(), keywordValue.size());
+        boolean isValid = true;
         for (long i = 0; i < size; i++) {
-            if (!validator.validate(array.get(i), keywordValue.get((int) i))) {
-                return false;
+            EvaluationContext itemContext = context.createChildContext(String.valueOf(i), "prefixItems/" + i);
+            if (!validator.validate(array.get(i), keywordValue.get((int) i), itemContext)) {
+                isValid = false;
             }
         }
-        return true;
+        context.setAnnotation("prefixItems", (long) keywordValue.size());
+        return isValid;
     }
 
     @Override

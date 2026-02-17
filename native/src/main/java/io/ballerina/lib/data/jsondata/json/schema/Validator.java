@@ -10,16 +10,19 @@ public class Validator {
         this.failFast = failFast;
     }
 
-    public boolean validate(Object instance, Object schema) {
-        boolean isValid = true;
-        System.out.println("Schema: " + schema);
+    public boolean validate(Object instance, Object schema, EvaluationContext context) {
         if (schema instanceof Boolean) {
+            if (!(boolean) schema) {
+                context.addError("schema", "At " + context.getInstanceLocation() + ": value is not allowed (false schema)");
+            }
             return (boolean) schema;
         }
+
+        boolean isValid = true;
         for (String key : ((Schema) schema).getKeywords().keySet()) {
             Keyword keyword = ((Schema) schema).getKeyword(key);
             if (keyword != null) {
-                isValid = isValid && keyword.evaluate(instance);
+                isValid = isValid && keyword.evaluate(instance, context);
             }
 
             if (!isValid && failFast) {

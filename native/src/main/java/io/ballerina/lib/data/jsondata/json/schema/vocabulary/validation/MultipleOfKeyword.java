@@ -1,5 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 public class MultipleOfKeyword extends Keyword {
@@ -7,18 +8,24 @@ public class MultipleOfKeyword extends Keyword {
     private final Double keywordValue;
 
     @Override
-    public boolean evaluate(Object instance) {
+    public boolean evaluate(Object instance, EvaluationContext context) {
+        boolean valid;
         if (instance instanceof Double) {
             double instanceValue = (Double) instance;
             double divisor = keywordValue;
             double remainder = instanceValue % divisor;
-            return Math.abs(remainder) < 1e-10 || Math.abs(remainder - divisor) < 1e-10;
+            valid = Math.abs(remainder) < 1e-10 || Math.abs(remainder - divisor) < 1e-10;
         } else if (instance instanceof Long) {
             long instanceValue = (Long) instance;
             long divisor = keywordValue.longValue();
-            return instanceValue % divisor == 0;
+            valid = instanceValue % divisor == 0;
+        } else {
+            return false;
         }
-        return false;
+        if (!valid) {
+            context.addError("multipleOf", "At " + context.getInstanceLocation() + ": [multipleOf] value " + instance + " is not a multiple of " + keywordValue);
+        }
+        return valid;
     }
 
     public MultipleOfKeyword(Double keywordValue) {

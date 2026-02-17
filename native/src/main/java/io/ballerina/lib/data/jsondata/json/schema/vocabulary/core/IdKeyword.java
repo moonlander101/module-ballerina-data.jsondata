@@ -1,5 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.core;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 public class IdKeyword extends Keyword {
@@ -8,7 +9,7 @@ public class IdKeyword extends Keyword {
 
 
     @Override
-    public boolean evaluate(Object instance) {
+    public boolean evaluate(Object instance, EvaluationContext context) {
         return true;
     }
 

@@ -32,6 +32,7 @@ import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,7 +48,6 @@ public class TypeParser {
 
     public Object parse(Type type) {
         if (typeAliasToSchema.containsKey(type.getName())) {
-            System.out.println("Type alias already parsed: " + type.getName() + ", reusing schema.");
             return typeAliasToSchema.get(type.getName());
         }
 
@@ -56,7 +56,6 @@ public class TypeParser {
         }
 
         Type referredType = TypeUtils.getReferredType(type);
-        System.out.println("Parsing type: " + referredType + " tag: " + referredType.getTag());
 
         Object schema = switch (referredType.getTag()) {
             case TypeTags.UNION_TAG -> parseUnionType(type);
@@ -118,9 +117,8 @@ public class TypeParser {
         if (!(referredType instanceof UnionType unionType)) {
             return null;
         }
-        HashMap<String, Keyword> keywords = new HashMap<>();
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         extractKeywordsFromAnnotations(type, keywords);
-        System.out.println("Extracted keywords from annotations for type: " + referredType + ", keywords: " + keywords.keySet());
 
         List<Type> memberTypes = unionType.getOriginalMemberTypes();
         System.out.println("Parsing union type: " + referredType + ", with members: " + memberTypes);
@@ -176,14 +174,14 @@ public class TypeParser {
             if (!basicTypeMembers.isEmpty()) {
                 TypeKeyword typeKeyword = extractTypeKeyword(basicTypeMembers);
                 if (typeKeyword != null) {
-                    HashMap<String, Keyword> typeKeywords = new HashMap<>();
+                    LinkedHashMap<String, Keyword> typeKeywords = new LinkedHashMap<>();
                     typeKeywords.put(TypeKeyword.keywordName, typeKeyword);
                     wrapperList.add(new Schema(typeKeywords));
                 }
             }
 
             if (!constValues.isEmpty()) {
-                HashMap<String, Keyword> constKeywords = new HashMap<>();
+                LinkedHashMap<String, Keyword> constKeywords = new LinkedHashMap<>();
                 extractConstOrEnumKeyword(constValues, constKeywords);
                 if (!constKeywords.isEmpty()) {
                     wrapperList.add(new Schema(constKeywords));
@@ -214,7 +212,7 @@ public class TypeParser {
         return new Schema(keywords);
     }
 
-    public void extractConstOrEnumKeyword(ArrayList<Type> referredTypes, HashMap<String, Keyword> keywords) {
+    public void extractConstOrEnumKeyword(ArrayList<Type> referredTypes, LinkedHashMap<String, Keyword> keywords) {
         Set<Object> constValues = new HashSet<>();
         for (Type type : referredTypes) {
             Object constValue = extractConstValues(type);
@@ -283,13 +281,12 @@ public class TypeParser {
         return null;
     }
 
-    public void extractKeywordsFromAnnotations(Type referredType, HashMap<String, Keyword> keywords) {
+    public void extractKeywordsFromAnnotations(Type referredType, LinkedHashMap<String, Keyword> keywords) {
         if (keywords == null) {
-            keywords = new HashMap<>();
+            keywords = new LinkedHashMap<>();
         }
 
         if (!(referredType instanceof AnnotatableType annotatableType)) {
-            System.out.println("Type is not annotatable: " + referredType);
             return;
         }
 
@@ -368,27 +365,46 @@ public class TypeParser {
 
     private Object parseSimpleArray(Type type) {
         ArrayType arrayType = (ArrayType) TypeUtils.getReferredType(type);
-        HashMap<String, Keyword> keywords = new HashMap<>();
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
 
         Set<String> typeNames = new HashSet<>();
         typeNames.add("array");
         keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
-
-        extractKeywordsFromAnnotations(type, keywords);
 
         Type elementType = arrayType.getElementType();
         Object itemsSchema = parse(elementType);
         if (itemsSchema instanceof BError) {
             return itemsSchema;
         }
-        System.out.println("Parsing simple array type: " + arrayType + ", with element type: " + elementType);
         keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(itemsSchema));
 
         if (arrayType.getSize() != -1) {
             setArraySizeConstraints(keywords, (long) arrayType.getSize(), (long) arrayType.getSize());
         }
 
+        extractArrayValidationKeywords(type, keywords);
+
         return new Schema(keywords);
+    }
+
+    private void extractArrayValidationKeywords(Type type, LinkedHashMap<String, Keyword> keywords) {
+        if (!(type instanceof AnnotatableType annotatableType)) {
+            return;
+        }
+        BMap<BString, Object> annotations = annotatableType.getAnnotations();
+        if (annotations.isEmpty()) {
+            return;
+        }
+        Pattern annotationNamePattern = Pattern.compile("([^:]+)$");
+        for (BString key : annotations.getKeys()) {
+            String annotationIdentifier = key.getValue();
+            Matcher matcher = annotationNamePattern.matcher(annotationIdentifier);
+            String annotationName = matcher.find() ? matcher.group(1) : annotationIdentifier;
+            Object annotation = annotations.get(key);
+            if ("ArrayConstraints".equals(annotationName)) {
+                extractArrayValidationKeywords((BMap<BString, Object>) annotation, keywords);
+            }
+        }
     }
 
     private Object parseTupleType(Type type) {
@@ -396,29 +412,24 @@ public class TypeParser {
         List<Type> tupleTypes = tupleType.getTupleTypes();
         Type restType = tupleType.getRestType();
 
-        System.out.println("Parsing tuple type: " + tupleType + ", with members: " + tupleTypes +
-                          ", rest type: " + (restType != null ? restType : "null"));
-
         if (tupleTypes.isEmpty()) {
             return DiagnosticLog.createJsonError("cannot create schema for empty tuple");
         }
 
-        HashMap<String, Keyword> keywords = new HashMap<>();
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
 
         Set<String> typeNames = new HashSet<>();
         typeNames.add("array");
         keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
 
-        extractKeywordsFromAnnotations(type, keywords);
-
         if (restType != null) {
-            return parseTupleWithRest(tupleTypes, restType, keywords);
+            return parseTupleWithRest(type, tupleTypes, restType, keywords);
         } else {
-            return parseTupleFixedLength(tupleTypes, keywords);
+            return parseTupleFixedLength(type, tupleTypes, keywords);
         }
     }
 
-    private Object parseTupleWithRest(List<Type> tupleTypes, Type restType, HashMap<String, Keyword> keywords) {
+    private Object parseTupleWithRest(Type type, List<Type> tupleTypes, Type restType, LinkedHashMap<String, Keyword> keywords) {
         List<Object> prefixSchemas = new ArrayList<>();
         for (Type memberType : tupleTypes) {
             Object memberSchema = parse(memberType);
@@ -440,10 +451,12 @@ public class TypeParser {
 
         setArraySizeConstraints(keywords, (long) tupleTypes.size(), null);
 
+        extractArrayValidationKeywords(type, keywords);
+
         return new Schema(keywords);
     }
 
-    private Object parseTupleFixedLength(List<Type> tupleTypes, HashMap<String, Keyword> keywords) {
+    private Object parseTupleFixedLength(Type type, List<Type> tupleTypes, LinkedHashMap<String, Keyword> keywords) {
         List<Object> prefixSchemas = new ArrayList<>();
         for (Type memberType : tupleTypes) {
             Object memberSchema = parse(memberType);
@@ -458,10 +471,12 @@ public class TypeParser {
         long tupleSize = tupleTypes.size();
         setArraySizeConstraints(keywords, tupleSize, tupleSize);
 
+        extractArrayValidationKeywords(type, keywords);
+
         return new Schema(keywords);
     }
 
-    private void setArraySizeConstraints(HashMap<String, Keyword> keywords, Long derivedMin, Long derivedMax) {
+    private void setArraySizeConstraints(LinkedHashMap<String, Keyword> keywords, Long derivedMin, Long derivedMax) {
         Keyword minKeyword = keywords.get(MinItemsKeyword.keywordName);
         Keyword maxKeyword = keywords.get(MaxItemsKeyword.keywordName);
         Long annotatedMin = minKeyword != null ? (Long) minKeyword.getKeywordValue() : null;
@@ -500,7 +515,7 @@ public class TypeParser {
         }
 
         TypeKeyword typeKeyword = extractTypeKeyword(new ArrayList<>(List.of(referredType)));
-        HashMap<String, Keyword> keywords = new HashMap<>();
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         if (typeKeyword != null) {
             keywords.put(TypeKeyword.keywordName, typeKeyword);
         }
@@ -511,7 +526,7 @@ public class TypeParser {
         return new Schema(keywords);
     }
 
-    private void extractNumericValidationKeywords(BMap<BString, Object> annotation, HashMap<String, Keyword> keywords) {
+    private void extractNumericValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
         extractDouble(annotation, "minimum").ifPresent(value ->
                 keywords.put(MinimumKeyword.keywordName, new MinimumKeyword(value))
         );
@@ -529,7 +544,7 @@ public class TypeParser {
         );
     }
 
-    private void extractStringValidationKeywords(BMap<BString, Object> annotation, HashMap<String, Keyword> keywords) {
+    private void extractStringValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
         extractLong(annotation, "minLength").ifPresent(value ->
                 keywords.put(MinLengthKeyword.keywordName, new MinLengthKeyword(value))
         );
@@ -541,7 +556,7 @@ public class TypeParser {
         );
     }
 
-    private void extractArrayValidationKeywords(BMap<BString, Object> annotation, HashMap<String, Keyword> keywords) {
+    private void extractArrayValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
         extractLong(annotation, "minItems").ifPresent(value ->
                 keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(value))
         );

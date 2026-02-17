@@ -1,5 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BString;
 
@@ -11,11 +12,15 @@ public class PatternKeyword extends Keyword {
     private final Pattern pattern;
 
     @Override
-    public boolean evaluate(Object instance) {
+    public boolean evaluate(Object instance, EvaluationContext context) {
         if (!(instance instanceof BString str)) {
             return true;
         }
-        return pattern.matcher(str.getValue()).matches();
+        boolean valid = pattern.matcher(str.getValue()).matches();
+        if (!valid) {
+            context.addError("pattern", "At " + context.getInstanceLocation() + ": [pattern] value does not match pattern " + keywordValue);
+        }
+        return valid;
     }
 
     public PatternKeyword(String keywordValue) {

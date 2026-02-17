@@ -1,5 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BArray;
 
@@ -8,11 +9,15 @@ public class MaxItemsKeyword extends Keyword {
     private final Long keywordValue;
 
     @Override
-    public boolean evaluate(Object instance) {
+    public boolean evaluate(Object instance, EvaluationContext context) {
         if (!(instance instanceof BArray array)) {
             return true;
         }
-        return array.size() <= keywordValue;
+        boolean valid = array.size() <= keywordValue;
+        if (!valid) {
+            context.addError("maxItems", "At " + context.getInstanceLocation() + ": [maxItems] array length " + array.size() + " exceeds maximum " + keywordValue);
+        }
+        return valid;
     }
 
     public MaxItemsKeyword(Long keywordValue) {

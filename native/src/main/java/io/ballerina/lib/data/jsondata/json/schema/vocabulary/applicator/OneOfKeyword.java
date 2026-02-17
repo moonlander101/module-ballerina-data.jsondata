@@ -1,5 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
@@ -14,16 +15,21 @@ public class OneOfKeyword extends Keyword {
     }
 
     @Override
-    public boolean evaluate(Object instance) {
-        Validator validator = new Validator(true);
+public boolean evaluate(Object instance, EvaluationContext context) {
+        Validator validator = new Validator(false);
         int matchCount = 0;
-        for (Object schema : keywordValue) {
-            if (validator.validate(instance, schema)) {
+        for (int i = 0; i < keywordValue.size(); i++) {
+            EvaluationContext schemaContext = context.createChildContext("", "oneOf/" + i);
+            if (validator.validate(instance, keywordValue.get(i), schemaContext)) {
                 matchCount++;
                 if (matchCount > 1) {
+                    context.addError("oneOf", "At " + context.getInstanceLocation() + ": [oneOf] value matches more than one subschema");
                     return false;
                 }
             }
+        }
+        if (matchCount == 0) {
+            context.addError("oneOf", "At " + context.getInstanceLocation() + ": [oneOf] value does not match exactly one subschema");
         }
         return matchCount == 1;
     }

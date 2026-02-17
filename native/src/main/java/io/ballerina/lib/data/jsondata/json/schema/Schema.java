@@ -3,15 +3,16 @@ package io.ballerina.lib.data.jsondata.json.schema;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class Schema {
     private static final ThreadLocal<Map<Schema, Integer>> visitedSchemas = ThreadLocal.withInitial(HashMap::new);
-    private HashMap<String, Keyword> keywords;
+    private LinkedHashMap<String, Keyword> keywords;
 
     public Schema() {}
 
-    public Schema(HashMap<String, Keyword> keywords) {
+    public Schema(LinkedHashMap<String, Keyword> keywords) {
         this.keywords = keywords;
     }
 
@@ -19,11 +20,11 @@ public class Schema {
         return keywords.get(keywordName);
     }
 
-    public void setKeywords(HashMap<String, Keyword> keywords) {
+    public void setKeywords(LinkedHashMap<String, Keyword> keywords) {
         this.keywords = keywords;
     }
 
-    public HashMap<String, Keyword> getKeywords() {
+    public LinkedHashMap<String, Keyword> getKeywords() {
         return keywords;
     }
 

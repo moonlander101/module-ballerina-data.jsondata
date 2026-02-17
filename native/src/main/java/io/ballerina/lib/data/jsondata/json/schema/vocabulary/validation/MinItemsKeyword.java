@@ -1,5 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BArray;
 
@@ -8,11 +9,15 @@ public class MinItemsKeyword extends Keyword {
     private final Long keywordValue;
 
     @Override
-    public boolean evaluate(Object instance) {
+    public boolean evaluate(Object instance, EvaluationContext context) {
         if (!(instance instanceof BArray array)) {
             return true;
         }
-        return array.size() >= keywordValue;
+        boolean valid = array.size() >= keywordValue;
+        if (!valid) {
+            context.addError("minItems", "At " + context.getInstanceLocation() + ": [minItems] array length " + array.size() + " is less than minimum " + keywordValue);
+        }
+        return valid;
     }
 
     public MinItemsKeyword(Long keywordValue) {
