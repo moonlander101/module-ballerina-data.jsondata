@@ -8,7 +8,6 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKey
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
 import io.ballerina.lib.data.jsondata.utils.Constants;
-import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
@@ -44,16 +43,41 @@ import java.util.regex.Pattern;
 
 
 public class TypeParser {
+    private final HashMap<String, Object> typeAliasToSchema = new HashMap<String, Object>();
+
     public Object parse(Type type) {
+        if (typeAliasToSchema.containsKey(type.getName())) {
+            System.out.println("Type alias already parsed: " + type.getName() + ", reusing schema.");
+            return typeAliasToSchema.get(type.getName());
+        }
+
+        if (type.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG) {
+            typeAliasToSchema.put(type.getName(), new Schema());
+        }
+
         Type referredType = TypeUtils.getReferredType(type);
         System.out.println("Parsing type: " + referredType + " tag: " + referredType.getTag());
-        return switch (referredType.getTag()) {
+
+        Object schema = switch (referredType.getTag()) {
             case TypeTags.UNION_TAG -> parseUnionType(type);
             case TypeTags.TUPLE_TAG, TypeTags.ARRAY_TAG -> parseArrayType(type);
             case TypeTags.STRING_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG, TypeTags.BOOLEAN_TAG,
-                 TypeTags.JSON_TAG, TypeTags.NEVER_TAG, TypeTags.NULL_TAG, TypeTags.FINITE_TYPE_TAG -> parseBasicType(type);
-            default -> DiagnosticLog.error(DiagnosticErrorCode.INVALID_TYPE, referredType.getName());
+                 TypeTags.JSON_TAG, TypeTags.NEVER_TAG, TypeTags.NULL_TAG, TypeTags.FINITE_TYPE_TAG ->
+                    parseBasicType(type);
+            default -> DiagnosticLog.createJsonError("unsupported type: " + referredType);
         };
+
+        if (schema instanceof BError) {
+            return schema;
+        }
+
+        if (type.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG) {
+            Schema cachedSchema = (Schema) typeAliasToSchema.get(type.getName());
+            cachedSchema.setKeywords(((Schema) schema).getKeywords());
+            return cachedSchema;
+        }
+
+        return schema;
     }
 
     public TypeKeyword extractTypeKeyword(ArrayList<Type> type) {
@@ -106,7 +130,7 @@ public class TypeParser {
         List<Object> memberSchemas = new ArrayList<>();
 
         for (Type memberType : memberTypes) {
-            if (memberType.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG) {
+            if (memberType.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG || memberType.getTag() == TypeTags.ARRAY_TAG) {
                 Object parsedMember = parse(memberType);
                 if (parsedMember instanceof Schema || parsedMember instanceof Boolean) {
                     memberSchemas.add(parsedMember);
@@ -332,6 +356,18 @@ public class TypeParser {
 
     public Object parseArrayType(Type type) {
         Type referredType = TypeUtils.getReferredType(type);
+
+        if (referredType.getTag() == TypeTags.ARRAY_TAG) {
+            return parseSimpleArray(type);
+        } else if (referredType.getTag() == TypeTags.TUPLE_TAG) {
+            return parseTupleType(type);
+        }
+
+        return DiagnosticLog.createJsonError("unsupported array type: " + referredType);
+    }
+
+    private Object parseSimpleArray(Type type) {
+        ArrayType arrayType = (ArrayType) TypeUtils.getReferredType(type);
         HashMap<String, Keyword> keywords = new HashMap<>();
 
         Set<String> typeNames = new HashSet<>();
@@ -340,189 +376,106 @@ public class TypeParser {
 
         extractKeywordsFromAnnotations(type, keywords);
 
-        if (referredType.getTag() == TypeTags.ARRAY_TAG) {
-            ArrayType arrayType = (ArrayType) referredType;
-            Type elementType = arrayType.getElementType();
-            Object itemsSchema = parse(elementType);
-            if (itemsSchema instanceof BError) {
-                return itemsSchema;
-            }
-            System.out.println("Parsing array type: " + referredType + ", with element type: " + elementType + ", and items schema: " + itemsSchema);
-            keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(itemsSchema));
+        Type elementType = arrayType.getElementType();
+        Object itemsSchema = parse(elementType);
+        if (itemsSchema instanceof BError) {
+            return itemsSchema;
+        }
+        System.out.println("Parsing simple array type: " + arrayType + ", with element type: " + elementType);
+        keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(itemsSchema));
 
-            if (arrayType.getSize() != -1) {
-                Long arraySize = (long) arrayType.getSize();
-                Long derivedMin = arraySize;
-                Long derivedMax = arraySize;
-
-                Keyword minKeyword = keywords.get(MinItemsKeyword.keywordName);
-                Keyword maxKeyword = keywords.get(MaxItemsKeyword.keywordName);
-                Long annotatedMin = minKeyword != null ? (Long) minKeyword.getKeywordValue() : null;
-                Long annotatedMax = maxKeyword != null ? (Long) maxKeyword.getKeywordValue() : null;
-
-                Long finalMin = mergeMinConstraints(annotatedMin, derivedMin);
-                Long finalMax = mergeMaxConstraints(annotatedMax, derivedMax);
-
-                if (finalMin != null) {
-                    keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(finalMin));
-                }
-                if (finalMax != null) {
-                    keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(finalMax));
-                }
-            }
-        } else if (referredType.getTag() == TypeTags.TUPLE_TAG) {
-            TupleType tupleType = (TupleType) referredType;
-            List<Type> tupleTypes = tupleType.getTupleTypes();
-            System.out.println("Parsing tuple type in parse Array: " + referredType + ", with members: " + tupleTypes);
-            Type restType = tupleType.getRestType();
-
-            if (restType != null) {
-                List<Object> prefixSchemas = new ArrayList<>();
-                for (Type memberType : tupleTypes) {
-                    Object memberSchema = parse(memberType);
-                    if (memberSchema instanceof BError) {
-                        return memberSchema;
-                    }
-                    prefixSchemas.add(memberSchema);
-                }
-                if (!prefixSchemas.isEmpty()) {
-                    keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
-                }
-
-                Object restSchema = parse(restType);
-                if (restSchema instanceof BError) {
-                    return restSchema;
-                }
-                keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(restSchema));
-            } else {
-                if (tupleTypes.isEmpty()) {
-                    return DiagnosticLog.createJsonError("cannot create schema for empty tuple");
-                }
-
-                int splitPoint = tupleTypes.size();
-                Type lastType = tupleTypes.get(splitPoint - 1);
-
-                for (int i = tupleTypes.size() - 2; i >= 0; i--) {
-                    Type currentType = tupleTypes.get(i);
-                    if (areTypesCompatible(lastType, currentType)) {
-                        splitPoint = i;
-                    } else {
-                        break;
-                    }
-                }
-                if (splitPoint == 0) {
-                    Object itemsSchema = parse(lastType);
-                    if (itemsSchema instanceof BError) {
-                        return itemsSchema;
-                    }
-                    keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(itemsSchema));
-
-                    Long derivedMin = (long) tupleTypes.size();
-                    Long derivedMax = (long) tupleTypes.size();
-
-                    Keyword minKeyword = keywords.get(MinItemsKeyword.keywordName);
-                    Keyword maxKeyword = keywords.get(MaxItemsKeyword.keywordName);
-                    Long annotatedMin = minKeyword != null ? (Long) minKeyword.getKeywordValue() : null;
-                    Long annotatedMax = maxKeyword != null ? (Long) maxKeyword.getKeywordValue() : null;
-
-                    Long finalMin = mergeMinConstraints(annotatedMin, derivedMin);
-                    Long finalMax = mergeMaxConstraints(annotatedMax, derivedMax);
-
-                    if (finalMin != null) {
-                        keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(finalMin));
-                    }
-                    if (finalMax != null) {
-                        keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(finalMax));
-                    }
-                } else if (splitPoint < tupleTypes.size()) {
-                    List<Object> prefixSchemas = new ArrayList<>();
-                    for (int i = 0; i < splitPoint; i++) {
-                        System.out.println("Parsing prefix item type: " + tupleTypes.get(i));
-                        Object memberSchema = parse(tupleTypes.get(i));
-                        if (memberSchema instanceof BError) {
-                            return memberSchema;
-                        }
-                        prefixSchemas.add(memberSchema);
-                    }
-                    keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
-                    Object itemsSchema = parse(tupleTypes.get(splitPoint));
-                    if (itemsSchema instanceof BError) {
-                        return itemsSchema;
-                    }
-                    keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(itemsSchema));
-
-                    Long derivedMin = (long) tupleTypes.size();
-                    Long derivedMax = (long) tupleTypes.size();
-
-                    Keyword minKeyword = keywords.get(MinItemsKeyword.keywordName);
-                    Keyword maxKeyword = keywords.get(MaxItemsKeyword.keywordName);
-                    Long annotatedMin = minKeyword != null ? (Long) minKeyword.getKeywordValue() : null;
-                    Long annotatedMax = maxKeyword != null ? (Long) maxKeyword.getKeywordValue() : null;
-
-                    Long finalMin = mergeMinConstraints(annotatedMin, derivedMin);
-                    Long finalMax = mergeMaxConstraints(annotatedMax, derivedMax);
-
-                    if (finalMin != null) {
-                        keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(finalMin));
-                    }
-                    if (finalMax != null) {
-                        keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(finalMax));
-                    }
-                } else {
-                    List<Object> prefixSchemas = new ArrayList<>();
-                    for (Type memberType : tupleTypes) {
-                        System.out.println("Parsing prefix item type when splitprefix: " +", and, " + "size: "+ tupleTypes.size() + memberType);
-                        Object memberSchema = parse(memberType);
-                        if (memberSchema instanceof BError) {
-                            return memberSchema;
-                        }
-                        prefixSchemas.add(memberSchema);
-                    }
-                    keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
-
-                    Long derivedMin = (long) tupleTypes.size();
-                    Long derivedMax = (long) tupleTypes.size();
-
-                    Keyword minKeyword = keywords.get(MinItemsKeyword.keywordName);
-                    Keyword maxKeyword = keywords.get(MaxItemsKeyword.keywordName);
-                    Long annotatedMin = minKeyword != null ? (Long) minKeyword.getKeywordValue() : null;
-                    Long annotatedMax = maxKeyword != null ? (Long) maxKeyword.getKeywordValue() : null;
-
-                    Long finalMin = mergeMinConstraints(annotatedMin, derivedMin);
-                    Long finalMax = mergeMaxConstraints(annotatedMax, derivedMax);
-
-                    if (finalMin != null) {
-                        keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(finalMin));
-                    }
-                    if (finalMax != null) {
-                        keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(finalMax));
-                    }
-                }
-            }
+        if (arrayType.getSize() != -1) {
+            setArraySizeConstraints(keywords, (long) arrayType.getSize(), (long) arrayType.getSize());
         }
 
         return new Schema(keywords);
     }
 
-    private boolean areTypesCompatible(Type type1, Type type2) {
-        Type t1 = TypeUtils.getReferredType(type1);
-        Type t2 = TypeUtils.getReferredType(type2);
-        
-//        if (t1.getTag() != t2.getTag()) {
-//            return false;
-//        }
-        
-//        if (t1.getName() != null && t2.getName() != null) {
-//            System.out.println("Comapring type names: " + t1.getName() + ", " + t2.getName());
-//            return t1.getName().equals(t2.getName()) &&
-//                   t1.getPackage().getName().equals(t2.getPackage().getName());
-//        }
-        String t1Name = type1.getName();
-        String t2Name = type2.getName();
-        if (t1Name != null && t2Name != null) {
-            return t1Name.equals(t2Name) &&  t1.getTag() == t2.getTag();
+    private Object parseTupleType(Type type) {
+        TupleType tupleType = (TupleType) TypeUtils.getReferredType(type);
+        List<Type> tupleTypes = tupleType.getTupleTypes();
+        Type restType = tupleType.getRestType();
+
+        System.out.println("Parsing tuple type: " + tupleType + ", with members: " + tupleTypes +
+                          ", rest type: " + (restType != null ? restType : "null"));
+
+        if (tupleTypes.isEmpty()) {
+            return DiagnosticLog.createJsonError("cannot create schema for empty tuple");
         }
-        return t1.getTag() == t2.getTag();
+
+        HashMap<String, Keyword> keywords = new HashMap<>();
+
+        Set<String> typeNames = new HashSet<>();
+        typeNames.add("array");
+        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
+
+        extractKeywordsFromAnnotations(type, keywords);
+
+        if (restType != null) {
+            return parseTupleWithRest(tupleTypes, restType, keywords);
+        } else {
+            return parseTupleFixedLength(tupleTypes, keywords);
+        }
+    }
+
+    private Object parseTupleWithRest(List<Type> tupleTypes, Type restType, HashMap<String, Keyword> keywords) {
+        List<Object> prefixSchemas = new ArrayList<>();
+        for (Type memberType : tupleTypes) {
+            Object memberSchema = parse(memberType);
+            if (memberSchema instanceof BError) {
+                return memberSchema;
+            }
+            prefixSchemas.add(memberSchema);
+        }
+
+        if (!prefixSchemas.isEmpty()) {
+            keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
+        }
+
+        Object restSchema = parse(restType);
+        if (restSchema instanceof BError) {
+            return restSchema;
+        }
+        keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(restSchema));
+
+        setArraySizeConstraints(keywords, (long) tupleTypes.size(), null);
+
+        return new Schema(keywords);
+    }
+
+    private Object parseTupleFixedLength(List<Type> tupleTypes, HashMap<String, Keyword> keywords) {
+        List<Object> prefixSchemas = new ArrayList<>();
+        for (Type memberType : tupleTypes) {
+            Object memberSchema = parse(memberType);
+            if (memberSchema instanceof BError) {
+                return memberSchema;
+            }
+            prefixSchemas.add(memberSchema);
+        }
+
+        keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
+
+        long tupleSize = tupleTypes.size();
+        setArraySizeConstraints(keywords, tupleSize, tupleSize);
+
+        return new Schema(keywords);
+    }
+
+    private void setArraySizeConstraints(HashMap<String, Keyword> keywords, Long derivedMin, Long derivedMax) {
+        Keyword minKeyword = keywords.get(MinItemsKeyword.keywordName);
+        Keyword maxKeyword = keywords.get(MaxItemsKeyword.keywordName);
+        Long annotatedMin = minKeyword != null ? (Long) minKeyword.getKeywordValue() : null;
+        Long annotatedMax = maxKeyword != null ? (Long) maxKeyword.getKeywordValue() : null;
+
+        Long finalMin = mergeMinConstraints(annotatedMin, derivedMin);
+        Long finalMax = mergeMaxConstraints(annotatedMax, derivedMax);
+
+        if (finalMin != null) {
+            keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(finalMin));
+        }
+        if (finalMax != null) {
+            keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(finalMax));
+        }
     }
 
     private Long mergeMinConstraints(Long annotated, Long derived) {
