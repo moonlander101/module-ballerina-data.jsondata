@@ -57,7 +57,7 @@ public type ArrayConstraintsConfig record {|
     # Specifies a schema that a specific number of items in the array must match
     record {|
         # The minimum number of items required in the array that satisfies the schema
-        int:Unsigned32 minContains = 0;
+        int:Unsigned32 minContains?;
         # The maximum number of items allowed in the array that satisfies the schema
         int:Unsigned32 maxContains?;
         # The schema that items in the array must match

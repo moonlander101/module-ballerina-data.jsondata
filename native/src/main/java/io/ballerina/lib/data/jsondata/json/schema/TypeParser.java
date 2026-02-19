@@ -30,15 +30,17 @@ import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
+import io.ballerina.runtime.api.values.BTypedesc;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -354,22 +356,25 @@ public class TypeParser {
     public Object parseArrayType(Type type) {
         Type referredType = TypeUtils.getReferredType(type);
 
-        if (referredType.getTag() == TypeTags.ARRAY_TAG) {
-            return parseSimpleArray(type);
-        } else if (referredType.getTag() == TypeTags.TUPLE_TAG) {
-            return parseTupleType(type);
-        }
-
-        return DiagnosticLog.createJsonError("unsupported array type: " + referredType);
-    }
-
-    private Object parseSimpleArray(Type type) {
-        ArrayType arrayType = (ArrayType) TypeUtils.getReferredType(type);
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
 
         Set<String> typeNames = new HashSet<>();
         typeNames.add("array");
         keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
+
+        extractKeywordsFromAnnotations(type, keywords);
+
+        if (referredType.getTag() == TypeTags.ARRAY_TAG) {
+            return parseSimpleArray(type, keywords);
+        } else if (referredType.getTag() == TypeTags.TUPLE_TAG) {
+            return parseTupleType(type, keywords);
+        }
+
+        return DiagnosticLog.createJsonError("unsupported array type: " + referredType);
+    }
+
+    private Object parseSimpleArray(Type type, LinkedHashMap<String, Keyword> keywords) {
+        ArrayType arrayType = (ArrayType) TypeUtils.getReferredType(type);
 
         Type elementType = arrayType.getElementType();
         Object itemsSchema = parse(elementType);
@@ -382,45 +387,20 @@ public class TypeParser {
             setArraySizeConstraints(keywords, (long) arrayType.getSize(), (long) arrayType.getSize());
         }
 
-        extractArrayValidationKeywords(type, keywords);
-
         return new Schema(keywords);
     }
 
-    private void extractArrayValidationKeywords(Type type, LinkedHashMap<String, Keyword> keywords) {
-        if (!(type instanceof AnnotatableType annotatableType)) {
-            return;
-        }
-        BMap<BString, Object> annotations = annotatableType.getAnnotations();
-        if (annotations.isEmpty()) {
-            return;
-        }
-        Pattern annotationNamePattern = Pattern.compile("([^:]+)$");
-        for (BString key : annotations.getKeys()) {
-            String annotationIdentifier = key.getValue();
-            Matcher matcher = annotationNamePattern.matcher(annotationIdentifier);
-            String annotationName = matcher.find() ? matcher.group(1) : annotationIdentifier;
-            Object annotation = annotations.get(key);
-            if ("ArrayConstraints".equals(annotationName)) {
-                extractArrayValidationKeywords((BMap<BString, Object>) annotation, keywords);
-            }
-        }
-    }
-
-    private Object parseTupleType(Type type) {
+    private Object parseTupleType(Type type, LinkedHashMap<String, Keyword> keywords) {
         TupleType tupleType = (TupleType) TypeUtils.getReferredType(type);
         List<Type> tupleTypes = tupleType.getTupleTypes();
         Type restType = tupleType.getRestType();
 
         if (tupleTypes.isEmpty()) {
-            return DiagnosticLog.createJsonError("cannot create schema for empty tuple");
+            if (restType == null) {
+                return DiagnosticLog.createJsonError("cannot create schema for empty tuple");
+            }
+            return parseTupleWithRest(type, tupleTypes, restType, keywords);
         }
-
-        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
-
-        Set<String> typeNames = new HashSet<>();
-        typeNames.add("array");
-        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
 
         if (restType != null) {
             return parseTupleWithRest(type, tupleTypes, restType, keywords);
@@ -451,8 +431,6 @@ public class TypeParser {
 
         setArraySizeConstraints(keywords, (long) tupleTypes.size(), null);
 
-        extractArrayValidationKeywords(type, keywords);
-
         return new Schema(keywords);
     }
 
@@ -470,8 +448,6 @@ public class TypeParser {
 
         long tupleSize = tupleTypes.size();
         setArraySizeConstraints(keywords, tupleSize, tupleSize);
-
-        extractArrayValidationKeywords(type, keywords);
 
         return new Schema(keywords);
     }
@@ -566,6 +542,19 @@ public class TypeParser {
         extractBoolean(annotation, "uniqueItems").ifPresent(value ->
                 keywords.put(UniqueItemsKeyword.keywordName, new UniqueItemsKeyword(value))
         );
+        extractObject(annotation, "contains").ifPresent(containsConfig -> {
+            Long minContains = extractLongFromMap(containsConfig, "minContains").orElse(null);
+            Long maxContains = extractLongFromMap(containsConfig, "maxContains").orElse(null);
+            if (containsConfig.containsKey("value")) {
+                Object value = containsConfig.get("value");
+                if (value instanceof BTypedesc typedesc) {
+                    Object containsSchema = parse(typedesc.getDescribingType());
+                    if (containsSchema instanceof Schema || containsSchema instanceof Boolean) {
+                        keywords.put(ContainsKeyword.keywordName, new ContainsKeyword(minContains, maxContains, containsSchema));
+                    }
+                }
+            }
+        });
     }
 
     private Optional<String> extractString(BMap<BString, Object> annotation, String keyName) {
@@ -584,6 +573,28 @@ public class TypeParser {
         return Optional.empty();
     }
 
+    private Optional<Map<String, Object>> extractObject(BMap<BString, Object> annotation, String keyName) {
+        BString key = StringUtils.fromString(keyName);
+
+        if (!annotation.containsKey(key)) {
+            return Optional.empty();
+        }
+
+        Object value = annotation.get(key);
+
+        if (value instanceof BMap<?, ?> bMap) {
+            Map<String, Object> mapVal = new HashMap<>();
+            for (Entry<?, ?> entry : bMap.entrySet()) {
+                if (entry.getKey() instanceof BString bStrKey) {
+                    mapVal.put(bStrKey.getValue(), entry.getValue());
+                }
+            }
+            return Optional.of(mapVal);
+        }
+
+        return Optional.empty();
+    }
+
     private Optional<Long> extractLong(BMap<BString, Object> annotation, String keyName) {
         BString key = StringUtils.fromString(keyName);
 
@@ -592,6 +603,20 @@ public class TypeParser {
         }
 
         Object value = annotation.get(key);
+
+        if (value instanceof Long longVal) {
+            return Optional.of(longVal);
+        }
+
+        return Optional.empty();
+    }
+
+    private Optional<Long> extractLongFromMap(Map<String, Object> map, String keyName) {
+        if (!map.containsKey(keyName)) {
+            return Optional.empty();
+        }
+
+        Object value = map.get(keyName);
 
         if (value instanceof Long longVal) {
             return Optional.of(longVal);
