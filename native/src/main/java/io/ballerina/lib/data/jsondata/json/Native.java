@@ -116,6 +116,7 @@ public class Native {
                 Type type = ((BTypedesc) schema).getDescribingType();
                 TypeParser tp = new TypeParser();
                 Object schemaObj = tp.parse(type);
+                System.out.println("Schema object: " + schemaObj);
                 if (schemaObj instanceof BError) {
                     err = schemaObj;
                 } else {

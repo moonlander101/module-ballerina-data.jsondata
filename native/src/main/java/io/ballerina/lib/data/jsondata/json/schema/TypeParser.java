@@ -1,3 +1,19 @@
+// Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+//
+// WSO2 LLC. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied. See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
@@ -6,6 +22,10 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AllOfKey
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.OneOfKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertiesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AdditionalPropertiesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PatternPropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
@@ -29,6 +49,7 @@ import io.ballerina.runtime.api.values.BArray;
 import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
+import io.ballerina.runtime.api.values.BRegexpValue;
 import io.ballerina.runtime.api.values.BString;
 import io.ballerina.runtime.api.values.BTypedesc;
 
@@ -37,9 +58,9 @@ import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -65,6 +86,7 @@ public class TypeParser {
             case TypeTags.STRING_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG, TypeTags.BOOLEAN_TAG,
                  TypeTags.JSON_TAG, TypeTags.NEVER_TAG, TypeTags.NULL_TAG, TypeTags.FINITE_TYPE_TAG ->
                     parseBasicType(type);
+            case TypeTags.RECORD_TYPE_TAG -> parseRecordType(type);
             default -> DiagnosticLog.createJsonError("unsupported type: " + referredType);
         };
 
@@ -123,7 +145,7 @@ public class TypeParser {
         extractKeywordsFromAnnotations(type, keywords);
 
         List<Type> memberTypes = unionType.getOriginalMemberTypes();
-        System.out.println("Parsing union type: " + referredType + ", with members: " + memberTypes);
+//        System.out.println("Parsing union type: " + referredType + ", with members: " + memberTypes);
 
         ArrayList<Type> basicTypeMembers = new ArrayList<>();
         ArrayList<Type> constValues = new ArrayList<>();
@@ -318,14 +340,17 @@ public class TypeParser {
                     extractArrayValidationKeywords((BMap<BString, Object>) annotation, keywords);
                     break;
                 case "ObjectConstraints":
+                    extractObjectValidationKeywords((BMap<BString, Object>) annotation, keywords);
+                    break;
+                case "PatternProperties":
+                    extractPatternProperties((BMap<BString, Object>) annotation, keywords);
+                    break;
+                case "AdditionalProperties":
+                    extractAdditionalProperties((BMap<BString, Object>) annotation, keywords);
                     break;
                 case "DependentSchema":
                     break;
                 case "DependentRequired":
-                    break;
-                case "PatternProperties":
-                    break;
-                case "AdditionalProperties":
                     break;
                 case "ReadOnly":
                     break;
@@ -351,6 +376,60 @@ public class TypeParser {
                     break;
             }
         }
+    }
+
+    public Object parseRecordType(Type type) {
+        Type referredType = TypeUtils.getReferredType(type);
+
+        if (!(referredType instanceof RecordType recordType)) {
+            return DiagnosticLog.createJsonError("expected record type, got: " + referredType);
+        }
+
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
+
+        Set<String> typeNames = new HashSet<>();
+        typeNames.add("object");
+        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
+
+        Map<String, Field> fields = recordType.getFields();
+        Type restType = recordType.getRestFieldType();
+
+        if (restType == null && fields.isEmpty()) {
+            extractKeywordsFromAnnotations(type, keywords);
+            if (keywords.get("propertyNames") == null) {
+                keywords.put(PropertyNamesKeyword.keywordName, new PropertyNamesKeyword(false));
+            }
+            return new Schema(keywords);
+        }
+
+        HashMap<String, Object> propertiesMap = new HashMap<>();
+
+        for (String fieldName : fields.keySet()) {
+            Field field = fields.get(fieldName);
+            Object fieldSchema = parse(field.getFieldType());
+            if (fieldSchema instanceof BError) {
+                return fieldSchema;
+            }
+            propertiesMap.put(fieldName, fieldSchema);
+        }
+
+        keywords.put(PropertiesKeyword.keywordName, new PropertiesKeyword(propertiesMap));
+
+        extractKeywordsFromAnnotations(type, keywords);
+
+        // rest type is not exactly the additional property keyword
+        if (restType != null) {
+            // TODO: Unevaluated properties have a rest type of json as well, check that too
+            if (!keywords.containsKey(AdditionalPropertiesKeyword.keywordName)) {
+                Object restSchema = parse(restType);
+                if (restSchema instanceof BError) {
+                    return restSchema;
+                }
+                keywords.put(AdditionalPropertiesKeyword.keywordName, new AdditionalPropertiesKeyword(restSchema));
+            }
+        }
+
+        return new Schema(keywords);
     }
 
     public Object parseArrayType(Type type) {
@@ -527,9 +606,17 @@ public class TypeParser {
         extractLong(annotation, "maxLength").ifPresent(value ->
                 keywords.put(MaxLengthKeyword.keywordName, new MaxLengthKeyword(value))
         );
-        extractString(annotation, "pattern").ifPresent(value ->
-                keywords.put(PatternKeyword.keywordName, new PatternKeyword(value))
-        );
+
+        BString patternKey = StringUtils.fromString("pattern");
+        if (annotation.containsKey(patternKey)) {
+            Object value = annotation.get(patternKey);
+            if (value instanceof BRegexpValue regExVal) {
+                String regexString = regExVal.toString();
+                keywords.put(PatternKeyword.keywordName, new PatternKeyword(regexString));
+            } else if (value instanceof BString strVal) {
+                keywords.put(PatternKeyword.keywordName, new PatternKeyword(strVal.getValue()));
+            }
+        }
     }
 
     private void extractArrayValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
@@ -557,21 +644,82 @@ public class TypeParser {
         });
     }
 
-    private Optional<String> extractString(BMap<BString, Object> annotation, String keyName) {
-        BString key = StringUtils.fromString(keyName);
+    private void extractObjectValidationKeywords(BMap<BString, Object> annotation,
+                                             LinkedHashMap<String, Keyword> keywords) {
+        ArrayList<BString> keys = new ArrayList<>(List.of(annotation.getKeys()));
 
-        if (!annotation.containsKey(key)) {
-            return Optional.empty();
+        BString propertyNamesKey = StringUtils.fromString("propertyNames");
+        if (keys.contains(propertyNamesKey)) {
+            Object propertyNamesAnnotation = annotation.get(propertyNamesKey);
+            if (propertyNamesAnnotation instanceof BTypedesc typedesc) {
+                Object propertyNamesSchema = parse(typedesc.getDescribingType());
+                if (propertyNamesSchema instanceof Schema || propertyNamesSchema instanceof Boolean) {
+                    keywords.put(PropertyNamesKeyword.keywordName,
+                            new PropertyNamesKeyword(propertyNamesSchema));
+                }
+            }
         }
-
-        Object value = annotation.get(key);
-
-        if (value instanceof BString strVal) {
-            return Optional.of(strVal.getValue());
-        }
-
-        return Optional.empty();
     }
+
+    private void extractPatternProperties(BMap<BString, Object> annotation,
+                                       LinkedHashMap<String, Keyword> keywords) {
+        BString valueKey = StringUtils.fromString("value");
+        Object value = annotation.get(valueKey);
+        if (value == null) {
+            return;
+        }
+
+        List<BMap<BString, Object>> elements = new ArrayList<>();
+        if (value instanceof BMap) {
+            elements.add((BMap<BString, Object>) value);
+        } else if (value instanceof BArray array) {
+            for (long i = 0; i < array.size(); i++) {
+                Object element = array.get(i);
+                if (element instanceof BMap) {
+                    elements.add((BMap<BString, Object>) element);
+                }
+            }
+        }
+
+        Map<String, Object> patternSchemaMap = new LinkedHashMap<>();
+        for (BMap<BString, Object> element : elements) {
+            BString patternKey = StringUtils.fromString("pattern");
+            BString valueKey2 = StringUtils.fromString("value");
+
+            if (element.containsKey(patternKey) && element.containsKey(valueKey2)) {
+                String pattern = element.get(patternKey).toString();
+                Object typedesc = element.get(valueKey2);
+
+                if (typedesc instanceof BTypedesc) {
+                    Object schema = parse(((BTypedesc) typedesc).getDescribingType());
+                    if (schema instanceof Schema || schema instanceof Boolean) {
+                        patternSchemaMap.put(pattern, schema);
+                    }
+                }
+            }
+        }
+
+        if (!patternSchemaMap.isEmpty()) {
+            keywords.put(PatternPropertiesKeyword.keywordName,
+                   new PatternPropertiesKeyword(patternSchemaMap));
+        }
+    }
+
+    private void extractAdditionalProperties(BMap<BString, Object> annotation,
+                                          LinkedHashMap<String, Keyword> keywords) {
+        BString valueKey = StringUtils.fromString("value");
+        if (annotation.containsKey(valueKey)) {
+            Object value = annotation.get(valueKey);
+            if (value instanceof BTypedesc typedesc) {
+                Object additionalPropertiesSchema = parse(typedesc.getDescribingType());
+                if (additionalPropertiesSchema instanceof Schema || additionalPropertiesSchema instanceof Boolean) {
+                    keywords.put(AdditionalPropertiesKeyword.keywordName,
+                               new AdditionalPropertiesKeyword(additionalPropertiesSchema));
+                }
+            }
+        }
+    }
+
 
     private Optional<Map<String, Object>> extractObject(BMap<BString, Object> annotation, String keyName) {
         BString key = StringUtils.fromString(keyName);
