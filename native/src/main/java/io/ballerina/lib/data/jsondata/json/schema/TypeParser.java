@@ -26,7 +26,9 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.Properti
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AdditionalPropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PatternPropertiesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.DependentSchemasKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.DependentRequiredKeyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.runtime.api.creators.TypeCreator;
@@ -348,10 +350,6 @@ public class TypeParser {
                 case "AdditionalProperties":
                     extractAdditionalProperties((BMap<BString, Object>) annotation, keywords);
                     break;
-                case "DependentSchema":
-                    break;
-                case "DependentRequired":
-                    break;
                 case "ReadOnly":
                     break;
                 case "WriteOnly":
@@ -374,6 +372,117 @@ public class TypeParser {
                     break;
                 default:
                     break;
+            }
+        }
+    }
+
+    public void extractKeywordsFromFieldAnnotations(Type type, LinkedHashMap<String, Keyword> keywords) {
+        if (!(type instanceof AnnotatableType annotatableType)) {
+            return;
+        }
+
+        BMap<BString, Object> annotations = annotatableType.getAnnotations();
+
+        if (annotations.isEmpty()) {
+            return;
+        }
+
+        Pattern fieldAnnotationPattern = Pattern.compile("^\\$field\\$\\.(.+)$");
+        Pattern annotationNamePattern = Pattern.compile("([^:]+)$");
+
+        Map<String, List<String>> dependentRequiredMap = new LinkedHashMap<>();
+        Map<String, Object> dependentSchemasMap = new LinkedHashMap<>();
+
+        for (BString key : annotations.getKeys()) {
+            String annotationIdentifier = key.getValue();
+            Matcher fieldMatcher = fieldAnnotationPattern.matcher(annotationIdentifier);
+
+            if (!fieldMatcher.find()) {
+                continue;
+            }
+
+            String fieldName = fieldMatcher.group(1);
+            Object fieldAnnotations = annotations.get(key);
+
+            if (!(fieldAnnotations instanceof BMap<?, ?>)) {
+                continue;
+            }
+
+            BMap<BString, Object> fieldAnnotationMap = (BMap<BString, Object>) fieldAnnotations;
+
+            for (BString fieldKey : fieldAnnotationMap.getKeys()) {
+                String fieldAnnotationIdentifier = fieldKey.getValue();
+                Matcher annotationMatcher = annotationNamePattern.matcher(fieldAnnotationIdentifier);
+                String annotationName = annotationMatcher.find() ? annotationMatcher.group(1) : fieldAnnotationIdentifier;
+
+                Object annotation = fieldAnnotationMap.get(fieldKey);
+
+                switch (annotationName) {
+                    case "DependentRequired":
+                        extractDependentRequiredAnnotation(fieldName, annotation, dependentRequiredMap);
+                        break;
+                    case "DependentSchema":
+                        extractDependentSchemaAnnotation(fieldName, annotation, dependentSchemasMap);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        if (!dependentRequiredMap.isEmpty()) {
+            keywords.put(DependentRequiredKeyword.keywordName, new DependentRequiredKeyword(dependentRequiredMap));
+        }
+
+        if (!dependentSchemasMap.isEmpty()) {
+            keywords.put(DependentSchemasKeyword.keywordName, new DependentSchemasKeyword(dependentSchemasMap));
+        }
+    }
+
+    private void extractDependentRequiredAnnotation(String fieldName, Object annotation,
+                                               Map<String, List<String>> dependentRequiredMap) {
+        if (!(annotation instanceof BMap<?, ?> annotationMap)) {
+            return;
+        }
+
+        if (!annotationMap.containsKey(Constants.VALUE)) {
+            return;
+        }
+
+        Object value = annotationMap.get(Constants.VALUE);
+        List<String> dependentFields = new ArrayList<>();
+
+        if (value instanceof BString stringValue) {
+            dependentFields.add(stringValue.getValue());
+        } else if (value instanceof BArray arrayValue) {
+            for (long i = 0; i < arrayValue.size(); i++) {
+                Object element = arrayValue.get(i);
+                if (element instanceof BString stringElement) {
+                    dependentFields.add(stringElement.getValue());
+                }
+            }
+        }
+
+        if (!dependentFields.isEmpty()) {
+            dependentRequiredMap.put(fieldName, dependentFields);
+        }
+    }
+
+    private void extractDependentSchemaAnnotation(String fieldName, Object annotation,
+                                               Map<String, Object> dependentSchemasMap) {
+        if (!(annotation instanceof BMap<?, ?> annotationMap)) {
+            return;
+        }
+
+        if (!annotationMap.containsKey(Constants.VALUE)) {
+            return;
+        }
+
+        Object value = annotationMap.get(Constants.VALUE);
+        if (value instanceof BTypedesc typedesc) {
+            Object schema = parse(typedesc.getDescribingType());
+            if (schema instanceof Schema || schema instanceof Boolean) {
+                dependentSchemasMap.put(fieldName, schema);
             }
         }
     }
@@ -403,6 +512,7 @@ public class TypeParser {
         }
 
         HashMap<String, Object> propertiesMap = new HashMap<>();
+        ArrayList<String> requiredFieldNames = new ArrayList<>();
 
         for (String fieldName : fields.keySet()) {
             Field field = fields.get(fieldName);
@@ -411,12 +521,20 @@ public class TypeParser {
                 return fieldSchema;
             }
             propertiesMap.put(fieldName, fieldSchema);
+
+            boolean isOptional = SymbolFlags.isFlagOn(field.getFlags(), SymbolFlags.OPTIONAL);
+            if (!isOptional) {
+                requiredFieldNames.add(fieldName);
+            }
         }
 
         keywords.put(PropertiesKeyword.keywordName, new PropertiesKeyword(propertiesMap));
+        if (!requiredFieldNames.isEmpty()) {
+            keywords.put(RequiredKeyword.keywordName, new RequiredKeyword(requiredFieldNames));
+        }
 
         extractKeywordsFromAnnotations(type, keywords);
-
+        extractKeywordsFromFieldAnnotations(type, keywords);
         // rest type is not exactly the additional property keyword
         if (restType != null) {
             // TODO: Unevaluated properties have a rest type of json as well, check that too
@@ -659,6 +777,14 @@ public class TypeParser {
                 }
             }
         }
+
+        extractLong(annotation, "minProperties").ifPresent(value ->
+                keywords.put(MinPropertiesKeyword.keywordName, new MinPropertiesKeyword(value))
+        );
+
+        extractLong(annotation, "maxProperties").ifPresent(value ->
+                keywords.put(MaxPropertiesKeyword.keywordName, new MaxPropertiesKeyword(value))
+        );
     }
 
     private void extractPatternProperties(BMap<BString, Object> annotation,

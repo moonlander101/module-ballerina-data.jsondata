@@ -1,6 +1,5 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
