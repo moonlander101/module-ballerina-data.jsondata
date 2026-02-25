@@ -25,7 +25,6 @@ module io.ballerina.lib.data {
     requires com.networknt.schema;
     requires tools.jackson.databind;
     requires io.ballerina.lang;
-    requires org.jruby.jcodings;
     requires json.path;
     exports io.ballerina.lib.data.jsondata.json;
     exports io.ballerina.lib.data;

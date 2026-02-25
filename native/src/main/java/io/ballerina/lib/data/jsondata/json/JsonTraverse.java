@@ -18,6 +18,13 @@
 
 package io.ballerina.lib.data.jsondata.json;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
+import io.ballerina.lib.data.jsondata.json.schema.Schema;
+import io.ballerina.lib.data.jsondata.json.schema.TypeParser;
+import io.ballerina.lib.data.jsondata.json.schema.Validator;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.IncrementalKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DataUtils;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
@@ -45,9 +52,13 @@ import io.ballerina.runtime.api.values.BString;
 import io.ballerina.runtime.api.values.BTypedesc;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
@@ -116,6 +127,7 @@ public class JsonTraverse {
             if (json == null && referredType.isNilable()) {
                 return null;
             }
+            TypeParser tp = new TypeParser();
 
             switch (referredType.getTag()) {
                 case TypeTags.RECORD_TYPE_TAG -> {
@@ -154,11 +166,32 @@ public class JsonTraverse {
                     return traverseMapJsonOrArrayJson(json, ValueCreator.createTupleValue((TupleType) referredType),
                             referredType);
                 }
-                case TypeTags.NULL_TAG, TypeTags.BOOLEAN_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG,
-                        TypeTags.DECIMAL_TAG, TypeTags.STRING_TAG, TypeTags.CHAR_STRING_TAG , TypeTags.BYTE_TAG,
-                        TypeTags.SIGNED8_INT_TAG, TypeTags.SIGNED16_INT_TAG, TypeTags.SIGNED32_INT_TAG,
+                case TypeTags.STRING_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG, TypeTags.BOOLEAN_TAG,
+                        TypeTags.NEVER_TAG, TypeTags.NULL_TAG, TypeTags.FINITE_TYPE_TAG -> {
+                    Object convertedValue = convertToBasicType(json, referredType);
+                    if (convertedValue instanceof BError) {
+                        return convertedValue;
+                    }
+                    // Only validate annotation-driven constraints (not structural type keyword)
+                    LinkedHashMap<String, Keyword> basicKeywords = tp.extractAnnotationKeywords(type);
+                    if (!basicKeywords.isEmpty()) {
+                        EvaluationContext context = new EvaluationContext();
+                        boolean valid = true;
+                        for (Keyword kw : basicKeywords.values()) {
+                            if (!kw.evaluate(convertedValue, context)) {
+                                valid = false;
+                            }
+                        }
+                        if (!valid || !context.getErrors().isEmpty()) {
+                            String errorMessage = String.join("; ", context.getErrors());
+                            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, errorMessage);
+                        }
+                    }
+                    return convertedValue;
+                }
+                case TypeTags.CHAR_STRING_TAG , TypeTags.BYTE_TAG,
                         TypeTags.UNSIGNED8_INT_TAG, TypeTags.UNSIGNED16_INT_TAG, TypeTags.UNSIGNED32_INT_TAG,
-                        TypeTags.FINITE_TYPE_TAG -> {
+                        TypeTags.SIGNED8_INT_TAG, TypeTags.SIGNED16_INT_TAG, TypeTags.SIGNED32_INT_TAG -> {
                     return convertToBasicType(json, referredType);
                 }
                 case TypeTags.UNION_TAG -> {
@@ -176,7 +209,25 @@ public class JsonTraverse {
                     }
                     throw DiagnosticLog.error(DiagnosticErrorCode.INCOMPATIBLE_TYPE, type, json);
                 }
-                case TypeTags.JSON_TAG, TypeTags.ANYDATA_TAG -> {
+                case TypeTags.JSON_TAG -> {
+                    // Only validate annotation-driven constraints (not structural keywords)
+                    LinkedHashMap<String, Keyword> jsonKeywords = tp.extractAnnotationKeywords(type);
+                    if (!jsonKeywords.isEmpty()) {
+                        EvaluationContext context = new EvaluationContext();
+                        boolean valid = true;
+                        for (Keyword kw : jsonKeywords.values()) {
+                            if (!kw.evaluate(json, context)) {
+                                valid = false;
+                            }
+                        }
+                        if (!valid || !context.getErrors().isEmpty()) {
+                            String errorMessage = String.join("; ", context.getErrors());
+                            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, errorMessage);
+                        }
+                    }
+                    return json;
+                }
+                case TypeTags.ANYDATA_TAG -> {
                     return json;
                 }
                 case TypeTags.MAP_TAG -> {
@@ -205,9 +256,9 @@ public class JsonTraverse {
 
         private Object traverseMapJsonOrArrayJson(Object json, Object currentJsonNode, Type type) {
             if (json instanceof BMap bMap) {
-                return traverseMapValue(bMap, currentJsonNode);
+                return traverseMapValue(bMap, currentJsonNode, type);
             } else if (json instanceof BArray bArray) {
-                return traverseArrayValue(bArray, currentJsonNode);
+                return traverseArrayValue(bArray, currentJsonNode, type);
             } else {
                 // JSON value not compatible with map or array.
                 if (type.getTag() == TypeTags.RECORD_TYPE_TAG) {
@@ -222,10 +273,80 @@ public class JsonTraverse {
             }
         }
 
-        private Object traverseMapValue(BMap<BString, Object> map, Object currentJsonNode) {
+        private Object traverseMapValue(BMap<BString, Object> map, Object currentJsonNode, Type type) {
+            // Extract annotation-driven keywords for incremental validation
+            TypeParser typeParser = new TypeParser();
+            LinkedHashMap<String, Keyword> keywords = typeParser.extractAnnotationKeywords(type);
+            
+            // Skip validation if there are no annotation keywords
+            boolean hasValidation = !keywords.isEmpty();
+            
+            List<IncrementalKeyword> incrementalKeywords = new ArrayList<>();
+            List<IncrementalKeyword> allKeysKeywords = new ArrayList<>();
+            List<IncrementalKeyword> restOnlyKeywords = new ArrayList<>();
+            List<Keyword> nonIncrementalKeywords = new ArrayList<>();
+            EvaluationContext context = null;
+            
+            if (hasValidation) {
+                // Partition into incremental and non-incremental keywords
+                for (Keyword kw : keywords.values()) {
+                    if (kw instanceof IncrementalKeyword) {
+                        incrementalKeywords.add((IncrementalKeyword) kw);
+                    } else {
+                        nonIncrementalKeywords.add(kw);
+                    }
+                }
+                
+                // Sort incremental keywords by phase (PRIMARY -> DEPENDENT -> INDEPENDENT)
+                incrementalKeywords.sort(Comparator.comparingInt(k -> k.getEvaluationPhase().getOrder()));
+
+                // Partition incremental keywords into all-keys vs rest-only
+                // PropertyNamesKeyword validates key names and should see ALL keys (including declared fields)
+                // PatternProperties/AdditionalProperties only apply to rest-field keys
+                for (IncrementalKeyword kw : incrementalKeywords) {
+                    if (kw instanceof PropertyNamesKeyword) {
+                        allKeysKeywords.add(kw);
+                    } else {
+                        restOnlyKeywords.add(kw);
+                    }
+                }
+
+                // Create evaluation context
+                context = new EvaluationContext();
+                
+                // Call begin() on all incremental keywords
+                for (IncrementalKeyword kw : incrementalKeywords) {
+                    kw.begin(map, context);
+                }
+                
+                // Validate non-incremental keywords (minProperties, maxProperties, etc.)
+                for (Keyword kw : nonIncrementalKeywords) {
+                    kw.evaluate(map, context);
+                }
+            }
+            
+            // Iterate over map keys for type conversion AND incremental validation
             for (BString key : map.getKeys()) {
+                String keyStr = key.getValue();
+                Object mapValue = map.get(key);
+                
+                // PropertyNamesKeyword sees ALL keys (including declared fields)
+                if (hasValidation) {
+                    for (IncrementalKeyword kw : allKeysKeywords) {
+                        kw.acceptElement(keyStr, mapValue, -1, context);
+                    }
+                }
+                
+                // Now perform the existing type conversion logic
                 currentField = fieldHierarchy.peek().remove(key.toString());
                 if (currentField == null) {
+                    // Rest-field: PatternProperties/AdditionalProperties see only these keys
+                    if (hasValidation) {
+                        for (IncrementalKeyword kw : restOnlyKeywords) {
+                            kw.acceptElement(keyStr, mapValue, -1, context);
+                        }
+                    }
+                    
                     // Add to the rest field
                     if (restType.peek() != null) {
                         Type restFieldType = TypeUtils.getReferredType(restType.peek());
@@ -244,7 +365,6 @@ public class JsonTraverse {
                 fieldNames.push(fieldName);
                 Type currentFieldType = TypeUtils.getReferredType(currentField.getFieldType());
                 int currentFieldTypeTag = currentFieldType.getTag();
-                Object mapValue = map.get(key);
 
                 if (nilAsOptionalField && !currentFieldType.isNilable() && mapValue == null
                         && SymbolFlags.isFlagOn(currentField.getFlags(), SymbolFlags.OPTIONAL)) {
@@ -262,13 +382,69 @@ public class JsonTraverse {
                                 traverseJson(mapValue, currentFieldType));
                 }
             }
+            
             Map<String, Field> currentField = fieldHierarchy.pop();
             checkOptionalFieldsAndLogError(currentField);
             restType.pop();
+            
+            // Call finish() on all incremental keywords after conversion is complete
+            if (hasValidation) {
+                boolean allValid = true;
+                for (IncrementalKeyword kw : incrementalKeywords) {
+                    if (!kw.finish(context)) {
+                        allValid = false;
+                    }
+                }
+                
+                // Throw validation error AFTER conversion is complete (conversion first, validation second)
+                if (!allValid || !context.getErrors().isEmpty()) {
+                    String errorMessage = String.join("; ", context.getErrors());
+                    throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, errorMessage);
+                }
+            }
+            
             return currentJsonNode;
         }
 
-        private Object traverseArrayValue(BArray array, Object currentJsonNode) {
+        private Object traverseArrayValue(BArray array, Object currentJsonNode, Type type) {
+            // Extract annotation-driven keywords for incremental validation
+            TypeParser typeParser = new TypeParser();
+            LinkedHashMap<String, Keyword> keywords = typeParser.extractAnnotationKeywords(type);
+
+            // Skip validation if there are no annotation keywords
+            boolean hasValidation = !keywords.isEmpty();
+            
+            List<IncrementalKeyword> incrementalKeywords = new ArrayList<>();
+            List<Keyword> nonIncrementalKeywords = new ArrayList<>();
+            EvaluationContext context = null;
+            
+            if (hasValidation) {
+                // Partition into incremental and non-incremental keywords
+                for (Keyword kw : keywords.values()) {
+                    if (kw instanceof IncrementalKeyword) {
+                        incrementalKeywords.add((IncrementalKeyword) kw);
+                    } else {
+                        nonIncrementalKeywords.add(kw);
+                    }
+                }
+                
+                // Sort incremental keywords by phase (PRIMARY -> DEPENDENT -> INDEPENDENT)
+                incrementalKeywords.sort(Comparator.comparingInt(k -> k.getEvaluationPhase().getOrder()));
+
+                // Create evaluation context
+                context = new EvaluationContext();
+                
+                // Call begin() on all incremental keywords
+                for (IncrementalKeyword kw : incrementalKeywords) {
+                    kw.begin(array, context);
+                }
+                
+                // Validate non-incremental keywords (minItems, maxItems, etc.)
+                for (Keyword kw : nonIncrementalKeywords) {
+                    kw.evaluate(array, context);
+                }
+            }
+            
             switch (rootArray.getTag()) {
                 case TypeTags.ARRAY_TAG -> {
                     ArrayType arrayType = (ArrayType) rootArray;
@@ -281,9 +457,11 @@ public class JsonTraverse {
 
                     Type elementType = arrayType.getElementType();
                     if (expectedArraySize == -1 || expectedArraySize > sourceArraySize) {
-                        traverseArrayMembers(array.getLength(), array, elementType, currentJsonNode);
+                        traverseArrayMembers(array.getLength(), array, elementType, currentJsonNode,
+                                hasValidation, incrementalKeywords, context);
                     } else {
-                        traverseArrayMembers(expectedArraySize, array, elementType, currentJsonNode);
+                        traverseArrayMembers(expectedArraySize, array, elementType, currentJsonNode,
+                                hasValidation, incrementalKeywords, context);
                     }
                 }
                 case TypeTags.TUPLE_TAG -> {
@@ -292,6 +470,14 @@ public class JsonTraverse {
                     int expectedTupleTypeCount = tupleType.getTupleTypes().size();
                     for (int i = 0; i < array.getLength(); i++) {
                         Object jsonMember = array.get(i);
+                        
+                        // Call acceptElement() on all incremental keywords in phase order (if any)
+                        if (hasValidation) {
+                            for (IncrementalKeyword kw : incrementalKeywords) {
+                                kw.acceptElement(null, jsonMember, i, context);
+                            }
+                        }
+                        
                         Object nextJsonNode;
                         if (i < expectedTupleTypeCount) {
                             nextJsonNode = traverseJson(jsonMember, tupleType.getTupleTypes().get(i));
@@ -306,12 +492,40 @@ public class JsonTraverse {
                     }
                 }
             }
+            
+            // Call finish() on all incremental keywords after conversion is complete
+            if (hasValidation) {
+                boolean allValid = true;
+                for (IncrementalKeyword kw : incrementalKeywords) {
+                    if (!kw.finish(context)) {
+                        allValid = false;
+                    }
+                }
+                
+                // Throw validation error AFTER conversion is complete (conversion first, validation second)
+                if (!allValid || !context.getErrors().isEmpty()) {
+                    String errorMessage = String.join("; ", context.getErrors());
+                    throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, errorMessage);
+                }
+            }
+            
             return currentJsonNode;
         }
 
-        private void traverseArrayMembers(long length, BArray array, Type elementType, Object currentJsonNode) {
+        private void traverseArrayMembers(long length, BArray array, Type elementType, Object currentJsonNode,
+                                          boolean hasValidation, List<IncrementalKeyword> incrementalKeywords, 
+                                          EvaluationContext context) {
             for (int i = 0; i < length; i++) {
-                ((BArray) currentJsonNode).add(i, traverseJson(array.get(i), elementType));
+                Object jsonMember = array.get(i);
+                
+                // Call acceptElement() on all incremental keywords in phase order (if any)
+                if (hasValidation) {
+                    for (IncrementalKeyword kw : incrementalKeywords) {
+                        kw.acceptElement(null, jsonMember, i, context);
+                    }
+                }
+                
+                ((BArray) currentJsonNode).add(i, traverseJson(jsonMember, elementType));
             }
         }
 

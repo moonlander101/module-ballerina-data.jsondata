@@ -19,12 +19,17 @@ package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.IncrementalKeyword;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
-public class PropertyNamesKeyword extends Keyword {
+public class PropertyNamesKeyword extends Keyword implements IncrementalKeyword {
     public static final String keywordName = "propertyNames";
     private final Object schema;
+    
+    // Incremental state
+    private boolean isValid;
+    private Validator validator;
 
     public PropertyNamesKeyword(Object schema) {
         this.schema = schema;
@@ -58,5 +63,36 @@ public class PropertyNamesKeyword extends Keyword {
     @Override
     public Object getKeywordValue() {
         return schema;
+    }
+    
+    // Incremental protocol implementation
+    
+    @Override
+    public void begin(Object container, EvaluationContext context) {
+        this.isValid = true;
+        this.validator = new Validator(false);
+    }
+    
+    @Override
+    public boolean acceptElement(String key, Object value, int index, EvaluationContext context) {
+        if (key == null) {
+            return true; // Not an object property
+        }
+        
+        BString propertyKey = io.ballerina.runtime.api.utils.StringUtils.fromString(key);
+        EvaluationContext propertyNameContext = context.createChildContext(
+            key, "propertyNames/" + key);
+        
+        if (!validator.validate(propertyKey, schema, propertyNameContext)) {
+            isValid = false;
+        }
+        
+        return true; // Continue iteration even on failure
+    }
+    
+    @Override
+    public boolean finish(EvaluationContext context) {
+        context.setAnnotation(keywordName, true);
+        return isValid;
     }
 }

@@ -19,6 +19,7 @@ package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.IncrementalKeyword;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
@@ -30,9 +31,14 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-public class PatternPropertiesKeyword extends Keyword {
+public class PatternPropertiesKeyword extends Keyword implements IncrementalKeyword {
     public static final String keywordName = "patternProperties";
     private final Map<Pattern, Object> patternSchemaMap;
+    
+    // Incremental state
+    private boolean isValid;
+    private Set<String> matchedPropertyNames;
+    private Validator validator;
 
     public PatternPropertiesKeyword(Map<String, Object> patternSchemaMap) {
         this.patternSchemaMap = new LinkedHashMap<>();
@@ -90,5 +96,57 @@ public class PatternPropertiesKeyword extends Keyword {
     @Override
     public Object getKeywordValue() {
         return patternSchemaMap;
+    }
+    
+    // Incremental protocol implementation
+    
+    @Override
+    public Phase getEvaluationPhase() {
+        return Phase.PRIMARY; // Must run before AdditionalPropertiesKeyword
+    }
+    
+    @Override
+    public void begin(Object container, EvaluationContext context) {
+        this.isValid = true;
+        this.matchedPropertyNames = new HashSet<>();
+        this.validator = new Validator(false);
+    }
+    
+    @Override
+    public boolean acceptElement(String key, Object value, int index, EvaluationContext context) {
+        if (key == null) {
+            return true; // Not an object property
+        }
+        
+        boolean propertyMatched = false;
+        
+        for (Map.Entry<Pattern, Object> entry : patternSchemaMap.entrySet()) {
+            Pattern pattern = entry.getKey();
+            Object schema = entry.getValue();
+            
+            if (pattern.matcher(key).matches()) {
+                propertyMatched = true;
+                
+                EvaluationContext propertyContext = context.createChildContext(
+                    key, "patternProperties/" + pattern.pattern());
+                
+                if (!validator.validate(value, schema, propertyContext)) {
+                    isValid = false;
+                }
+            }
+        }
+        
+        if (propertyMatched) {
+            matchedPropertyNames.add(key);
+            context.setAnnotation(keywordName, matchedPropertyNames);
+        }
+        
+        return true; // Continue iteration
+    }
+    
+    @Override
+    public boolean finish(EvaluationContext context) {
+        // Annotation already set incrementally during acceptElement
+        return isValid;
     }
 }

@@ -19,15 +19,21 @@ package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.IncrementalKeyword;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public class AdditionalPropertiesKeyword extends Keyword {
+public class AdditionalPropertiesKeyword extends Keyword implements IncrementalKeyword {
     public static final String keywordName = "additionalProperties";
     private final Object additionalSchema;
+    
+    // Incremental state
+    private boolean isValid;
+    private Set<String> validatedPropertyNames;
+    private Validator validator;
 
     public AdditionalPropertiesKeyword(Object additionalSchema) {
         this.additionalSchema = additionalSchema;
@@ -108,5 +114,67 @@ public class AdditionalPropertiesKeyword extends Keyword {
     @Override
     public Object getKeywordValue() {
         return additionalSchema;
+    }
+    
+    // Incremental protocol implementation
+    
+    @Override
+    public Phase getEvaluationPhase() {
+        return Phase.DEPENDENT; // Must run after PropertiesKeyword and PatternPropertiesKeyword
+    }
+    
+    @Override
+    public void begin(Object container, EvaluationContext context) {
+        this.isValid = true;
+        this.validatedPropertyNames = new HashSet<>();
+        this.validator = new Validator(false);
+    }
+    
+    @Override
+    public boolean acceptElement(String key, Object value, int index, EvaluationContext context) {
+        if (key == null) {
+            return true; // Not an object property
+        }
+        
+        // Check if already matched by patternProperties (set incrementally by PRIMARY phase keyword)
+        // No need to check propertiesMatched here because acceptElement() is only called for
+        // rest-field keys (declared record fields are never passed to rest-only keywords).
+        Set<String> patternPropertiesMatched = null;
+        Object patternPropertiesAnnotation = context.getAnnotation(PatternPropertiesKeyword.keywordName);
+        if (patternPropertiesAnnotation instanceof Set) {
+            patternPropertiesMatched = (Set<String>) patternPropertiesAnnotation;
+        }
+        
+        if (patternPropertiesMatched != null && patternPropertiesMatched.contains(key)) {
+            return true;
+        }
+        
+        // This is an additional property (not matched by properties or patternProperties)
+        if (additionalSchema instanceof Boolean) {
+            if (!(boolean) additionalSchema) {
+                context.addError("additionalProperties",
+                    "At " + context.getInstanceLocation() + "/" + key +
+                    ": [additionalProperties=false] property '" + key +
+                    "' is not allowed");
+                isValid = false;
+            }
+        } else {
+            // Validate against the additional schema
+            EvaluationContext propertyContext = context.createChildContext(
+                key, "additionalProperties/" + key);
+            if (validator.validate(value, additionalSchema, propertyContext)) {
+                validatedPropertyNames.add(key);
+            } else {
+                isValid = false;
+            }
+        }
+        
+        return true; // Continue iteration
+    }
+    
+    @Override
+    public boolean finish(EvaluationContext context) {
+        context.setAnnotation(keywordName, validatedPropertyNames);
+        return isValid;
     }
 }
