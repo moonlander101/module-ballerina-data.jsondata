@@ -351,7 +351,6 @@ public class TypeParser {
                     extractAdditionalProperties((BMap<BString, Object>) annotation, keywords);
                     break;
                 case "ReadOnly":
-                    break;
                 case "WriteOnly":
                     break;
                 case "MetaData":
@@ -363,8 +362,6 @@ public class TypeParser {
                     break;
                 case "OneOf":
                     keywords.put(OneOfKeyword.keywordName, new AllOfKeyword(new ArrayList<>()));
-                    break;
-                case "AnyOf":
                     break;
                 case "Not":
                     break;
@@ -387,7 +384,6 @@ public class TypeParser {
             return;
         }
 
-        Pattern fieldAnnotationPattern = Pattern.compile("^\\$field\\$\\.(.+)$");
         Pattern annotationNamePattern = Pattern.compile("([^:]+)$");
 
         Map<String, List<String>> dependentRequiredMap = new LinkedHashMap<>();
@@ -395,13 +391,13 @@ public class TypeParser {
 
         for (BString key : annotations.getKeys()) {
             String annotationIdentifier = key.getValue();
-            Matcher fieldMatcher = fieldAnnotationPattern.matcher(annotationIdentifier);
+            String[] parts = annotationIdentifier.split(Constants.FIELD_REGEX);
 
-            if (!fieldMatcher.find()) {
+            if (parts.length < 2) {
                 continue;
             }
 
-            String fieldName = fieldMatcher.group(1);
+            String fieldName = parts[1];
             Object fieldAnnotations = annotations.get(key);
 
             if (!(fieldAnnotations instanceof BMap<?, ?>)) {
@@ -933,5 +929,15 @@ public class TypeParser {
         }
 
         return Optional.empty();
+    }
+
+    public LinkedHashMap<String, Keyword> extractAnnotationKeywords(Type type) {
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
+        Type referredType = TypeUtils.getReferredType(type);
+        
+        extractKeywordsFromAnnotations(referredType, keywords);
+        extractKeywordsFromFieldAnnotations(referredType, keywords);
+        
+        return keywords;
     }
 }

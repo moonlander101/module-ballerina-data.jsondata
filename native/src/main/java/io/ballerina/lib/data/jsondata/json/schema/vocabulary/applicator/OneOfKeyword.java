@@ -15,7 +15,7 @@ public class OneOfKeyword extends Keyword {
     }
 
     @Override
-public boolean evaluate(Object instance, EvaluationContext context) {
+    public boolean evaluate(Object instance, EvaluationContext context) {
         Validator validator = new Validator(false);
         int matchCount = 0;
         for (int i = 0; i < keywordValue.size(); i++) {
