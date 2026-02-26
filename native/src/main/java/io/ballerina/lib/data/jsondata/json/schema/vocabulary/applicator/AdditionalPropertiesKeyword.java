@@ -120,7 +120,7 @@ public class AdditionalPropertiesKeyword extends Keyword implements IncrementalK
     
     @Override
     public Phase getEvaluationPhase() {
-        return Phase.DEPENDENT; // Must run after PropertiesKeyword and PatternPropertiesKeyword
+        return Phase.ANNOTATION_CONSUMER; // Must run after PropertiesKeyword and PatternPropertiesKeyword
     }
     
     @Override

@@ -117,7 +117,7 @@ public class ContainsKeyword extends Keyword implements IncrementalKeyword {
     public boolean acceptElement(String key, Object value, int index, EvaluationContext context) {
         EvaluationContext itemContext = context.createChildContext(
             String.valueOf(currentIndex), "contains/" + currentIndex);
-        
+        System.out.println("[ContainsKeyword] Evaluating item at index " + value + " against schema: " + containsSchema);
         if (validator.validate(value, containsSchema, itemContext)) {
             matchingIndices.add((long) currentIndex);
         }
@@ -129,7 +129,7 @@ public class ContainsKeyword extends Keyword implements IncrementalKeyword {
     @Override
     public boolean finish(EvaluationContext context) {
         long matchCount = matchingIndices.size();
-        
+
         boolean valid = matchCount >= minContains;
         if (maxContains != null) {
             valid = valid && (matchCount <= maxContains);
@@ -152,7 +152,7 @@ public class ContainsKeyword extends Keyword implements IncrementalKeyword {
         } else {
             context.setAnnotation("contains", matchingIndices);
         }
-        
+
         return valid;
     }
 }

@@ -14,6 +14,7 @@ public class MinItemsKeyword extends Keyword {
             return true;
         }
         boolean valid = array.size() >= keywordValue;
+        System.out.println("Evaluating minItems: array size = " + array.size() + ", minItems = " + keywordValue + ", valid = " + valid);
         if (!valid) {
             context.addError("minItems", "At " + context.getInstanceLocation() + ": [minItems] array length " + array.size() + " is less than minimum " + keywordValue);
         }

@@ -102,7 +102,7 @@ public class PatternPropertiesKeyword extends Keyword implements IncrementalKeyw
     
     @Override
     public Phase getEvaluationPhase() {
-        return Phase.PRIMARY; // Must run before AdditionalPropertiesKeyword
+        return Phase.ANNOTATION_PRODUCER; // Must run before AdditionalPropertiesKeyword
     }
     
     @Override

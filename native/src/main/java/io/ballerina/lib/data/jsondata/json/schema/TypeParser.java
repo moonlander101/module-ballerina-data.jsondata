@@ -934,8 +934,12 @@ public class TypeParser {
     public LinkedHashMap<String, Keyword> extractAnnotationKeywords(Type type) {
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         Type referredType = TypeUtils.getReferredType(type);
-        
-        extractKeywordsFromAnnotations(referredType, keywords);
+        // annotations attach to the alias, not the effective type for these two
+        if (referredType.getTag() == TypeTags.TUPLE_TAG || referredType.getTag() == TypeTags.ARRAY_TAG) {
+            extractKeywordsFromAnnotations(type, keywords);
+        } else {
+            extractKeywordsFromAnnotations(referredType, keywords);
+        }
         extractKeywordsFromFieldAnnotations(referredType, keywords);
         
         return keywords;

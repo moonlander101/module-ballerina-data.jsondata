@@ -148,7 +148,7 @@ public class JsonTraverse {
                         }
                     }
                     return traverseMapJsonOrArrayJson(json,
-                            ValueCreator.createRecordValue(type.getPackage(), type.getName()), referredType);
+                            ValueCreator.createRecordValue(type.getPackage(), type.getName()), type);
                 }
                 case TypeTags.ARRAY_TAG -> {
                     if (!(json instanceof BArray)) {
@@ -156,7 +156,7 @@ public class JsonTraverse {
                     }
                     rootArray = referredType;
                     return traverseMapJsonOrArrayJson(json, ValueCreator.createArrayValue((ArrayType) referredType),
-                            referredType);
+                            type);
                 }
                 case TypeTags.TUPLE_TAG -> {
                     if (!(json instanceof BArray)) {
@@ -164,7 +164,7 @@ public class JsonTraverse {
                     }
                     rootArray = referredType;
                     return traverseMapJsonOrArrayJson(json, ValueCreator.createTupleValue((TupleType) referredType),
-                            referredType);
+                            type);
                 }
                 case TypeTags.STRING_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG, TypeTags.BOOLEAN_TAG,
                         TypeTags.NEVER_TAG, TypeTags.NULL_TAG, TypeTags.FINITE_TYPE_TAG -> {
@@ -261,13 +261,14 @@ public class JsonTraverse {
                 return traverseArrayValue(bArray, currentJsonNode, type);
             } else {
                 // JSON value not compatible with map or array.
-                if (type.getTag() == TypeTags.RECORD_TYPE_TAG) {
+                Type refType = TypeUtils.getReferredType(type);
+                if (refType.getTag() == TypeTags.RECORD_TYPE_TAG) {
                     this.fieldHierarchy.pop();
                     this.restType.pop();
                 }
 
                 if (fieldNames.isEmpty()) {
-                    throw DiagnosticLog.error(DiagnosticErrorCode.INCOMPATIBLE_TYPE, type, json);
+                    throw DiagnosticLog.error(DiagnosticErrorCode.INCOMPATIBLE_TYPE, refType, json);
                 }
                 throw DiagnosticLog.error(DiagnosticErrorCode.INVALID_TYPE_FOR_FIELD, getCurrentFieldPath());
             }
@@ -286,6 +287,7 @@ public class JsonTraverse {
             List<IncrementalKeyword> restOnlyKeywords = new ArrayList<>();
             List<Keyword> nonIncrementalKeywords = new ArrayList<>();
             EvaluationContext context = null;
+            boolean allValid = true;
             
             if (hasValidation) {
                 // Partition into incremental and non-incremental keywords
@@ -321,7 +323,9 @@ public class JsonTraverse {
                 
                 // Validate non-incremental keywords (minProperties, maxProperties, etc.)
                 for (Keyword kw : nonIncrementalKeywords) {
-                    kw.evaluate(map, context);
+                    if (!kw.evaluate(map, context)) {
+                        allValid = false;
+                    }
                 }
             }
             
@@ -389,7 +393,6 @@ public class JsonTraverse {
             
             // Call finish() on all incremental keywords after conversion is complete
             if (hasValidation) {
-                boolean allValid = true;
                 for (IncrementalKeyword kw : incrementalKeywords) {
                     if (!kw.finish(context)) {
                         allValid = false;
@@ -397,7 +400,7 @@ public class JsonTraverse {
                 }
                 
                 // Throw validation error AFTER conversion is complete (conversion first, validation second)
-                if (!allValid || !context.getErrors().isEmpty()) {
+                if (!allValid) {
                     String errorMessage = String.join("; ", context.getErrors());
                     throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, errorMessage);
                 }
@@ -417,6 +420,7 @@ public class JsonTraverse {
             List<IncrementalKeyword> incrementalKeywords = new ArrayList<>();
             List<Keyword> nonIncrementalKeywords = new ArrayList<>();
             EvaluationContext context = null;
+            boolean allValid = true;
             
             if (hasValidation) {
                 // Partition into incremental and non-incremental keywords
@@ -441,7 +445,9 @@ public class JsonTraverse {
                 
                 // Validate non-incremental keywords (minItems, maxItems, etc.)
                 for (Keyword kw : nonIncrementalKeywords) {
-                    kw.evaluate(array, context);
+                    if (!kw.evaluate(array, context)) {
+                        allValid = false;
+                    }
                 }
             }
             
@@ -495,7 +501,6 @@ public class JsonTraverse {
             
             // Call finish() on all incremental keywords after conversion is complete
             if (hasValidation) {
-                boolean allValid = true;
                 for (IncrementalKeyword kw : incrementalKeywords) {
                     if (!kw.finish(context)) {
                         allValid = false;
@@ -503,7 +508,7 @@ public class JsonTraverse {
                 }
                 
                 // Throw validation error AFTER conversion is complete (conversion first, validation second)
-                if (!allValid || !context.getErrors().isEmpty()) {
+                if (!allValid) {
                     String errorMessage = String.join("; ", context.getErrors());
                     throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, errorMessage);
                 }
