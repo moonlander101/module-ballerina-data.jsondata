@@ -68,7 +68,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-public class TypeParser {
+public class SchemaTypeParser {
     private final HashMap<String, Object> typeAliasToSchema = new HashMap<String, Object>();
 
     public Object parse(Type type) {
