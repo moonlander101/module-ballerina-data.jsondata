@@ -168,10 +168,22 @@ public class JsonTraverse {
                     }
 
                     for (Type memberType : unionType.getMemberTypes()) {
+                        int fieldHierarchySize = fieldHierarchy.size();
+                        int restTypeSize = restType.size();
+                        int fieldNamesSize = fieldNames.size();
                         try {
                             return traverseJson(json, memberType);
                         } catch (Exception e) {
-                            // Ignore
+                            // Restore stack state after failed union member attempt
+                            while (fieldHierarchy.size() > fieldHierarchySize) {
+                                fieldHierarchy.pop();
+                            }
+                            while (restType.size() > restTypeSize) {
+                                restType.pop();
+                            }
+                            while (fieldNames.size() > fieldNamesSize) {
+                                fieldNames.pollLast();
+                            }
                         }
                     }
                     throw DiagnosticLog.error(DiagnosticErrorCode.INCOMPATIBLE_TYPE, type, json);
