@@ -94,6 +94,24 @@ public class Native {
 
             } else if (schema instanceof BMap || schema instanceof Boolean) {
                 String schemaStr = StringUtils.getJsonString(schema);
+
+                SchemaRegistry registry = new SchemaRegistry();
+                SchemaJsonParser parser = new SchemaJsonParser(registry);
+
+                Object parsedSchema = parser.parse(schema);
+                if (parsedSchema instanceof BError) {
+                    return parsedSchema;
+                }
+                System.out.println("Custom parser result: " + parsedSchema);
+                Validator val = new Validator(false);
+                EvaluationContext context = new EvaluationContext(registry);
+                if (!val.validate(jsonValue, parsedSchema, context)) {
+                    String errorMessage = String.join("\n- ", context.getErrors());
+                    System.out.println("Custom validation failed:\n- " + errorMessage);
+                } else {
+                    System.out.println("Custom validation successful");
+                }
+
                 SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
                 err = validator.validate(jsonValue, schemaStr);
 
@@ -115,6 +133,7 @@ public class Native {
             } else if (schema instanceof BTypedesc) {
                 Type type = ((BTypedesc) schema).getDescribingType();
                 SchemaTypeParser tp = new SchemaTypeParser();
+                long startTime = System.nanoTime();
                 Object schemaObj = tp.parse(type);
                 System.out.println("Schema object: " + schemaObj);
                 if (schemaObj instanceof BError) {
@@ -129,6 +148,12 @@ public class Native {
                             "- " + errorMessage);
                     }
                 }
+                long endTime = System.nanoTime();
+
+                // 4. Calculate the differences (and convert to milliseconds for readability)
+                long callDuration = (startTime - endTime) / 1_000_000;
+
+                System.out.println("Call took: " + callDuration + " ms");
             } else {
                 err = DiagnosticLog.createJsonError("invalid schema type: expected string, json, or json[]: " +
                         TypeUtils.getType(schema).getName());

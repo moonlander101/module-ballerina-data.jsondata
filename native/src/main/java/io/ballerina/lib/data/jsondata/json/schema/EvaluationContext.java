@@ -29,17 +29,24 @@ public class EvaluationContext {
     private final EvaluationContext parent;
     private final List<String> errors;
     private final Map<String, Object> annotations;
+    private final SchemaRegistry schemaRegistry;
 
     public EvaluationContext() {
-        this(null, "", "");
+        this(null, "", "", null);
     }
 
-    private EvaluationContext(EvaluationContext parent, String instanceLocation, String schemaLocation) {
+    public EvaluationContext(SchemaRegistry schemaRegistry) {
+        this(null, "", "", schemaRegistry);
+    }
+
+    private EvaluationContext(EvaluationContext parent, String instanceLocation, String schemaLocation,
+                              SchemaRegistry schemaRegistry) {
         this.parent = parent;
         this.instanceLocation = instanceLocation;
         this.schemaLocation = schemaLocation;
         this.errors = parent != null ? parent.errors : new ArrayList<>();
         this.annotations = new HashMap<>();
+        this.schemaRegistry = schemaRegistry;
     }
 
     public EvaluationContext createChildContext(String instancePathSegment, String schemaPathSegment) {
@@ -59,7 +66,7 @@ public class EvaluationContext {
             newSchemaLocation.append(schemaPathSegment);
         }
 
-        return new EvaluationContext(this, newInstanceLocation.toString(), newSchemaLocation.toString());
+        return new EvaluationContext(this, newInstanceLocation.toString(), newSchemaLocation.toString(), schemaRegistry);
     }
 
     public void addError(String keywordName, String message) {
@@ -80,5 +87,9 @@ public class EvaluationContext {
 
     public String getInstanceLocation() {
         return instanceLocation;
+    }
+
+    public SchemaRegistry getSchemaRegistry() {
+        return schemaRegistry;
     }
 }
