@@ -11,6 +11,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PatternP
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.AnchorKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.RefKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ConstKeyword;
@@ -33,6 +34,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.Required
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.TypeKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.UniqueItemsKeyword;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BArray;
 import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BError;
@@ -60,23 +62,12 @@ public class SchemaJsonParser {
     }
 
     public Object parse(Object json) {
-        boolean pushedMockRoot = false;
-        if (scopeStack.isEmpty()) {
-            scopeStack.push(MOCK_ROOT_URI);
-            pushedMockRoot = true;
-        }
-        try {
-            if (json instanceof BMap<?, ?>) {
-                return parseSchema((BMap<BString, Object>) json);
-            } else if (json instanceof Boolean) {
-                return json;
-            } else {
-                return DiagnosticLog.createJsonError("Invalid JSON Schema: expected object or boolean");
-            }
-        } finally {
-            if (pushedMockRoot) {
-                scopeStack.pop();
-            }
+        if (json instanceof BMap<?, ?>) {
+            return parseSchema((BMap<BString, Object>) json);
+        } else if (json instanceof Boolean) {
+            return json;
+        } else {
+            return DiagnosticLog.createJsonError("Invalid JSON Schema: expected object or boolean");
         }
     }
 
@@ -84,10 +75,38 @@ public class SchemaJsonParser {
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         boolean scopePushed = false;
         String resolvedId = null;
+        String anchorName = null;
 
         // Pre-scan for minContains/maxContains — needed before we hit "contains"
         Long minContains = extractLong(json, "minContains");
         Long maxContains = extractLong(json, "maxContains");
+
+        BString idKey = io.ballerina.runtime.api.utils.StringUtils.fromString("$id");
+        if (json.containsKey(idKey)) {
+            Object idValue = json.get(idKey);
+            if (!(idValue instanceof BString)) {
+                return DiagnosticLog.createJsonError("Invalid value for '$id': expected string");
+            }
+            String idStr = ((BString) idValue).getValue();
+            String base = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
+            resolvedId = SchemaRegistry.resolveURI(base, idStr);
+            scopeStack.push(resolvedId);
+            scopePushed = true;
+            keywords.put(IdKeyword.keywordName, new IdKeyword(idValue));
+        }
+
+        BString anchorKey = io.ballerina.runtime.api.utils.StringUtils.fromString("$anchor");
+        if (json.containsKey(anchorKey)) {
+            Object anchorValue = json.get(anchorKey);
+            if (!(anchorValue instanceof BString)) {
+                return DiagnosticLog.createJsonError("Invalid value for '$anchor': expected string");
+            }
+            anchorName = ((BString) anchorValue).getValue();
+            if (!isValidAnchorName(anchorName)) {
+                return DiagnosticLog.createJsonError("Invalid $anchor value: must match pattern ^[A-Za-z_][A-Za-z0-9_.-]*$");
+            }
+            keywords.put(AnchorKeyword.keywordName, new AnchorKeyword(anchorValue));
+        }
 
         try {
             for (BString bKey : json.getKeys()) {
@@ -95,18 +114,6 @@ public class SchemaJsonParser {
                 Object value = json.get(bKey);
 
                 switch (key) {
-                    case "$id" -> {
-                        if (!(value instanceof BString)) {
-                            return DiagnosticLog.createJsonError("Invalid value for '$id': expected string");
-                        }
-                        String idStr = ((BString) value).getValue();
-                        String base = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
-                        resolvedId = SchemaRegistry.resolveURI(base, idStr);
-                        scopeStack.push(resolvedId);
-                        scopePushed = true;
-                        keywords.put(IdKeyword.keywordName, new IdKeyword(value));
-                    }
-
                     case "$defs" -> {
                         if (!(value instanceof BMap<?, ?>)) {
                             return DiagnosticLog.createJsonError("Invalid value for '$defs': expected object");
@@ -132,7 +139,7 @@ public class SchemaJsonParser {
 
                     case "minContains", "maxContains", "$schema", "$comment", "title",
                             "description", "default", "examples", "readOnly", "writeOnly",
-                            "deprecated" -> {
+                            "deprecated", "$anchor" -> {
                     }
 
                     default -> {
@@ -153,6 +160,23 @@ public class SchemaJsonParser {
                 } catch (IllegalArgumentException ignored) {
                     // Malformed $id — skip
                 }
+            }
+
+            if (anchorName != null) {
+                String currentBase = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
+                String anchorUriStr = currentBase + "#" + anchorName;
+                URI anchorUri;
+                try {
+                    anchorUri = URI.create(anchorUriStr);
+                    System.out.println("Registering anchor URI: " + anchorUri);
+                } catch (IllegalArgumentException e) {
+                    return DiagnosticLog.createJsonError("Invalid $anchor URI: " + anchorUriStr);
+                }
+
+                if (registry.containsKey(anchorUri)) {
+                    return DiagnosticLog.createJsonError("Duplicate fragment URI: " + anchorUriStr);
+                }
+                registry.put(anchorUri, schema);
             }
 
             return schema;
@@ -498,7 +522,6 @@ public class SchemaJsonParser {
                 keywords.put(RefKeyword.keywordName, new RefKeyword(refUri));
             }
 
-            // Unknown keywords are ignored (annotations, extensions, etc.)
         }
         return null;
     }
@@ -528,7 +551,7 @@ public class SchemaJsonParser {
     }
 
     private Long extractLong(BMap<BString, Object> json, String keyName) {
-        BString bKey = io.ballerina.runtime.api.utils.StringUtils.fromString(keyName);
+        BString bKey = StringUtils.fromString(keyName);
         if (!json.containsKey(bKey)) {
             return null;
         }
@@ -553,5 +576,12 @@ public class SchemaJsonParser {
             return bd.decimalValue().doubleValue();
         }
         return null;
+    }
+
+    private static boolean isValidAnchorName(String anchor) {
+        if (anchor == null || anchor.isEmpty()) {
+            return false;
+        }
+        return anchor.matches("^[A-Za-z_][A-Za-z0-9_.-]*$");
     }
 }
