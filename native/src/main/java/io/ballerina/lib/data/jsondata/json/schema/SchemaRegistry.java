@@ -20,13 +20,15 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 import java.net.URI;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 public class SchemaRegistry {
-
     private final Map<URI, Object> schemas = new HashMap<>();
+    private final Set<URI> dynamicAnchorUris = new HashSet<>();
 
     public void put(URI uri, Object schema) {
         this.schemas.put(uri, schema);
@@ -38,6 +40,14 @@ public class SchemaRegistry {
 
     public boolean containsKey(URI uri) {
         return this.schemas.containsKey(uri);
+    }
+
+    public void registerDynamicAnchor(URI uri) {
+        dynamicAnchorUris.add(uri);
+    }
+
+    public boolean isDynamicAnchor(URI uri) {
+        return dynamicAnchorUris.contains(uri);
     }
 
     public Object resolve(URI refUri) {

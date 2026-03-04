@@ -23,6 +23,7 @@ import io.ballerina.lib.data.jsondata.json.schema.*;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
@@ -44,6 +45,7 @@ import io.ballerina.runtime.api.values.BTypedesc;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -105,12 +107,16 @@ public class Native {
                 System.out.println("Custom parser result: " + parsedSchema);
                 Validator val = new Validator(false);
                 EvaluationContext context = new EvaluationContext(registry);
+                
+                URI rootResourceUri = SchemaValidatorUtils.getRootResourceUri(parsedSchema);
+                context.pushDynamicScope(rootResourceUri);
                 if (!val.validate(jsonValue, parsedSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());
                     System.out.println("Custom validation failed:\n- " + errorMessage);
                 } else {
                     System.out.println("Custom validation successful");
                 }
+                context.popDynamicScope();
 
                 SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
                 err = validator.validate(jsonValue, schemaStr);

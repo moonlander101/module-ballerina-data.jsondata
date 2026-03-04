@@ -1,10 +1,14 @@
 package io.ballerina.lib.data.jsondata.utils;
 
 import com.networknt.schema.output.OutputUnit;
+import io.ballerina.lib.data.jsondata.json.schema.Schema;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -63,5 +67,23 @@ public class SchemaValidatorUtils {
             errorMessage.append("- ").append(allErrors.get(i));
         }
         return errorMessage.toString();
+    }
+
+    public static URI getRootResourceUri(Object parsedSchema) {
+        if (parsedSchema instanceof Schema schema) {
+            Keyword idKeyword = schema.getKeyword(IdKeyword.keywordName);
+            if (idKeyword != null) {
+                Object idValue = idKeyword.getKeywordValue();
+                if (idValue != null) {
+                    try {
+                        URI full = URI.create(idValue.toString());
+                        return new URI(full.getScheme(), full.getSchemeSpecificPart(), null);
+                    } catch (Exception ignored) {
+                        // fall through to mock root
+                    }
+                }
+            }
+        }
+        return URI.create("urn:jsonschema:root");
     }
 }

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.net.URI;
 
 public class EvaluationContext {
     private final String instanceLocation;
@@ -30,23 +31,39 @@ public class EvaluationContext {
     private final List<String> errors;
     private final Map<String, Object> annotations;
     private final SchemaRegistry schemaRegistry;
+    private final ArrayList<URI> dynamicScope;
 
     public EvaluationContext() {
-        this(null, "", "", null);
+        this(null, "", "", null, new ArrayList<>());
     }
 
     public EvaluationContext(SchemaRegistry schemaRegistry) {
-        this(null, "", "", schemaRegistry);
+        this(null, "", "", schemaRegistry, new ArrayList<>());
     }
 
     private EvaluationContext(EvaluationContext parent, String instanceLocation, String schemaLocation,
-                              SchemaRegistry schemaRegistry) {
+                              SchemaRegistry schemaRegistry, ArrayList<URI> dynamicScope) {
         this.parent = parent;
         this.instanceLocation = instanceLocation;
         this.schemaLocation = schemaLocation;
         this.errors = parent != null ? parent.errors : new ArrayList<>();
         this.annotations = new HashMap<>();
         this.schemaRegistry = schemaRegistry;
+        this.dynamicScope = dynamicScope;
+    }
+
+    public void pushDynamicScope(URI resourceUri) {
+        dynamicScope.add(resourceUri);
+    }
+
+    public void popDynamicScope() {
+        if (!dynamicScope.isEmpty()) {
+            dynamicScope.removeLast();
+        }
+    }
+
+    public ArrayList<URI> getDynamicScope() {
+        return dynamicScope;
     }
 
     public EvaluationContext createChildContext(String instancePathSegment, String schemaPathSegment) {
@@ -66,7 +83,7 @@ public class EvaluationContext {
             newSchemaLocation.append(schemaPathSegment);
         }
 
-        return new EvaluationContext(this, newInstanceLocation.toString(), newSchemaLocation.toString(), schemaRegistry);
+        return new EvaluationContext(this, newInstanceLocation.toString(), newSchemaLocation.toString(), schemaRegistry, this.dynamicScope);
     }
 
     public void addError(String keywordName, String message) {

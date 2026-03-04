@@ -12,6 +12,8 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixIt
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.AnchorKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicAnchorKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicRefKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.RefKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ConstKeyword;
@@ -76,6 +78,7 @@ public class SchemaJsonParser {
         boolean scopePushed = false;
         String resolvedId = null;
         String anchorName = null;
+        String dynamicAnchorName = null;
 
         // Pre-scan for minContains/maxContains — needed before we hit "contains"
         Long minContains = extractLong(json, "minContains");
@@ -106,6 +109,20 @@ public class SchemaJsonParser {
                 return DiagnosticLog.createJsonError("Invalid $anchor value: must match pattern ^[A-Za-z_][A-Za-z0-9_.-]*$");
             }
             keywords.put(AnchorKeyword.keywordName, new AnchorKeyword(anchorValue));
+        }
+
+        BString dynamicAnchorKey = StringUtils.fromString("$dynamicAnchor");
+        if (json.containsKey(dynamicAnchorKey)) {
+            Object dynamicAnchorValue = json.get(dynamicAnchorKey);
+            if (!(dynamicAnchorValue instanceof BString)) {
+                return DiagnosticLog.createJsonError("Invalid value for '$dynamicAnchor': expected string");
+            }
+            dynamicAnchorName = ((BString) dynamicAnchorValue).getValue();
+            if (!isValidAnchorName(dynamicAnchorName)) {
+                return DiagnosticLog.createJsonError(
+                        "Invalid $dynamicAnchor value: must match pattern ^[A-Za-z_][A-Za-z0-9_.-]*$");
+            }
+            keywords.put(DynamicAnchorKeyword.keywordName, new DynamicAnchorKeyword(dynamicAnchorName));
         }
 
         try {
@@ -139,7 +156,7 @@ public class SchemaJsonParser {
 
                     case "minContains", "maxContains", "$schema", "$comment", "title",
                             "description", "default", "examples", "readOnly", "writeOnly",
-                            "deprecated", "$anchor" -> {
+                            "deprecated", "$anchor", "$dynamicAnchor" -> {
                     }
 
                     default -> {
@@ -177,6 +194,24 @@ public class SchemaJsonParser {
                     return DiagnosticLog.createJsonError("Duplicate fragment URI: " + anchorUriStr);
                 }
                 registry.put(anchorUri, schema);
+            }
+
+            if (dynamicAnchorName != null) {
+                String currentBase = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
+                String dynamicAnchorUriStr = currentBase + "#" + dynamicAnchorName;
+                URI dynamicAnchorUri;
+                try {
+                    dynamicAnchorUri = URI.create(dynamicAnchorUriStr);
+                    System.out.println("Registering dynamicAnchor URI: " + dynamicAnchorUri);
+                } catch (IllegalArgumentException e) {
+                    return DiagnosticLog.createJsonError("Invalid $dynamicAnchor URI: " + dynamicAnchorUriStr);
+                }
+
+                if (registry.containsKey(dynamicAnchorUri)) {
+                    return DiagnosticLog.createJsonError("Duplicate fragment URI: " + dynamicAnchorUriStr);
+                }
+                registry.put(dynamicAnchorUri, schema);
+                registry.registerDynamicAnchor(dynamicAnchorUri);
             }
 
             return schema;
@@ -520,6 +555,27 @@ public class SchemaJsonParser {
                     return DiagnosticLog.createJsonError("Invalid URI in '$ref': " + resolved);
                 }
                 keywords.put(RefKeyword.keywordName, new RefKeyword(refUri));
+            }
+
+            case "$dynamicRef" -> {
+                if (!(value instanceof BString dynamicRefVal)) {
+                    return DiagnosticLog.createJsonError("Invalid value for '$dynamicRef' keyword");
+                }
+                String dynamicRefStr = dynamicRefVal.getValue();
+                // Resolve against current scope — always yields an absolute URI
+                String base = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
+                String resolved = SchemaRegistry.resolveURI(base, dynamicRefStr);
+                URI dynamicRefUri;
+                try {
+                    dynamicRefUri = URI.create(resolved);
+                } catch (IllegalArgumentException e) {
+                    return DiagnosticLog.createJsonError("Invalid URI in '$dynamicRef': " + resolved);
+                }
+                // Extract the plain anchor name from the fragment, if any.
+                // A JSON Pointer fragment starts with "/"; plain anchor names do not.
+                String fragment = dynamicRefUri.getFragment();
+                String anchorNameForRef = (fragment != null && !fragment.startsWith("/")) ? fragment : null;
+                keywords.put(DynamicRefKeyword.keywordName, new DynamicRefKeyword(dynamicRefUri, anchorNameForRef));
             }
 
         }

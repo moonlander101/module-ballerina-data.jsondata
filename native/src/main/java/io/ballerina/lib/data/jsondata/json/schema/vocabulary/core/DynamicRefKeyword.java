@@ -23,20 +23,22 @@ import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 import java.net.URI;
+import java.util.ArrayList;
 
-public class RefKeyword extends Keyword {
 
-    public static final String keywordName = "$ref";
+public class DynamicRefKeyword extends Keyword {
+    public static final String keywordName = "$dynamicRef";
+    private final URI initialRefUri;
+    private final String anchorName;
 
-    private final URI refUri;
-
-    public RefKeyword(URI refUri) {
-        this.refUri = refUri;
+    public DynamicRefKeyword(URI initialRefUri, String anchorName) {
+        this.initialRefUri = initialRefUri;
+        this.anchorName = anchorName;
     }
 
     @Override
     public Object getKeywordValue() {
-        return refUri.toString();
+        return initialRefUri.toString();
     }
 
     @Override
@@ -45,20 +47,51 @@ public class RefKeyword extends Keyword {
         if (registry == null) {
             context.addError(keywordName,
                     "At " + context.getInstanceLocation()
-                            + ": schema registry is required for $ref resolution");
+                            + ": schema registry is required for $dynamicRef resolution");
             return false;
         }
 
-        Object target = registry.resolve(refUri);
+        Object target = null;
+        if (anchorName != null && registry.isDynamicAnchor(initialRefUri)) {
+            ArrayList<URI> scopeArray = context.getDynamicScope();
+            // scopeArray[0] = top (most recent); scopeArray[last] = bottom (outermost).
+            // Spec requires the outermost match, so iterate last → 0.
+            String lastSeenResource = null;
+            for (int i = scopeArray.size() - 1; i >= 0; i--) {
+                String resourceStr = stripFragment(scopeArray.get(i));
+                if (resourceStr.equals(lastSeenResource)) {
+                    continue; // skip duplicate resource entries in scope
+                }
+                lastSeenResource = resourceStr;
+                URI candidateUri;
+                try {
+                    candidateUri = URI.create(resourceStr + "#" + anchorName);
+                } catch (IllegalArgumentException e) {
+                    continue;
+                }
+                if (registry.isDynamicAnchor(candidateUri)) {
+                    Object candidate = registry.get(candidateUri);
+                    if (candidate != null) {
+                        target = candidate;
+                        break; // outermost match wins — stop here
+                    }
+                }
+            }
+        }
+
+        // Step 2: fall back to static resolution (behave like $ref)
+        if (target == null) {
+            target = registry.resolve(initialRefUri);
+        }
+
         if (target == null) {
             context.addError(keywordName,
                     "At " + context.getInstanceLocation()
-                            + ": unresolved $ref '" + refUri + "'");
+                            + ": unresolved $dynamicRef '" + initialRefUri + "'");
             return false;
         }
 
-        // Push the target's resource URI onto the dynamic scope when crossing $id boundaries.
-        // This is required so that $dynamicRef can observe the correct outer scope.
+        // Step 3: determine the resource URI of the resolved target and push dynamic scope
         URI resourceUri = getResourceUri(target);
         boolean pushed = false;
         if (resourceUri != null) {
@@ -75,10 +108,16 @@ public class RefKeyword extends Keyword {
         }
     }
 
-    /**
-     * Returns the resource base URI (the {@code $id} value) of the given target schema, or
-     * {@code null} if the target has no {@code $id} (e.g. boolean schema or anonymous sub-schema).
-     */
+    private static String stripFragment(URI uri) {
+        try {
+            return new URI(uri.getScheme(), uri.getSchemeSpecificPart(), null).toString();
+        } catch (Exception e) {
+            String s = uri.toString();
+            int hash = s.indexOf('#');
+            return hash >= 0 ? s.substring(0, hash) : s;
+        }
+    }
+
     private static URI getResourceUri(Object target) {
         if (!(target instanceof Schema schema)) {
             return null;
@@ -92,6 +131,7 @@ public class RefKeyword extends Keyword {
             return null;
         }
         String idStr = idValue.toString();
+        // Strip any fragment — the resource URI is the base without fragment
         try {
             URI full = URI.create(idStr);
             return new URI(full.getScheme(), full.getSchemeSpecificPart(), null);
@@ -100,4 +140,3 @@ public class RefKeyword extends Keyword {
         }
     }
 }
-
