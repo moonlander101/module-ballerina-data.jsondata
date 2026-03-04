@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SchemaValidatorUtils {
-    private final static String ABSOLUTE_URI_REGEX = "^[a-zA-Z][a-zA-Z0-9+.-]*://.*";
+    private static final String ABSOLUTE_URI_REGEX = "^[a-zA-Z][a-zA-Z0-9+.-]*://.*";
 
     public static String extractRootIdFromJson(Path jsonFilePath) {
         try {

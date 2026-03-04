@@ -89,7 +89,7 @@ public class Native {
         Object err = null;
         try {
             if (schema instanceof BString) {
-                SchemaFileValidator validator = SchemaFileValidator.getInstance((BString) schema);
+                SchemaFileValidator validator = new SchemaFileValidator(((BString) schema).getValue());
                 err = validator.validate(jsonValue, (BString) schema);
             } else if (schema instanceof BMap || schema instanceof Boolean) {
                 String schemaStr = StringUtils.getJsonString(schema);

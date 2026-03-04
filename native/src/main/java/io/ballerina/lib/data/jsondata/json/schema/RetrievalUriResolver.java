@@ -54,8 +54,8 @@ public class RetrievalUriResolver implements SchemaIdResolver {
     }
 
     public void initialDiscovery(Path rootDir) {
-        int MAX_DEPTH = 2;
-        try (Stream<Path> paths = Files.walk(rootDir, MAX_DEPTH + 1)) {
+        int maxDepth = 2;
+        try (Stream<Path> paths = Files.walk(rootDir, maxDepth + 1)) {
             paths.filter(path -> path.toString().endsWith(".json"))
                     .forEach(path -> {
                         String topLevelId = SchemaValidatorUtils.extractRootIdFromJson(path);
