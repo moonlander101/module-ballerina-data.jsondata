@@ -1,0 +1,14 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "format": "relative-json-pointer",
+    "$id": "http://data.jsondata/schemas/format/other_relative-json-pointer.json"
+  },
+  "valid": [
+    "1"
+  ],
+  "invalid": [
+    "not-a-relative-json-pointer"
+  ]
+}

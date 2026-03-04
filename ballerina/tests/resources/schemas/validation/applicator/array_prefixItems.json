@@ -1,0 +1,27 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "prefixItems": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "number"
+      }
+    ],
+    "$id": "http://data.jsondata/schemas/applicator/array_prefixItems.json"
+  },
+  "valid": [
+    [
+      "hello",
+      42
+    ]
+  ],
+  "invalid": [
+    [
+      "hello",
+      "world"
+    ]
+  ]
+}
