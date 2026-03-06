@@ -83,7 +83,7 @@ public class SchemaJsonParser {
         Long minContains = extractLong(json, "minContains");
         Long maxContains = extractLong(json, "maxContains");
 
-        BString idKey = io.ballerina.runtime.api.utils.StringUtils.fromString("$id");
+        BString idKey = StringUtils.fromString("$id");
         if (json.containsKey(idKey)) {
             Object idValue = json.get(idKey);
             if (!(idValue instanceof BString)) {
@@ -97,7 +97,7 @@ public class SchemaJsonParser {
             keywords.put(IdKeyword.keywordName, new IdKeyword(idValue));
         }
 
-        BString anchorKey = io.ballerina.runtime.api.utils.StringUtils.fromString("$anchor");
+        BString anchorKey = StringUtils.fromString("$anchor");
         if (json.containsKey(anchorKey)) {
             Object anchorValue = json.get(anchorKey);
             if (!(anchorValue instanceof BString)) {
@@ -363,6 +363,30 @@ public class SchemaJsonParser {
                 keywords.put(NotKeyword.keywordName, new NotKeyword(parsed));
             }
 
+            case "if" -> {
+                Object parsed = parse(value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(IfKeyword.keywordName, new IfKeyword(parsed));
+            }
+
+            case "then" -> {
+                Object parsed = parse(value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(ThenKeyword.keywordName, new ThenKeyword(parsed));
+            }
+
+            case "else" -> {
+                Object parsed = parse(value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(ElseKeyword.keywordName, new ElseKeyword(parsed));
+            }
+
             case "required" -> {
                 if (!(value instanceof BArray)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'required' keyword");
@@ -608,7 +632,7 @@ public class SchemaJsonParser {
                 } catch (IllegalArgumentException e) {
                     return DiagnosticLog.createJsonError("Invalid URI in '$dynamicRef': " + resolved);
                 }
-                // Extract the plain anchor name from the fragment, if any.
+
                 // A JSON Pointer fragment starts with "/"; plain anchor names do not.
                 String fragment = dynamicRefUri.getFragment();
                 String anchorNameForRef = (fragment != null && !fragment.startsWith("/")) ? fragment : null;
