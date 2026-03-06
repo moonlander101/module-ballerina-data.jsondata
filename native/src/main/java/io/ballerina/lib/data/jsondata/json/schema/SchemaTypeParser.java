@@ -20,6 +20,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AnyOfKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AllOfKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.OneOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.NotKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertiesKeyword;
@@ -27,6 +28,11 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.Addition
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PatternPropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.DependentSchemasKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.CommentKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.ExamplesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.ReadOnlyKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.TitleKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.WriteOnlyKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.DependentRequiredKeyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
@@ -122,7 +128,7 @@ public class SchemaTypeParser {
                     typeNames.add("number");
                 }
                 case TypeTags.BOOLEAN_TAG -> typeNames.add("boolean");
-                case TypeTags.JSON_TAG -> typeNames.add("object");
+                case TypeTags.RECORD_TYPE_TAG -> typeNames.add("object");
                 case TypeTags.NEVER_TAG -> typeNames.add("never");
                 case TypeTags.NULL_TAG -> typeNames.add("null");
                 default -> {}
@@ -182,7 +188,7 @@ public class SchemaTypeParser {
                     }
                 }
             } else if (
-                memberType.getTag() == TypeTags.INTERSECTION_TAG ||
+                memberType.getTag() == TypeTags.INTERSECTION_TAG || // TODO: Check further that the intersection is between a readonly and record.
                 memberType.getTag() == TypeTags.FINITE_TYPE_TAG 
             ) {
                 constValues.add(memberType);
@@ -219,6 +225,7 @@ public class SchemaTypeParser {
                 keywords.remove(OneOfKeyword.keywordName);
             } else {
                 keywords.put(OneOfKeyword.keywordName, new OneOfKeyword(wrapperList));
+                keywords.remove(AllOfKeyword.keywordName);
             }
 
         } else {
@@ -351,9 +358,36 @@ public class SchemaTypeParser {
                     extractAdditionalProperties((BMap<BString, Object>) annotation, keywords);
                     break;
                 case "ReadOnly":
+                    keywords.put(ReadOnlyKeyword.keywordName, new ReadOnlyKeyword(true));
+                    break;
                 case "WriteOnly":
+                    keywords.put(WriteOnlyKeyword.keywordName, new WriteOnlyKeyword(true));
                     break;
                 case "MetaData":
+                    if (!(annotation instanceof BMap<?, ?> metaData)) {
+                        break;
+                    }
+                    BString titleKey = StringUtils.fromString("title");
+                    if (metaData.containsKey(titleKey)) {
+                        Object title = metaData.get(titleKey);
+                        if (title instanceof BString titleValue) {
+                            keywords.put(TitleKeyword.keywordName, new TitleKeyword(titleValue.getValue()));
+                        }
+                    }
+                    BString examplesKey = StringUtils.fromString("examples");
+                    if (metaData.containsKey(examplesKey)) {
+                        Object examples = metaData.get(examplesKey);
+                        if (examples instanceof BArray examplesValue) {
+                            keywords.put(ExamplesKeyword.keywordName, new ExamplesKeyword(examplesValue));
+                        }
+                    }
+                    BString commentKey = StringUtils.fromString("comment");
+                    if (metaData.containsKey(commentKey)) {
+                        Object comment = metaData.get(commentKey);
+                        if (comment instanceof BString commentValue) {
+                            keywords.put(CommentKeyword.keywordName, new CommentKeyword(commentValue.getValue()));
+                        }
+                    }
                     break;
                 case "StringEncodedData":
                     break;
@@ -364,6 +398,22 @@ public class SchemaTypeParser {
                     keywords.put(OneOfKeyword.keywordName, new AllOfKeyword(new ArrayList<>()));
                     break;
                 case "Not":
+                    if (!(annotation instanceof BMap<?, ?> notAnnotation)) {
+                        break;
+                    }
+                    BString valueKey = StringUtils.fromString("value");
+                    if (!notAnnotation.containsKey(valueKey)) {
+                        break;
+                    }
+                    Object value = notAnnotation.get(valueKey);
+                    if (!(value instanceof BTypedesc typedesc)) {
+                        break;
+                    }
+                    Object notSchema = parse(typedesc.getDescribingType());
+                    if (!(notSchema instanceof Schema || notSchema instanceof Boolean)) {
+                        break;
+                    }
+                    keywords.put(NotKeyword.keywordName, new NotKeyword(notSchema));
                     break;
                 case "UnevaluatedProperties":
                     break;
@@ -676,12 +726,6 @@ public class SchemaTypeParser {
 
     public Object parseBasicType(Type type) {
         Type referredType = TypeUtils.getReferredType(type);
-        if (referredType.getTag() == TypeTags.JSON_TAG) {
-            return true;
-        }
-        if (referredType.getTag() == TypeTags.NEVER_TAG) {
-            return false;
-        }
 
         TypeKeyword typeKeyword = extractTypeKeyword(new ArrayList<>(List.of(referredType)));
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
@@ -691,6 +735,12 @@ public class SchemaTypeParser {
 
         extractConstOrEnumKeyword(new ArrayList<Type>(List.of(referredType)), keywords);
         extractKeywordsFromAnnotations(type, keywords);
+
+        if (referredType.getTag() == TypeTags.JSON_TAG && keywords.isEmpty()) {
+            return true;
+        } else if (referredType.getTag() == TypeTags.NEVER_TAG) {
+            return false;
+        }
 
         return new Schema(keywords);
     }

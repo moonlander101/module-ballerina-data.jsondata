@@ -14,31 +14,30 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package io.ballerina.lib.data.jsondata.json.schema.vocabulary.core;
+package io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata;
 
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
+public class ExamplesKeyword extends Keyword {
+    public static final String keywordName = "examples";
+    private final Object keywordValue;
 
-public class DynamicAnchorKeyword extends Keyword {
-    public static final String keywordName = "$dynamicAnchor";
+    public ExamplesKeyword(Object keywordValue) {
+        this.keywordValue = keywordValue;
+    }
 
-    private final String anchorName;
-
-    public DynamicAnchorKeyword(String anchorName) {
-        this.anchorName = anchorName;
+    @Override
+    public boolean evaluate(Object instance, EvaluationContext context) {
+        if (context.getAnnotation(keywordName) != null) {
+            System.out.println("[examples] annotation already exists in context");
+        }
+        context.setAnnotation(keywordName, keywordValue);
+        return true;
     }
 
     @Override
     public Object getKeywordValue() {
-        return anchorName;
-    }
-
-    /**
-     * Always returns {@code true}. This keyword is an identifier, not a validator.
-     */
-    @Override
-    public boolean evaluate(Object instance, EvaluationContext context) {
-        return true;
+        return keywordValue;
     }
 }

@@ -54,8 +54,6 @@ public class DynamicRefKeyword extends Keyword {
         Object target = null;
         if (anchorName != null && registry.isDynamicAnchor(initialRefUri)) {
             ArrayList<URI> scopeArray = context.getDynamicScope();
-            // scopeArray[0] = top (most recent); scopeArray[last] = bottom (outermost).
-            // Spec requires the outermost match, so iterate last → 0.
             String lastSeenResource = null;
             for (int i = scopeArray.size() - 1; i >= 0; i--) {
                 String resourceStr = stripFragment(scopeArray.get(i));
@@ -73,13 +71,12 @@ public class DynamicRefKeyword extends Keyword {
                     Object candidate = registry.get(candidateUri);
                     if (candidate != null) {
                         target = candidate;
-                        break; // outermost match wins — stop here
+                        break;
                     }
                 }
             }
         }
 
-        // Step 2: fall back to static resolution (behave like $ref)
         if (target == null) {
             target = registry.resolve(initialRefUri);
         }
@@ -91,7 +88,6 @@ public class DynamicRefKeyword extends Keyword {
             return false;
         }
 
-        // Step 3: determine the resource URI of the resolved target and push dynamic scope
         URI resourceUri = getResourceUri(target);
         boolean pushed = false;
         if (resourceUri != null) {

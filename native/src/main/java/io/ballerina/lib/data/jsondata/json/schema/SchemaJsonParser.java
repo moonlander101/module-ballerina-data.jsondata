@@ -1,21 +1,20 @@
 package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AdditionalPropertiesKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AllOfKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AnyOfKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.DependentSchemasKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.OneOfKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PatternPropertiesKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertiesKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.*;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.AnchorKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicAnchorKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicRefKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.RefKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.CommentKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.DefaultKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.DeprecatedKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.DescriptionKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.ExamplesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.ReadOnlyKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.TitleKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.WriteOnlyKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ConstKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ContainsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.DependentRequiredKeyword;
@@ -55,6 +54,7 @@ import java.util.Stack;
 
 public class SchemaJsonParser {
     private static final String MOCK_ROOT_URI = "urn:jsonschema:root";
+    private static final String VALID_ANCHOR_REGEX = "^[A-Za-z_][A-Za-z0-9_.-]*$";
 
     private final Stack<String> scopeStack = new Stack<>();
     private final SchemaRegistry registry;
@@ -80,7 +80,6 @@ public class SchemaJsonParser {
         String anchorName = null;
         String dynamicAnchorName = null;
 
-        // Pre-scan for minContains/maxContains — needed before we hit "contains"
         Long minContains = extractLong(json, "minContains");
         Long maxContains = extractLong(json, "maxContains");
 
@@ -106,7 +105,7 @@ public class SchemaJsonParser {
             }
             anchorName = ((BString) anchorValue).getValue();
             if (!isValidAnchorName(anchorName)) {
-                return DiagnosticLog.createJsonError("Invalid $anchor value: must match pattern ^[A-Za-z_][A-Za-z0-9_.-]*$");
+                return DiagnosticLog.createJsonError("Invalid $anchor value: must match pattern " + VALID_ANCHOR_REGEX);
             }
             keywords.put(AnchorKeyword.keywordName, new AnchorKeyword(anchorValue));
         }
@@ -120,7 +119,7 @@ public class SchemaJsonParser {
             dynamicAnchorName = ((BString) dynamicAnchorValue).getValue();
             if (!isValidAnchorName(dynamicAnchorName)) {
                 return DiagnosticLog.createJsonError(
-                        "Invalid $dynamicAnchor value: must match pattern ^[A-Za-z_][A-Za-z0-9_.-]*$");
+                        "Invalid $dynamicAnchor value: must match pattern " + VALID_ANCHOR_REGEX);
             }
             keywords.put(DynamicAnchorKeyword.keywordName, new DynamicAnchorKeyword(dynamicAnchorName));
         }
@@ -154,9 +153,7 @@ public class SchemaJsonParser {
                         }
                     }
 
-                    case "minContains", "maxContains", "$schema", "$comment", "title",
-                            "description", "default", "examples", "readOnly", "writeOnly",
-                            "deprecated", "$anchor", "$dynamicAnchor" -> {
+                    case "minContains", "maxContains", "$schema", "$comment", "$anchor", "$dynamicAnchor" -> {
                     }
 
                     default -> {
@@ -363,7 +360,7 @@ public class SchemaJsonParser {
                 if (parsed instanceof BError) {
                     return parsed;
                 }
-                // NotKeyword would go here when implemented
+                keywords.put(NotKeyword.keywordName, new NotKeyword(parsed));
             }
 
             case "required" -> {
@@ -527,6 +524,46 @@ public class SchemaJsonParser {
                 keywords.put(MaxPropertiesKeyword.keywordName, new MaxPropertiesKeyword(v));
             }
 
+            case "title" -> {
+                if (value instanceof BString title) {
+                    keywords.put(TitleKeyword.keywordName, new TitleKeyword(title.getValue()));
+                }
+            }
+
+            case "description" -> {
+                if (value instanceof BString description) {
+                    keywords.put(DescriptionKeyword.keywordName, new DescriptionKeyword(description.getValue()));
+                }
+            }
+
+            case "default" -> {
+                keywords.put(DefaultKeyword.keywordName, new DefaultKeyword(value));
+            }
+
+            case "examples" -> {
+                if (value instanceof BArray) {
+                    keywords.put(ExamplesKeyword.keywordName, new ExamplesKeyword(value));
+                }
+            }
+
+            case "readOnly" -> {
+                if (value instanceof Boolean readOnly) {
+                    keywords.put(ReadOnlyKeyword.keywordName, new ReadOnlyKeyword(readOnly));
+                }
+            }
+
+            case "writeOnly" -> {
+                if (value instanceof Boolean writeOnly) {
+                    keywords.put(WriteOnlyKeyword.keywordName, new WriteOnlyKeyword(writeOnly));
+                }
+            }
+
+            case "deprecated" -> {
+                if (value instanceof Boolean deprecated) {
+                    keywords.put(DeprecatedKeyword.keywordName, new DeprecatedKeyword(deprecated));
+                }
+            }
+
             case "enum" -> {
                 if (!(value instanceof BArray arr)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'enum' keyword");
@@ -638,6 +675,6 @@ public class SchemaJsonParser {
         if (anchor == null || anchor.isEmpty()) {
             return false;
         }
-        return anchor.matches("^[A-Za-z_][A-Za-z0-9_.-]*$");
+        return anchor.matches(VALID_ANCHOR_REGEX);
     }
 }

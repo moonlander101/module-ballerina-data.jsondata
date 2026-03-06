@@ -57,8 +57,6 @@ public class RefKeyword extends Keyword {
             return false;
         }
 
-        // Push the target's resource URI onto the dynamic scope when crossing $id boundaries.
-        // This is required so that $dynamicRef can observe the correct outer scope.
         URI resourceUri = getResourceUri(target);
         boolean pushed = false;
         if (resourceUri != null) {
@@ -75,10 +73,6 @@ public class RefKeyword extends Keyword {
         }
     }
 
-    /**
-     * Returns the resource base URI (the {@code $id} value) of the given target schema, or
-     * {@code null} if the target has no {@code $id} (e.g. boolean schema or anonymous sub-schema).
-     */
     private static URI getResourceUri(Object target) {
         if (!(target instanceof Schema schema)) {
             return null;
