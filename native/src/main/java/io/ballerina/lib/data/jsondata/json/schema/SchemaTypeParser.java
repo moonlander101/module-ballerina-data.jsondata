@@ -35,6 +35,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.TitleKeywo
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.WriteOnlyKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.DependentRequiredKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.FormatKeyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.runtime.api.creators.TypeCreator;
@@ -779,6 +780,14 @@ public class SchemaTypeParser {
                 keywords.put(PatternKeyword.keywordName, new PatternKeyword(regexString));
             } else if (value instanceof BString strVal) {
                 keywords.put(PatternKeyword.keywordName, new PatternKeyword(strVal.getValue()));
+            }
+        }
+
+        BString formatKey = StringUtils.fromString("format");
+        if (annotation.containsKey(formatKey)) {
+            Object value = annotation.get(formatKey);
+            if (value instanceof BString strVal) {
+                keywords.put(FormatKeyword.keywordName, new FormatKeyword(strVal.getValue()));
             }
         }
     }
