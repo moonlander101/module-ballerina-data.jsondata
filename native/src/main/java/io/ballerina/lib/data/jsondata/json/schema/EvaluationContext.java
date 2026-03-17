@@ -109,4 +109,33 @@ public class EvaluationContext {
     public SchemaRegistry getSchemaRegistry() {
         return schemaRegistry;
     }
+
+    public void moveToParentContext(String annotationKey) {
+        if (parent == null) {
+            return;
+        }
+
+        Object annotationValue = annotations.get(annotationKey);
+        if (annotationValue == null) {
+            return;
+        }
+        Object parentAnnotationValue = parent.getAnnotation(annotationKey);
+        if (parentAnnotationValue == null) {
+            parent.setAnnotation(annotationKey, annotationValue);
+            return;
+        }
+
+        if (annotationValue instanceof Boolean) {
+            parent.setAnnotation(annotationKey, annotationValue);
+        } else if (parentAnnotationValue instanceof Boolean) {
+            parent.setAnnotation(annotationKey, parentAnnotationValue);
+        } else if (annotationValue instanceof List<?> childAnnotationValues) {
+            List<Object> parentAnnotationValues = (List<Object>) parentAnnotationValue;
+            for (Object value : childAnnotationValues) {
+                if (!parentAnnotationValues.contains(value)) {
+                    parentAnnotationValues.add(value);
+                }
+            }
+        }
+    }
 }

@@ -36,6 +36,9 @@ public class Validator {
             "prefixItems",
             "items",
             "contains",
+            "anyOf",
+            "allOf",
+            "oneOf",
             "unevaluatedProperties",
             "unevaluatedItems"
     );
@@ -61,11 +64,11 @@ public class Validator {
     }
 
     public boolean validate(Object instance, Object schema, EvaluationContext context) {
-        if (schema instanceof Boolean) {
-            if (!(boolean) schema) {
+        if (schema instanceof Boolean boolSchema) {
+            if (!boolSchema) {
                 context.addError("schema", "At " + context.getInstanceLocation() + ": value is not allowed (false schema)");
             }
-            return (boolean) schema;
+            return boolSchema;
         }
 
         boolean isValid = true;

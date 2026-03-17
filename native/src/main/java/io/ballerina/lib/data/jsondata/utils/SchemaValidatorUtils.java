@@ -1,9 +1,13 @@
 package io.ballerina.lib.data.jsondata.utils;
 
 import com.networknt.schema.output.OutputUnit;
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Schema;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ContainsKeyword;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -12,6 +16,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 public class SchemaValidatorUtils {
@@ -85,5 +90,37 @@ public class SchemaValidatorUtils {
             }
         }
         return URI.create("urn:jsonschema:root");
+    }
+
+    public static void createEvaluatedItemsAnnotation(EvaluationContext context) {
+        Object prefixItemsAnnotation = context.getAnnotation(PrefixItemsKeyword.keywordName);
+        Object itemsAnnotation = context.getAnnotation(ItemsKeyword.keywordName);
+        Object containsAnnotation = context.getAnnotation(ContainsKeyword.keywordName);
+        if (prefixItemsAnnotation instanceof Boolean prefixItemsBool && prefixItemsBool) {
+            context.setAnnotation("evaluatedItems", true);
+        } else if (itemsAnnotation instanceof Boolean itemsBool && itemsBool) {
+            context.setAnnotation("evaluatedItems", true);
+        } else if (containsAnnotation instanceof Boolean containsBool && containsBool) {
+            context.setAnnotation("evaluatedItems", true);
+        } else {
+            HashSet<Long> evaluatedIndices = new HashSet<>();
+            if (prefixItemsAnnotation instanceof Long largestIndex) {
+                for (long i = 0; i <= largestIndex; i++) {
+                    evaluatedIndices.add(i);
+                }
+            }
+            if (containsAnnotation instanceof List<?> containsIndices) {
+                for (Object idx : containsIndices) {
+                    if (idx instanceof Long l) {
+                        evaluatedIndices.add(l);
+                    } else if (idx instanceof Integer i) {
+                        evaluatedIndices.add(i.longValue());
+                    }
+                }
+            }
+            if (!evaluatedIndices.isEmpty()) {
+                context.setAnnotation("evaluatedItems", new ArrayList<>(evaluatedIndices));
+            }
+        }
     }
 }

@@ -3,6 +3,7 @@ package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
 import java.util.List;
 
@@ -26,6 +27,8 @@ public class OneOfKeyword extends Keyword {
                     context.addError("oneOf", "At " + context.getInstanceLocation() + ": [oneOf] value matches more than one subschema");
                     return false;
                 }
+                SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
+                schemaContext.moveToParentContext("evaluatedItems");
             }
         }
         if (matchCount == 0) {

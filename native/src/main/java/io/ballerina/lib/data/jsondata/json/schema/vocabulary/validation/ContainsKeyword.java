@@ -44,10 +44,10 @@ public class ContainsKeyword extends Keyword {
 
         Validator validator = new Validator(false);
         List<Long> matchingIndices = new ArrayList<>();
-        for (int i = 0; i < array.size(); i++) {
+        for (long i = 0; i < array.size(); i++) {
             EvaluationContext itemContext = context.createChildContext(String.valueOf(i), "contains/" + i);
             if (validator.validate(array.get(i), containsSchema, itemContext)) {
-                matchingIndices.add((long) i);
+                matchingIndices.add(i);
             }
         }
 

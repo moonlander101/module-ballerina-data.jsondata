@@ -669,7 +669,7 @@ public class SchemaJsonParser {
                 if (parsed instanceof BError) {
                     return parsed;
                 }
-                keywords.put(UnevaluatedItemsKeyword.keywordName, new UnevaluatedItemsKeyword((Schema) parsed));
+                keywords.put(UnevaluatedItemsKeyword.keywordName, new UnevaluatedItemsKeyword(parsed));
             }
 
         }

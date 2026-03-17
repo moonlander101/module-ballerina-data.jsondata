@@ -19,6 +19,7 @@ package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
 import java.util.List;
 
@@ -38,6 +39,8 @@ public class AllOfKeyword extends Keyword {
             if (!validator.validate(instance, keywordValue.get(i), schemaContext)) {
                 return false;
             }
+            SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
+            schemaContext.moveToParentContext("evaluatedItems");
         }
         return true;
     }
