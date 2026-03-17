@@ -19,6 +19,9 @@ package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
+
+import java.util.ArrayList;
 
 public class ThenKeyword extends Keyword {
     public static final String keywordName = "then";
@@ -34,12 +37,18 @@ public class ThenKeyword extends Keyword {
         if (ifResult == null) {
             return true;
         }
-        if (ifResult instanceof Boolean) {
-            boolean ifValid = (Boolean) ifResult;
+        if (ifResult instanceof Boolean ifValid) {
             if (ifValid) {
                 Validator validator = new Validator(false);
                 EvaluationContext thenContext = context.createChildContext("", "then");
-                return validator.validate(instance, keywordValue, thenContext);
+                boolean thenValid = validator.validate(instance, keywordValue, thenContext);
+                if (thenValid) {
+                    SchemaValidatorUtils.createEvaluatedItemsAnnotation(thenContext);
+                    context.setThenEvaluatedItems((ArrayList<Long>) thenContext.getAnnotation("evaluatedItems"));
+                } else {
+                    context.setIfEvaluatedItems(null);
+                }
+                return thenValid;
             }
         }
         return true;

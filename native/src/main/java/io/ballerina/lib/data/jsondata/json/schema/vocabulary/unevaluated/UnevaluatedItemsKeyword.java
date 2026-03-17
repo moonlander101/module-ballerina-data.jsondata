@@ -22,8 +22,10 @@ import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BArray;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class UnevaluatedItemsKeyword extends Keyword {
     public static final String keywordName = "unevaluatedItems";
@@ -40,61 +42,20 @@ public class UnevaluatedItemsKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        boolean isValid = true;
         if (!(instance instanceof BArray array)) {
-            return isValid;
+            return true;
         }
 
-        Object itemsAnnotation = context.getAnnotation("items");
-        if (itemsAnnotation instanceof Boolean itemsBool && itemsBool) {
-            return isValid;
+        if (isAllItemsEvaluated(context)) {
+            return true;
         }
 
-        Object evaluatedItemsAnnotation = context.getAnnotation("evaluatedItems");
-        if (evaluatedItemsAnnotation instanceof Boolean evaluatedItemsBool && evaluatedItemsBool) {
-            return isValid;
-        }
-
-        Object containsAnnotation = context.getAnnotation("contains");
-        if (containsAnnotation instanceof Boolean containsBool && containsBool) {
-            return isValid;
-        }
-
-        long prefixEndIndex = -1;
-        Object prefixItemsAnnotation = context.getAnnotation("prefixItems");
-        if (prefixItemsAnnotation instanceof Boolean prefixItemsBool && prefixItemsBool) {
-            return isValid;
-        } else if (prefixItemsAnnotation instanceof Long largestIndex) {
-            prefixEndIndex = largestIndex;
-            if (prefixEndIndex + 1 >= array.size()) {
-                return isValid;
-            }
-        }
-
-        HashSet<Long> evaluatedIndices = new HashSet<>();
-        if (evaluatedItemsAnnotation instanceof List<?> evaluatedItems) {
-            for (Object idx : evaluatedItems) {
-                if (idx instanceof Long i) {
-                    evaluatedIndices.add(i);
-                } else if (idx instanceof Integer l) {
-                    evaluatedIndices.add(Long.valueOf(l));
-                }
-            }
-        }
-
-        if (containsAnnotation instanceof List<?> containsIndices) {
-            for (Object idx : containsIndices) {
-                if (idx instanceof Long i) {
-                    evaluatedIndices.add(i);
-                } else if (idx instanceof Integer l) {
-                    evaluatedIndices.add(Long.valueOf(l));
-                }
-            }
-        }
+        Set<Long> evaluatedIndices = collectEvaluatedIndices(context);
+        mergeBranchEvaluatedIndices(context, evaluatedIndices);
 
         Validator validator = new Validator(false);
-        long startIndex = prefixEndIndex + 1;
-        for (long i = startIndex; i < array.size(); i++) {
+        boolean isValid = true;
+        for (long i = 0; i < array.size(); i++) {
             if (!evaluatedIndices.contains(i)) {
                 Object item = array.get(i);
                 EvaluationContext itemContext = context.createChildContext(String.valueOf(i), "unevaluatedItems");
@@ -110,5 +71,83 @@ public class UnevaluatedItemsKeyword extends Keyword {
             context.setAnnotation("evaluatedItems", true);
         }
         return isValid;
+    }
+
+    private boolean isAllItemsEvaluated(EvaluationContext context) {
+        Object items = context.getAnnotation("items");
+        if (items instanceof Boolean && (Boolean) items) {
+            return true;
+        }
+
+        Object evaluatedItems = context.getAnnotation("evaluatedItems");
+        if (evaluatedItems instanceof Boolean && (Boolean) evaluatedItems) {
+            return true;
+        }
+
+        Object contains = context.getAnnotation("contains");
+        if (contains instanceof Boolean && (Boolean) contains) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private Set<Long> collectEvaluatedIndices(EvaluationContext context) {
+        Set<Long> indices = new HashSet<>();
+
+        Object prefixItems = context.getAnnotation("prefixItems");
+        if (prefixItems instanceof Long lastIndex) {
+            for (long i = 0; i <= lastIndex; i++) {
+                indices.add(i);
+            }
+        }
+
+        Object contains = context.getAnnotation("contains");
+        if (contains instanceof List) {
+            for (Object idx : (List<?>) contains) {
+                if (idx instanceof Long) {
+                    indices.add((Long) idx);
+                }
+            }
+        }
+
+        Object evaluatedItems = context.getAnnotation("evaluatedItems");
+        if (evaluatedItems instanceof List) {
+            for (Object idx : (List<?>) evaluatedItems) {
+                if (idx instanceof Long) {
+                    indices.add((Long) idx);
+                }
+            }
+        }
+
+        return indices;
+    }
+
+    private void mergeBranchEvaluatedIndices(EvaluationContext context, Set<Long> indices) {
+        Object ifResult = context.getAnnotation("if");
+        if (!(ifResult instanceof Boolean)) {
+            return;
+        }
+
+        boolean ifValid = (Boolean) ifResult;
+
+        ArrayList<Long> ifIndices = context.getIfEvaluatedItems();
+        if (ifIndices != null) {
+            indices.addAll(ifIndices);
+        }
+
+        if (ifValid) {
+            ArrayList<Long> thenIndices = context.getThenEvaluatedItems();
+            if (thenIndices != null) {
+                indices.addAll(thenIndices);
+            }
+        }
+
+        if (!ifValid) {
+            ArrayList<Long> elseIndices = context.getElseEvaluatedItems();
+            if (elseIndices != null) {
+                indices.addAll(elseIndices);
+            }
+        }
     }
 }

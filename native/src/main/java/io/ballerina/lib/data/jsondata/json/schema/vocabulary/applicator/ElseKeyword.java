@@ -19,6 +19,9 @@ package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
+
+import java.util.ArrayList;
 
 public class ElseKeyword extends Keyword {
     public static final String keywordName = "else";
@@ -39,7 +42,13 @@ public class ElseKeyword extends Keyword {
             if (!ifValid) {
                 Validator validator = new Validator(false);
                 EvaluationContext elseContext = context.createChildContext("", "else");
-                return validator.validate(instance, keywordValue, elseContext);
+                boolean elseValid = validator.validate(instance, keywordValue, elseContext);
+                if (elseValid) {
+                    SchemaValidatorUtils.createEvaluatedItemsAnnotation(elseContext);
+                    context.setElseEvaluatedItems((ArrayList<Long>) elseContext.getAnnotation("evaluatedItems"));
+                } else {
+                    context.setIfEvaluatedItems(null);
+                }
             }
         }
         return true;

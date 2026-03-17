@@ -33,6 +33,10 @@ public class EvaluationContext {
     private final SchemaRegistry schemaRegistry;
     private final ArrayList<URI> dynamicScope;
 
+    private ArrayList<Long> ifEvaluatedItems;
+    private ArrayList<Long> thenEvaluatedItems;
+    private ArrayList<Long> elseEvaluatedItems;
+
     public EvaluationContext() {
         this(null, "", "", null, new ArrayList<>());
     }
@@ -108,6 +112,39 @@ public class EvaluationContext {
 
     public SchemaRegistry getSchemaRegistry() {
         return schemaRegistry;
+    }
+
+    public void setIfEvaluatedItems(ArrayList<Long> ifEvaluatedItems) {
+        this.ifEvaluatedItems = ifEvaluatedItems;
+    }
+
+    public ArrayList<Long> getIfEvaluatedItems() {
+        if (ifEvaluatedItems != null) {
+            return ifEvaluatedItems;
+        }
+        return parent != null ? parent.getIfEvaluatedItems() : null;
+    }
+
+    public void setThenEvaluatedItems(ArrayList<Long> thenEvaluatedItems) {
+        this.thenEvaluatedItems = thenEvaluatedItems;
+    }
+
+    public ArrayList<Long> getThenEvaluatedItems() {
+        if (thenEvaluatedItems != null) {
+            return thenEvaluatedItems;
+        }
+        return parent != null ? parent.getThenEvaluatedItems() : null;
+    }
+
+    public void setElseEvaluatedItems(ArrayList<Long> elseEvaluatedItems) {
+        this.elseEvaluatedItems = elseEvaluatedItems;
+    }
+
+    public ArrayList<Long> getElseEvaluatedItems() {
+        if (elseEvaluatedItems != null) {
+            return elseEvaluatedItems;
+        }
+        return parent != null ? parent.getElseEvaluatedItems() : null;
     }
 
     public void moveToParentContext(String annotationKey) {

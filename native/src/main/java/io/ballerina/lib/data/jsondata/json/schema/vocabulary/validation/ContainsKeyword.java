@@ -76,7 +76,6 @@ public class ContainsKeyword extends Keyword {
             context.setAnnotation("contains", matchingIndices);
         }
 
-        System.out.println("Validation result for [contains]: " + valid);
         return valid;
     }
 

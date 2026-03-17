@@ -21,6 +21,8 @@ import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
+import java.util.ArrayList;
+
 public class IfKeyword extends Keyword {
     public static final String keywordName = "if";
     private final Object keywordValue;
@@ -35,6 +37,8 @@ public class IfKeyword extends Keyword {
         EvaluationContext ifContext = context.createChildContext("", "if");
         boolean ifValid = validator.validate(instance, keywordValue, ifContext);
         context.setAnnotation(keywordName, ifValid);
+        SchemaValidatorUtils.createEvaluatedItemsAnnotation(ifContext);
+        context.setIfEvaluatedItems((ArrayList<Long>) ifContext.getAnnotation("evaluatedItems"));
         return true;
     }
 

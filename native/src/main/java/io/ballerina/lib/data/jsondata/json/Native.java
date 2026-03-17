@@ -45,6 +45,7 @@ import io.ballerina.runtime.api.values.BTypedesc;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.net.StandardSocketOptions;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Map;
@@ -99,12 +100,11 @@ public class Native {
 
                 SchemaRegistry registry = new SchemaRegistry();
                 SchemaJsonParser parser = new SchemaJsonParser(registry);
-
                 Object parsedSchema = parser.parse(schema);
                 if (parsedSchema instanceof BError) {
                     return parsedSchema;
                 }
-                System.out.println("Custom parser result: " + parsedSchema);
+//                System.out.println("Custom parser result: " + parsedSchema);
                 Validator val = new Validator(false);
                 EvaluationContext context = new EvaluationContext(registry);
                 
@@ -112,14 +112,15 @@ public class Native {
                 context.pushDynamicScope(rootResourceUri);
                 if (!val.validate(jsonValue, parsedSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());
-                    System.out.println("Custom validation failed:\n- " + errorMessage);
+//                    System.out.println("Custom validation failed:\n- " + errorMessage);
+                    err = DiagnosticLog.createJsonError(errorMessage);
                 } else {
                     System.out.println("Custom validation successful");
                 }
                 context.popDynamicScope();
 
-                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
-                err = validator.validate(jsonValue, schemaStr);
+//                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
+//                err = validator.validate(jsonValue, schemaStr);
 
             } else if (schema instanceof BArray schemaArray) {
                 int length = (int) schemaArray.getLength();
