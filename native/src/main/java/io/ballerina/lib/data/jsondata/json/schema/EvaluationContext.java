@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.net.URI;
+import java.util.Set;
 
 public class EvaluationContext {
     private final String instanceLocation;
@@ -174,6 +175,12 @@ public class EvaluationContext {
                     parentList.add(value);
                 }
             }
+            return;
+        }
+
+        if (annotationValue instanceof Set<?> childAnnotationValues && parentAnnotationValue instanceof Set<?> parentAnnotationValues) {
+            Set<Object> parentSet = (Set<Object>) parentAnnotationValues;
+            parentSet.addAll(childAnnotationValues);
         }
     }
 }

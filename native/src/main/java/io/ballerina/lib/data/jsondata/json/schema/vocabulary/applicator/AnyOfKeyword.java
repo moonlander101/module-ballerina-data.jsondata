@@ -41,7 +41,9 @@ public class AnyOfKeyword extends Keyword {
             if (validator.validate(instance, keywordValue.get(i), schemaContext)) {
                 isValid = true;
                 SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
+                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(schemaContext);
                 schemaContext.moveToParentContext("evaluatedItems");
+                schemaContext.moveToParentContext("evaluatedProperties");
             }
         }
         context.addError("anyOf", "At " + context.getInstanceLocation() + ": [anyOf] value does not match any of the subschemas");

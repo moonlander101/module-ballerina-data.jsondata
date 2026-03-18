@@ -32,6 +32,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.ReadOnlyKe
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.TitleKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.WriteOnlyKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.unevaluated.UnevaluatedItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.unevaluated.UnevaluatedPropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ConstKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ContainsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.DependentRequiredKeyword;
@@ -674,6 +675,14 @@ public class SchemaJsonParser {
                     return parsed;
                 }
                 keywords.put(UnevaluatedItemsKeyword.keywordName, new UnevaluatedItemsKeyword(parsed));
+            }
+
+            case "unevaluatedProperties" -> {
+                Object parsed = parse(value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(UnevaluatedPropertiesKeyword.keywordName, new UnevaluatedPropertiesKeyword(parsed));
             }
 
         }

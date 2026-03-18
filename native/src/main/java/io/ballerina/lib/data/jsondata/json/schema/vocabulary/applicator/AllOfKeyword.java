@@ -40,7 +40,9 @@ public class AllOfKeyword extends Keyword {
                 return false;
             }
             SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
+            SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(schemaContext);
             schemaContext.moveToParentContext("evaluatedItems");
+            schemaContext.moveToParentContext("evaluatedProperties");
         }
         return true;
     }

@@ -72,7 +72,6 @@ public class AdditionalPropertiesKeyword extends Keyword {
                 }
                 return isValid;
             }
-            return true;
         }
 
         Validator validator = new Validator(false);
@@ -100,7 +99,9 @@ public class AdditionalPropertiesKeyword extends Keyword {
             }
         }
 
-        context.setAnnotation(keywordName, validatedPropertyNames);
+        if (isValid) {
+            context.setAnnotation(keywordName, validatedPropertyNames);
+        }
 
         return isValid;
     }

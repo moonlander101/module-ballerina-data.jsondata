@@ -28,7 +28,9 @@ public class OneOfKeyword extends Keyword {
                     return false;
                 }
                 SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
+                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(schemaContext);
                 schemaContext.moveToParentContext("evaluatedItems");
+                schemaContext.moveToParentContext("evaluatedProperties");
             }
         }
         if (matchCount == 0) {

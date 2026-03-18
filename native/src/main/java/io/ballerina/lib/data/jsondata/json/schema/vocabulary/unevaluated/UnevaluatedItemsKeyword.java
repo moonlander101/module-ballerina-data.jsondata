@@ -49,6 +49,10 @@ public class UnevaluatedItemsKeyword extends Keyword {
             return true;
         }
 
+        System.out.println("If : " + context.getIfEvaluatedItems());
+        System.out.println("Then : " + context.getThenEvaluatedItems());
+        System.out.println("Else : " + context.getElseEvaluatedItems());
+
         Set<Long> evaluatedIndices = collectEvaluatedIndices(context);
         mergeBranchEvaluatedIndices(context, evaluatedIndices);
 
