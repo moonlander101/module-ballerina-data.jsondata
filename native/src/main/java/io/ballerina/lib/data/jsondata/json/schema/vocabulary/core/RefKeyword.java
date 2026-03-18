@@ -21,6 +21,7 @@ import io.ballerina.lib.data.jsondata.json.schema.Schema;
 import io.ballerina.lib.data.jsondata.json.schema.SchemaRegistry;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
 import java.net.URI;
 
@@ -65,7 +66,15 @@ public class RefKeyword extends Keyword {
         }
         try {
             EvaluationContext refContext = context.createChildContext("", keywordName);
-            return new Validator(false).validate(instance, target, refContext);
+            Validator validator = new Validator(false);
+            boolean isValid = validator.validate(instance, target, refContext);
+            if (isValid) {
+                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
+                SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
+                refContext.moveToParentContext("evaluatedProperties");
+                refContext.moveToParentContext("evaluatedItems");
+            }
+            return isValid;
         } finally {
             if (pushed) {
                 context.popDynamicScope();

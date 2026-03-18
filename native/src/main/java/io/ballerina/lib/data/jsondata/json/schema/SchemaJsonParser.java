@@ -185,7 +185,7 @@ public class SchemaJsonParser {
             }
 
             Schema schema = new Schema(keywords);
-            // The root case
+            // The root case with no id
             if (scopeStack.isEmpty() && resolvedId == null) {
                 registry.put(URI.create(MOCK_ROOT_URI), schema);
             }

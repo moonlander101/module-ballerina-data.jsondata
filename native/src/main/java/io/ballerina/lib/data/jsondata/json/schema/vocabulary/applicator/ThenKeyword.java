@@ -45,6 +45,8 @@ public class ThenKeyword extends Keyword {
                 if (thenValid) {
                     SchemaValidatorUtils.createEvaluatedItemsAnnotation(thenContext);
                     context.setThenEvaluatedItems(thenContext.getAnnotation("evaluatedItems"));
+                    SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(thenContext);
+                    context.setAnnotation("thenEvaluatedProperties", thenContext.getAnnotation("evaluatedProperties"));
                 }
                 return thenValid;
             }

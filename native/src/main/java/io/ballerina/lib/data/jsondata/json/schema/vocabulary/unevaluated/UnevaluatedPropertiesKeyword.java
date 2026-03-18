@@ -49,7 +49,9 @@ public class UnevaluatedPropertiesKeyword extends Keyword {
         }
 
         Set<String> evaluatedProperties = collectEvaluatedProperties(context);
-        System.out.println("evaluatedProperties = " + evaluatedProperties);
+        System.out.println("Before merge evaluatedProperties = " + evaluatedProperties);
+        mergeBranchEvaluatedProperties(context, evaluatedProperties);
+        System.out.println("After merge evaluatedProperties = " + evaluatedProperties);
 
         Validator validator = new Validator(false);
         boolean isValid = true;
@@ -88,6 +90,21 @@ public class UnevaluatedPropertiesKeyword extends Keyword {
             return true;
         }
 
+        Object ifEvaluatedProperties = context.getAnnotation("ifEvaluatedProperties");
+        if (ifEvaluatedProperties instanceof Boolean && (Boolean) ifEvaluatedProperties) {
+            return true;
+        }
+
+        Object thenEvaluatedProperties = context.getAnnotation("thenEvaluatedProperties");
+        if (thenEvaluatedProperties instanceof Boolean && (Boolean) thenEvaluatedProperties) {
+            return true;
+        }
+
+        Object elseEvaluatedProperties = context.getAnnotation("elseEvaluatedProperties");
+        if (elseEvaluatedProperties instanceof Boolean && (Boolean) elseEvaluatedProperties) {
+            return true;
+        }
+
         Object properties = context.getAnnotation("properties");
         Set<String> propertiesEvaluated = properties instanceof Set ? (Set<String>) properties : null;
         Object patternProperties = context.getAnnotation("patternProperties");
@@ -115,6 +132,34 @@ public class UnevaluatedPropertiesKeyword extends Keyword {
         for (Object propertyName : propertySet) {
             if (propertyName instanceof String name) {
                 evaluatedProperties.add(name);
+            }
+        }
+    }
+
+    private void mergeBranchEvaluatedProperties(EvaluationContext context, Set<String> properties) {
+        Object ifResult = context.getAnnotation("if");
+        if (!(ifResult instanceof Boolean)) {
+            return;
+        }
+
+        boolean ifValid = (Boolean) ifResult;
+
+        Object ifProps = context.getAnnotation("ifEvaluatedProperties");
+        if (ifProps instanceof Set<?>) {
+            properties.addAll((Set<String>) ifProps);
+        }
+
+        if (ifValid) {
+            Object thenProps = context.getAnnotation("thenEvaluatedProperties");
+            if (thenProps instanceof Set<?>) {
+                properties.addAll((Set<String>) thenProps);
+            }
+        }
+
+        if (!ifValid) {
+            Object elseProps = context.getAnnotation("elseEvaluatedProperties");
+            if (elseProps instanceof Set<?>) {
+                properties.addAll((Set<String>) elseProps);
             }
         }
     }
