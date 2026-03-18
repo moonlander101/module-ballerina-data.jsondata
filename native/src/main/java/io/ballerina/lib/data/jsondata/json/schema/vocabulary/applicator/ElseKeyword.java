@@ -45,9 +45,7 @@ public class ElseKeyword extends Keyword {
                 boolean elseValid = validator.validate(instance, keywordValue, elseContext);
                 if (elseValid) {
                     SchemaValidatorUtils.createEvaluatedItemsAnnotation(elseContext);
-                    context.setElseEvaluatedItems((ArrayList<Long>) elseContext.getAnnotation("evaluatedItems"));
-                } else {
-                    context.setIfEvaluatedItems(null);
+                    context.setElseEvaluatedItems(elseContext.getAnnotation("evaluatedItems"));
                 }
             }
         }

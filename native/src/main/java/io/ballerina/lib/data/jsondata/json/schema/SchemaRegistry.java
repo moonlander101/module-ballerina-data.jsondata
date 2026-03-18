@@ -155,4 +155,30 @@ public class SchemaRegistry {
             return uriToResolve;
         }
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SchemaRegistry{\n");
+        sb.append("  schemas: ").append(schemas.size()).append(" entries\n");
+        for (Map.Entry<URI, Object> entry : schemas.entrySet()) {
+            sb.append("    ").append(entry.getKey()).append(" -> ");
+            Object value = entry.getValue();
+            if (value instanceof Schema) {
+                Schema schema = (Schema) value;
+                sb.append("Schema[").append(schema.getKeywords().keySet()).append("]");
+            } else {
+                sb.append(value.getClass().getSimpleName());
+            }
+            sb.append("\n");
+        }
+        if (!dynamicAnchorUris.isEmpty()) {
+            sb.append("  dynamicAnchors: ").append(dynamicAnchorUris.size()).append(" entries\n");
+            for (URI uri : dynamicAnchorUris) {
+                sb.append("    ").append(uri).append("\n");
+            }
+        }
+        sb.append("}");
+        return sb.toString();
+    }
 }

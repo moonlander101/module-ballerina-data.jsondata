@@ -17,7 +17,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.unevaluated;
 
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
-import io.ballerina.lib.data.jsondata.json.schema.Schema;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BArray;
@@ -89,6 +88,21 @@ public class UnevaluatedItemsKeyword extends Keyword {
             return true;
         }
 
+        Object ifEvaluatedItems = context.getIfEvaluatedItems();
+        if (ifEvaluatedItems instanceof Boolean && (Boolean) ifEvaluatedItems) {
+            return true;
+        }
+
+        Object thenEvaluatedItems = context.getThenEvaluatedItems();
+        if (thenEvaluatedItems instanceof Boolean && (Boolean) thenEvaluatedItems) {
+            return true;
+        }
+
+        Object elseEvaluatedItems = context.getElseEvaluatedItems();
+        if (elseEvaluatedItems instanceof Boolean && (Boolean) elseEvaluatedItems) {
+            return true;
+        }
+
         return false;
     }
 
@@ -131,22 +145,22 @@ public class UnevaluatedItemsKeyword extends Keyword {
 
         boolean ifValid = (Boolean) ifResult;
 
-        ArrayList<Long> ifIndices = context.getIfEvaluatedItems();
-        if (ifIndices != null) {
-            indices.addAll(ifIndices);
+        Object ifIndices = context.getIfEvaluatedItems();
+        if (ifIndices instanceof ArrayList<?>) {
+            indices.addAll((ArrayList<Long>) ifIndices);
         }
 
         if (ifValid) {
-            ArrayList<Long> thenIndices = context.getThenEvaluatedItems();
-            if (thenIndices != null) {
-                indices.addAll(thenIndices);
+            Object thenIndices = context.getThenEvaluatedItems();
+            if (thenIndices instanceof ArrayList<?>) {
+                indices.addAll((ArrayList<Long>) thenIndices);
             }
         }
 
         if (!ifValid) {
-            ArrayList<Long> elseIndices = context.getElseEvaluatedItems();
-            if (elseIndices != null) {
-                indices.addAll(elseIndices);
+            Object elseIndices = context.getElseEvaluatedItems();
+            if (elseIndices instanceof ArrayList<?>) {
+                indices.addAll((ArrayList<Long>) elseIndices);
             }
         }
     }

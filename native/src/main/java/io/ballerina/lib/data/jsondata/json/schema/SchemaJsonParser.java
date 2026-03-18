@@ -71,7 +71,7 @@ import java.util.Stack;
 
 
 public class SchemaJsonParser {
-    private static final String MOCK_ROOT_URI = "urn:jsonschema:root";
+    private static final String MOCK_ROOT_URI = "http://wso2.com/schema-root";
     private static final String VALID_ANCHOR_REGEX = "^[A-Za-z_][A-Za-z0-9_.-]*$";
 
     private final Stack<String> scopeStack = new Stack<>();
@@ -184,6 +184,10 @@ public class SchemaJsonParser {
             }
 
             Schema schema = new Schema(keywords);
+            // The root case
+            if (scopeStack.isEmpty() && resolvedId == null) {
+                registry.put(URI.create(MOCK_ROOT_URI), schema);
+            }
 
             // Register by $id so that absolute-URI $refs resolve to this schema
             if (resolvedId != null) {

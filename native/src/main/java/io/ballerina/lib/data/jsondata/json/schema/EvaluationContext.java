@@ -33,9 +33,9 @@ public class EvaluationContext {
     private final SchemaRegistry schemaRegistry;
     private final ArrayList<URI> dynamicScope;
 
-    private ArrayList<Long> ifEvaluatedItems;
-    private ArrayList<Long> thenEvaluatedItems;
-    private ArrayList<Long> elseEvaluatedItems;
+    private Object ifEvaluatedItems;
+    private Object thenEvaluatedItems;
+    private Object elseEvaluatedItems;
 
     public EvaluationContext() {
         this(null, "", "", null, new ArrayList<>());
@@ -114,37 +114,28 @@ public class EvaluationContext {
         return schemaRegistry;
     }
 
-    public void setIfEvaluatedItems(ArrayList<Long> ifEvaluatedItems) {
+    public void setIfEvaluatedItems(Object ifEvaluatedItems) {
         this.ifEvaluatedItems = ifEvaluatedItems;
     }
 
-    public ArrayList<Long> getIfEvaluatedItems() {
-        if (ifEvaluatedItems != null) {
-            return ifEvaluatedItems;
-        }
-        return parent != null ? parent.getIfEvaluatedItems() : null;
+    public Object getIfEvaluatedItems() {
+        return ifEvaluatedItems;
     }
 
-    public void setThenEvaluatedItems(ArrayList<Long> thenEvaluatedItems) {
+    public void setThenEvaluatedItems(Object thenEvaluatedItems) {
         this.thenEvaluatedItems = thenEvaluatedItems;
     }
 
-    public ArrayList<Long> getThenEvaluatedItems() {
-        if (thenEvaluatedItems != null) {
-            return thenEvaluatedItems;
-        }
-        return parent != null ? parent.getThenEvaluatedItems() : null;
+    public Object getThenEvaluatedItems() {
+        return thenEvaluatedItems;
     }
 
-    public void setElseEvaluatedItems(ArrayList<Long> elseEvaluatedItems) {
+    public void setElseEvaluatedItems(Object elseEvaluatedItems) {
         this.elseEvaluatedItems = elseEvaluatedItems;
     }
 
-    public ArrayList<Long> getElseEvaluatedItems() {
-        if (elseEvaluatedItems != null) {
-            return elseEvaluatedItems;
-        }
-        return parent != null ? parent.getElseEvaluatedItems() : null;
+    public Object getElseEvaluatedItems() {
+        return elseEvaluatedItems;
     }
 
     public void moveToParentContext(String annotationKey) {
@@ -162,15 +153,25 @@ public class EvaluationContext {
             return;
         }
 
-        if (annotationValue instanceof Boolean) {
-            parent.setAnnotation(annotationKey, annotationValue);
-        } else if (parentAnnotationValue instanceof Boolean) {
-            parent.setAnnotation(annotationKey, parentAnnotationValue);
-        } else if (annotationValue instanceof List<?> childAnnotationValues) {
-            List<Object> parentAnnotationValues = (List<Object>) parentAnnotationValue;
+        if (annotationValue instanceof Boolean childBool) {
+            if (childBool) {
+                parent.setAnnotation(annotationKey, true);
+            }
+            return;
+        }
+
+        if (parentAnnotationValue instanceof Boolean parentBool) {
+            if (!parentBool) {
+                parent.setAnnotation(annotationKey, annotationValue);
+            }
+            return;
+        }
+
+        if (annotationValue instanceof List<?> childAnnotationValues && parentAnnotationValue instanceof List<?> parentAnnotationValues) {
+            List<Object> parentList = (List<Object>) parentAnnotationValues;
             for (Object value : childAnnotationValues) {
-                if (!parentAnnotationValues.contains(value)) {
-                    parentAnnotationValues.add(value);
+                if (!parentList.contains(value)) {
+                    parentList.add(value);
                 }
             }
         }
