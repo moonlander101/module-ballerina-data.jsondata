@@ -34,10 +34,6 @@ public class EvaluationContext {
     private final SchemaRegistry schemaRegistry;
     private final ArrayList<URI> dynamicScope;
 
-    private Object ifEvaluatedItems;
-    private Object thenEvaluatedItems;
-    private Object elseEvaluatedItems;
-
     public EvaluationContext() {
         this(null, "", "", null, new ArrayList<>());
     }
@@ -113,30 +109,6 @@ public class EvaluationContext {
 
     public SchemaRegistry getSchemaRegistry() {
         return schemaRegistry;
-    }
-
-    public void setIfEvaluatedItems(Object ifEvaluatedItems) {
-        this.ifEvaluatedItems = ifEvaluatedItems;
-    }
-
-    public Object getIfEvaluatedItems() {
-        return ifEvaluatedItems;
-    }
-
-    public void setThenEvaluatedItems(Object thenEvaluatedItems) {
-        this.thenEvaluatedItems = thenEvaluatedItems;
-    }
-
-    public Object getThenEvaluatedItems() {
-        return thenEvaluatedItems;
-    }
-
-    public void setElseEvaluatedItems(Object elseEvaluatedItems) {
-        this.elseEvaluatedItems = elseEvaluatedItems;
-    }
-
-    public Object getElseEvaluatedItems() {
-        return elseEvaluatedItems;
     }
 
     public void moveToParentContext(String annotationKey) {

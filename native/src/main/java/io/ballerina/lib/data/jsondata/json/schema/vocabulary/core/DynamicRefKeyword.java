@@ -21,6 +21,7 @@ import io.ballerina.lib.data.jsondata.json.schema.Schema;
 import io.ballerina.lib.data.jsondata.json.schema.SchemaRegistry;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -96,7 +97,14 @@ public class DynamicRefKeyword extends Keyword {
         }
         try {
             EvaluationContext refContext = context.createChildContext("", keywordName);
-            return new Validator(false).validate(instance, target, refContext);
+            boolean isValid = new Validator(false).validate(instance, target, refContext);
+            if (isValid) {
+                SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
+                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
+                refContext.moveToParentContext("evaluatedItems");
+                refContext.moveToParentContext("evaluatedProperties");
+            }
+            return isValid;
         } finally {
             if (pushed) {
                 context.popDynamicScope();

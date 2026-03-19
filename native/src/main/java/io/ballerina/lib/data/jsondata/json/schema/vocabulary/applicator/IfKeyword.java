@@ -40,7 +40,7 @@ public class IfKeyword extends Keyword {
         if (ifValid) {
             SchemaValidatorUtils.createEvaluatedItemsAnnotation(ifContext);
             SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(ifContext);
-            context.setIfEvaluatedItems(ifContext.getAnnotation("evaluatedItems"));
+            context.setAnnotation("ifEvaluatedItems", ifContext.getAnnotation("evaluatedItems"));
             context.setAnnotation("ifEvaluatedProperties", ifContext.getAnnotation("evaluatedProperties"));
         }
         return true;

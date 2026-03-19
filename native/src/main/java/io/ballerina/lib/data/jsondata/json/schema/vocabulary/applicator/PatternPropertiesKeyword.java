@@ -65,8 +65,7 @@ public class PatternPropertiesKeyword extends Keyword {
             for (Map.Entry<Pattern, Object> entry : patternSchemaMap.entrySet()) {
                 Pattern pattern = entry.getKey();
                 Object schema = entry.getValue();
-
-                if (pattern.matcher(propertyName).matches()) {
+                if (pattern.matcher(propertyName).find()) {
                     propertyMatched = true;
 
                     EvaluationContext propertyContext = context.createChildContext(

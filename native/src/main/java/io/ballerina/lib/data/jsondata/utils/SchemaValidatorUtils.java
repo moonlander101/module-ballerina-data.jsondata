@@ -95,8 +95,27 @@ public class SchemaValidatorUtils {
         Object prefixItemsAnnotation = context.getAnnotation(PrefixItemsKeyword.keywordName);
         Object itemsAnnotation = context.getAnnotation(ItemsKeyword.keywordName);
         Object containsAnnotation = context.getAnnotation(ContainsKeyword.keywordName);
-        
+
+        Object ifEvaluatedItems = context.getAnnotation("ifEvaluatedItems");
+        Object thenEvaluatedItems = context.getAnnotation("thenEvaluatedItems");
+        Object elseEvaluatedItems = context.getAnnotation("elseEvaluatedItems");
+
+        Object ifResult = context.getAnnotation("if");
+
         boolean allEvaluated = false;
+        if (ifResult instanceof Boolean ifValid) {
+            if (ifValid) {
+                if (ifEvaluatedItems instanceof Boolean && (Boolean) ifEvaluatedItems) {
+                    allEvaluated = true;
+                } else if (thenEvaluatedItems instanceof Boolean && (Boolean) thenEvaluatedItems) {
+                    allEvaluated = true;
+                }
+            } else {
+                if (elseEvaluatedItems instanceof Boolean && (Boolean) elseEvaluatedItems) {
+                    allEvaluated = true;
+                }
+            }
+        }
         if (prefixItemsAnnotation instanceof Boolean prefixItemsBool && prefixItemsBool) {
             allEvaluated = true;
         } else if (itemsAnnotation instanceof Boolean itemsBool && itemsBool) {
@@ -137,6 +156,38 @@ public class SchemaValidatorUtils {
                 }
             }
         }
+        if (ifResult instanceof Boolean ifValid) {
+            if (ifValid) {
+                if (ifEvaluatedItems instanceof List<?> list) {
+                    for (Object idx : list) {
+                        if (idx instanceof Long l) {
+                            evaluatedIndices.add(l);
+                        } else if (idx instanceof Integer i) {
+                            evaluatedIndices.add(i.longValue());
+                        }
+                    }
+                }
+                if (thenEvaluatedItems instanceof List<?> list) {
+                    for (Object idx : list) {
+                        if (idx instanceof Long l) {
+                            evaluatedIndices.add(l);
+                        } else if (idx instanceof Integer i) {
+                            evaluatedIndices.add(i.longValue());
+                        }
+                    }
+                }
+            } else {
+                if (elseEvaluatedItems instanceof List<?> list) {
+                    for (Object idx : list) {
+                        if (idx instanceof Long l) {
+                            evaluatedIndices.add(l);
+                        } else if (idx instanceof Integer i) {
+                            evaluatedIndices.add(i.longValue());
+                        }
+                    }
+                }
+            }
+        }
         if (!evaluatedIndices.isEmpty()) {
             context.setAnnotation("evaluatedItems", new ArrayList<>(evaluatedIndices));
         }
@@ -148,7 +199,26 @@ public class SchemaValidatorUtils {
         Object patternPropertiesAnnotation = context.getAnnotation("patternProperties");
         Object additionalPropertiesAnnotation = context.getAnnotation("additionalProperties");
 
+        Object ifEvaluatedProperties = context.getAnnotation("ifEvaluatedProperties");
+        Object thenEvaluatedProperties = context.getAnnotation("thenEvaluatedProperties");
+        Object elseEvaluatedProperties = context.getAnnotation("elseEvaluatedProperties");
+
+        Object ifResult = context.getAnnotation("if");
+
         boolean allEvaluated = false;
+        if (ifResult instanceof Boolean ifValid) {
+            if (ifValid) {
+                if (ifEvaluatedProperties instanceof Boolean && (Boolean) ifEvaluatedProperties) {
+                    allEvaluated = true;
+                } else if (thenEvaluatedProperties instanceof Boolean && (Boolean) thenEvaluatedProperties) {
+                    allEvaluated = true;
+                }
+            } else {
+                if (elseEvaluatedProperties instanceof Boolean && (Boolean) elseEvaluatedProperties) {
+                    allEvaluated = true;
+                }
+            }
+        }
         if (propertiesAnnotation instanceof Boolean propertiesBool && propertiesBool) {
             allEvaluated = true;
         } else if (patternPropertiesAnnotation instanceof Boolean patternPropertiesBool && patternPropertiesBool) {
@@ -190,6 +260,32 @@ public class SchemaValidatorUtils {
             for (Object value : additionalProperties) {
                 if (value instanceof String propertyName) {
                     evaluatedProperties.add(propertyName);
+                }
+            }
+        }
+        if (ifResult instanceof Boolean ifValid) {
+            if (ifValid) {
+                if (ifEvaluatedProperties instanceof Set<?> ifProps) {
+                    for (Object value : ifProps) {
+                        if (value instanceof String propertyName) {
+                            evaluatedProperties.add(propertyName);
+                        }
+                    }
+                }
+                if (thenEvaluatedProperties instanceof Set<?> thenProps) {
+                    for (Object value : thenProps) {
+                        if (value instanceof String propertyName) {
+                            evaluatedProperties.add(propertyName);
+                        }
+                    }
+                }
+            } else {
+                if (elseEvaluatedProperties instanceof Set<?> elseProps) {
+                    for (Object value : elseProps) {
+                        if (value instanceof String propertyName) {
+                            evaluatedProperties.add(propertyName);
+                        }
+                    }
                 }
             }
         }

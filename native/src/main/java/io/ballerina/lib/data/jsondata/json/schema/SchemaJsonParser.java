@@ -156,7 +156,7 @@ public class SchemaJsonParser {
                         BMap<BString, Object> defs = (BMap<BString, Object>) value;
                         for (BString defName : defs.getKeys()) {
                             Object defRaw = defs.get(defName);
-                            Object defParsed = parse(defRaw);
+                            Object defParsed = parse(defRaw); // TODO: calling parse like this may be bad
                             if (defParsed instanceof BError) {
                                 return defParsed;
                             }

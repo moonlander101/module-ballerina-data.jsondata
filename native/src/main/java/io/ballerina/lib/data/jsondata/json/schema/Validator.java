@@ -37,6 +37,7 @@ public class Validator {
             "items",
             "$ref",
             "$dynamicRef",
+            "dependentSchemas",
             "if",
             "then",
             "else",

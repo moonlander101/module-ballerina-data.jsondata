@@ -49,9 +49,7 @@ public class UnevaluatedPropertiesKeyword extends Keyword {
         }
 
         Set<String> evaluatedProperties = collectEvaluatedProperties(context);
-        System.out.println("Before merge evaluatedProperties = " + evaluatedProperties);
         mergeBranchEvaluatedProperties(context, evaluatedProperties);
-        System.out.println("After merge evaluatedProperties = " + evaluatedProperties);
 
         Validator validator = new Validator(false);
         boolean isValid = true;
@@ -71,7 +69,6 @@ public class UnevaluatedPropertiesKeyword extends Keyword {
         }
 
         if (isValid) {
-            System.out.println("Setting unevaluatedProperties annotation to true at " + context.getInstanceLocation());
             context.setAnnotation("evaluatedProperties", true);
         }
 

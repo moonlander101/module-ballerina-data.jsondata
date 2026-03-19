@@ -88,17 +88,17 @@ public class UnevaluatedItemsKeyword extends Keyword {
             return true;
         }
 
-        Object ifEvaluatedItems = context.getIfEvaluatedItems();
+        Object ifEvaluatedItems = context.getAnnotation("ifEvaluatedItems");
         if (ifEvaluatedItems instanceof Boolean && (Boolean) ifEvaluatedItems) {
             return true;
         }
 
-        Object thenEvaluatedItems = context.getThenEvaluatedItems();
+        Object thenEvaluatedItems = context.getAnnotation("thenEvaluatedItems");
         if (thenEvaluatedItems instanceof Boolean && (Boolean) thenEvaluatedItems) {
             return true;
         }
 
-        Object elseEvaluatedItems = context.getElseEvaluatedItems();
+        Object elseEvaluatedItems = context.getAnnotation("elseEvaluatedItems");
         if (elseEvaluatedItems instanceof Boolean && (Boolean) elseEvaluatedItems) {
             return true;
         }
@@ -145,20 +145,20 @@ public class UnevaluatedItemsKeyword extends Keyword {
 
         boolean ifValid = (Boolean) ifResult;
 
-        Object ifIndices = context.getIfEvaluatedItems();
+        Object ifIndices = context.getAnnotation("ifEvaluatedItems");
         if (ifIndices instanceof ArrayList<?>) {
             indices.addAll((ArrayList<Long>) ifIndices);
         }
 
         if (ifValid) {
-            Object thenIndices = context.getThenEvaluatedItems();
+            Object thenIndices = context.getAnnotation("thenEvaluatedItems");
             if (thenIndices instanceof ArrayList<?>) {
                 indices.addAll((ArrayList<Long>) thenIndices);
             }
         }
 
         if (!ifValid) {
-            Object elseIndices = context.getElseEvaluatedItems();
+            Object elseIndices = context.getAnnotation("elseEvaluatedItems");
             if (elseIndices instanceof ArrayList<?>) {
                 indices.addAll((ArrayList<Long>) elseIndices);
             }

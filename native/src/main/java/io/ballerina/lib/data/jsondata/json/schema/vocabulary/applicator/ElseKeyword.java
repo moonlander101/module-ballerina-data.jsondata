@@ -21,8 +21,6 @@ import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
-import java.util.ArrayList;
-
 public class ElseKeyword extends Keyword {
     public static final String keywordName = "else";
     private final Object keywordValue;
@@ -45,7 +43,7 @@ public class ElseKeyword extends Keyword {
                 boolean elseValid = validator.validate(instance, keywordValue, elseContext);
                 if (elseValid) {
                     SchemaValidatorUtils.createEvaluatedItemsAnnotation(elseContext);
-                    context.setElseEvaluatedItems(elseContext.getAnnotation("evaluatedItems"));
+                    context.setAnnotation("elseEvaluatedItems", elseContext.getAnnotation("evaluatedItems"));
                     SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(elseContext);
                     context.setAnnotation("elseEvaluatedProperties", elseContext.getAnnotation("evaluatedProperties"));
                 }
