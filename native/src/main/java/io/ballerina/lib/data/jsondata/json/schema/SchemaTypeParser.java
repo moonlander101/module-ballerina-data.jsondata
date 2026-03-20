@@ -40,6 +40,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.Dependen
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.FormatKeyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.flags.SymbolFlags;
@@ -800,28 +801,28 @@ public class SchemaTypeParser {
     }
 
     private void extractNumericValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
-        extractDouble(annotation, "minimum").ifPresent(value ->
+        SchemaParserUtils.extractDouble(annotation, "minimum").ifPresent(value ->
                 keywords.put(MinimumKeyword.keywordName, new MinimumKeyword(value))
         );
-        extractDouble(annotation, "maximum").ifPresent(value ->
+        SchemaParserUtils.extractDouble(annotation, "maximum").ifPresent(value ->
                 keywords.put(MaximumKeyword.keywordName, new MaximumKeyword(value))
         );
-        extractDouble(annotation, "exclusiveMinimum").ifPresent(value ->
+        SchemaParserUtils.extractDouble(annotation, "exclusiveMinimum").ifPresent(value ->
                 keywords.put(ExclusiveMinimumKeyword.keywordName, new ExclusiveMinimumKeyword(value))
         );
-        extractDouble(annotation, "exclusiveMaximum").ifPresent(value ->
+        SchemaParserUtils.extractDouble(annotation, "exclusiveMaximum").ifPresent(value ->
                 keywords.put(ExclusiveMaximumKeyword.keywordName, new ExclusiveMaximumKeyword(value))
         );
-        extractDouble(annotation, "multipleOf").ifPresent(value ->
+        SchemaParserUtils.extractDouble(annotation, "multipleOf").ifPresent(value ->
                 keywords.put(MultipleOfKeyword.keywordName, new MultipleOfKeyword(value))
         );
     }
 
     private void extractStringValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
-        extractLong(annotation, "minLength").ifPresent(value ->
+        SchemaParserUtils.extractLong(annotation, "minLength").ifPresent(value ->
                 keywords.put(MinLengthKeyword.keywordName, new MinLengthKeyword(value))
         );
-        extractLong(annotation, "maxLength").ifPresent(value ->
+        SchemaParserUtils.extractLong(annotation, "maxLength").ifPresent(value ->
                 keywords.put(MaxLengthKeyword.keywordName, new MaxLengthKeyword(value))
         );
 
@@ -846,13 +847,13 @@ public class SchemaTypeParser {
     }
 
     private Object extractArrayValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
-        extractLong(annotation, "minItems").ifPresent(value ->
+        SchemaParserUtils.extractLong(annotation, "minItems").ifPresent(value ->
                 keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(value))
         );
-        extractLong(annotation, "maxItems").ifPresent(value ->
+        SchemaParserUtils.extractLong(annotation, "maxItems").ifPresent(value ->
                 keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(value))
         );
-        extractBoolean(annotation, "uniqueItems").ifPresent(value ->
+        SchemaParserUtils.extractBoolean(annotation, "uniqueItems").ifPresent(value ->
                 keywords.put(UniqueItemsKeyword.keywordName, new UniqueItemsKeyword(value))
         );
         BString containsKey = StringUtils.fromString("contains");
@@ -860,8 +861,8 @@ public class SchemaTypeParser {
             Object containsObj = annotation.get(containsKey);
             if (containsObj instanceof BMap<?, ?> containsConfig) {
                 BMap<BString, Object> containsTypeDescMap = (BMap<BString, Object>) containsConfig;
-                Long minContains = extractLong(containsTypeDescMap, "minContains").orElse(null);
-                Long maxContains = extractLong(containsTypeDescMap, "maxContains").orElse(null);
+                Long minContains = SchemaParserUtils.extractLong(containsTypeDescMap, "minContains").orElse(null);
+                Long maxContains = SchemaParserUtils.extractLong(containsTypeDescMap, "maxContains").orElse(null);
                 Object containsSchema = parseSchemaFromTypeDesc(containsTypeDescMap, Constants.VALUE);
                 if (containsSchema instanceof BError) {
                     return containsSchema;
@@ -900,11 +901,11 @@ public class SchemaTypeParser {
             }
         }
 
-        extractLong(annotation, "minProperties").ifPresent(value ->
+        SchemaParserUtils.extractLong(annotation, "minProperties").ifPresent(value ->
                 keywords.put(MinPropertiesKeyword.keywordName, new MinPropertiesKeyword(value))
         );
 
-        extractLong(annotation, "maxProperties").ifPresent(value ->
+        SchemaParserUtils.extractLong(annotation, "maxProperties").ifPresent(value ->
                 keywords.put(MaxPropertiesKeyword.keywordName, new MaxPropertiesKeyword(value))
         );
         return null;
@@ -987,58 +988,6 @@ public class SchemaTypeParser {
             return null;
         }
         return parse(typeDesc.getDescribingType());
-    }
-
-    private Optional<Long> extractLong(BMap<BString, Object> annotation, String keyName) {
-        BString key = StringUtils.fromString(keyName);
-
-        if (!annotation.containsKey(key)) {
-            return Optional.empty();
-        }
-
-        Object value = annotation.get(key);
-
-        if (value instanceof Long longVal) {
-            return Optional.of(longVal);
-        }
-
-        return Optional.empty();
-    }
-
-    private Optional<Double> extractDouble(BMap<BString, Object> annotation, String keyName) {
-        BString key = StringUtils.fromString(keyName);
-
-        if (!annotation.containsKey(key)) {
-            return Optional.empty();
-        }
-
-        Object value = annotation.get(key);
-
-        if (value instanceof Long longVal) {
-            return Optional.of(longVal.doubleValue());
-        } else if (value instanceof Double doubleVal) {
-            return Optional.of(doubleVal);
-        } else if (value instanceof BDecimal decimalVal) {
-            return Optional.of(decimalVal.decimalValue().doubleValue());
-        }
-
-        return Optional.empty();
-    }
-
-    private Optional<Boolean> extractBoolean(BMap<BString, Object> annotation, String keyName) {
-        BString key = StringUtils.fromString(keyName);
-
-        if (!annotation.containsKey(key)) {
-            return Optional.empty();
-        }
-
-        Object value = annotation.get(key);
-
-        if (value instanceof Boolean boolVal) {
-            return Optional.of(boolVal);
-        }
-
-        return Optional.empty();
     }
 
     public LinkedHashMap<String, Keyword> extractAnnotationKeywords(Type type) {

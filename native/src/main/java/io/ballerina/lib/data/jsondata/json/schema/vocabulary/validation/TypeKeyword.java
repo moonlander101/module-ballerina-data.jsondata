@@ -5,8 +5,11 @@ import java.util.Objects;
 import java.util.Set;
 
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
+import io.ballerina.lib.data.jsondata.json.schema.SchemaJsonParser;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 import io.ballerina.runtime.api.values.BArray;
+import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
@@ -24,11 +27,12 @@ public class TypeKeyword extends Keyword {
                 return true;
             }
 
-            if (Objects.equals(keyword, "integer") && instance instanceof Long) {
-                return true;
+            if (Objects.equals(keyword, "integer")) {
+                Long intVal = SchemaParserUtils.toInteger(instance);
+                return intVal != null;
             }
 
-            if (Objects.equals(keyword, "number") && (instance instanceof Double || instance instanceof Long)) {
+            if (Objects.equals(keyword, "number") && (instance instanceof Double || instance instanceof Long || instance instanceof BDecimal)) {
                 return true;
             }
 

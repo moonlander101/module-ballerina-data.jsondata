@@ -23,7 +23,6 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicAnchorK
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicRefKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.RefKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.CommentKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.DefaultKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.DeprecatedKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.DescriptionKeyword;
@@ -54,9 +53,9 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.TypeKeyw
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.FormatKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.UniqueItemsKeyword;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BArray;
-import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
@@ -73,7 +72,6 @@ import java.util.Stack;
 
 public class SchemaJsonParser {
     private static final String MOCK_ROOT_URI = "http://wso2.com/schema-root";
-    private static final String VALID_ANCHOR_REGEX = "^[A-Za-z_][A-Za-z0-9_.-]*$";
 
     private final Stack<String> scopeStack = new Stack<>();
     private final SchemaRegistry registry;
@@ -99,8 +97,8 @@ public class SchemaJsonParser {
         String anchorName = null;
         String dynamicAnchorName = null;
 
-        Long minContains = extractLong(json, "minContains");
-        Long maxContains = extractLong(json, "maxContains");
+        Long minContains = SchemaParserUtils.extractInteger(json, "minContains");
+        Long maxContains = SchemaParserUtils.extractInteger(json, "maxContains");
 
         BString idKey = StringUtils.fromString("$id");
         if (json.containsKey(idKey)) {
@@ -123,8 +121,8 @@ public class SchemaJsonParser {
                 return DiagnosticLog.createJsonError("Invalid value for '$anchor': expected string");
             }
             anchorName = ((BString) anchorValue).getValue();
-            if (!isValidAnchorName(anchorName)) {
-                return DiagnosticLog.createJsonError("Invalid $anchor value: must match pattern " + VALID_ANCHOR_REGEX);
+                if (!SchemaParserUtils.isValidAnchorName(anchorName)) {
+                    return DiagnosticLog.createJsonError("Invalid $anchor value: must match pattern " + SchemaParserUtils.VALID_ANCHOR_REGEX);
             }
             keywords.put(AnchorKeyword.keywordName, new AnchorKeyword(anchorValue));
         }
@@ -136,9 +134,9 @@ public class SchemaJsonParser {
                 return DiagnosticLog.createJsonError("Invalid value for '$dynamicAnchor': expected string");
             }
             dynamicAnchorName = ((BString) dynamicAnchorValue).getValue();
-            if (!isValidAnchorName(dynamicAnchorName)) {
-                return DiagnosticLog.createJsonError(
-                        "Invalid $dynamicAnchor value: must match pattern " + VALID_ANCHOR_REGEX);
+                if (!SchemaParserUtils.isValidAnchorName(dynamicAnchorName)) {
+                    return DiagnosticLog.createJsonError(
+                            "Invalid $dynamicAnchor value: must match pattern " + SchemaParserUtils.VALID_ANCHOR_REGEX);
             }
             keywords.put(DynamicAnchorKeyword.keywordName, new DynamicAnchorKeyword(dynamicAnchorName));
         }
@@ -477,7 +475,7 @@ public class SchemaJsonParser {
             }
 
             case "minLength" -> {
-                Long v = toLong(value);
+                Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'minLength' keyword");
                 }
@@ -485,7 +483,7 @@ public class SchemaJsonParser {
             }
 
             case "maxLength" -> {
-                Long v = toLong(value);
+                Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'maxLength' keyword");
                 }
@@ -500,7 +498,7 @@ public class SchemaJsonParser {
             }
 
             case "minimum" -> {
-                Double v = toDouble(value);
+                Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'minimum' keyword");
                 }
@@ -508,7 +506,7 @@ public class SchemaJsonParser {
             }
 
             case "maximum" -> {
-                Double v = toDouble(value);
+                Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'maximum' keyword");
                 }
@@ -516,7 +514,7 @@ public class SchemaJsonParser {
             }
 
             case "exclusiveMinimum" -> {
-                Double v = toDouble(value);
+                Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'exclusiveMinimum' keyword");
                 }
@@ -524,7 +522,7 @@ public class SchemaJsonParser {
             }
 
             case "exclusiveMaximum" -> {
-                Double v = toDouble(value);
+                Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'exclusiveMaximum' keyword");
                 }
@@ -532,7 +530,7 @@ public class SchemaJsonParser {
             }
 
             case "multipleOf" -> {
-                Double v = toDouble(value);
+                Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'multipleOf' keyword");
                 }
@@ -540,7 +538,7 @@ public class SchemaJsonParser {
             }
 
             case "minItems" -> {
-                Long v = toLong(value);
+                Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'minItems' keyword");
                 }
@@ -548,7 +546,7 @@ public class SchemaJsonParser {
             }
 
             case "maxItems" -> {
-                Long v = toLong(value);
+                Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'maxItems' keyword");
                 }
@@ -563,7 +561,7 @@ public class SchemaJsonParser {
             }
 
             case "minProperties" -> {
-                Long v = toLong(value);
+                Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'minProperties' keyword");
                 }
@@ -571,7 +569,7 @@ public class SchemaJsonParser {
             }
 
             case "maxProperties" -> {
-                Long v = toLong(value);
+                Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'maxProperties' keyword");
                 }
@@ -711,40 +709,5 @@ public class SchemaJsonParser {
             result.add(parsed);
         }
         return result;
-    }
-
-    private Long extractLong(BMap<BString, Object> json, String keyName) {
-        BString bKey = StringUtils.fromString(keyName);
-        if (!json.containsKey(bKey)) {
-            return null;
-        }
-        return toLong(json.get(bKey));
-    }
-
-    private static Long toLong(Object value) {
-        if (value instanceof Long l) {
-            return l;
-        }
-        return null;
-    }
-
-    private static Double toDouble(Object value) {
-        if (value instanceof Long l) {
-            return l.doubleValue();
-        }
-        if (value instanceof Double d) {
-            return d;
-        }
-        if (value instanceof BDecimal bd) {
-            return bd.decimalValue().doubleValue();
-        }
-        return null;
-    }
-
-    private static boolean isValidAnchorName(String anchor) {
-        if (anchor == null || anchor.isEmpty()) {
-            return false;
-        }
-        return anchor.matches(VALID_ANCHOR_REGEX);
     }
 }

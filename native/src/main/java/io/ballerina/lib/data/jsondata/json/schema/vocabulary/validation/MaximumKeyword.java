@@ -9,14 +9,13 @@ public class MaximumKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        boolean valid;
+        boolean valid = true;
         if (instance instanceof Double) {
             valid = (Double) instance <= keywordValue;
         } else if (instance instanceof Long) {
             valid = (Long) instance <= keywordValue;
-        } else {
-            return false;
         }
+
         if (!valid) {
             context.addError("maximum", "At " + context.getInstanceLocation() + ": [maximum] value " + instance + " exceeds maximum " + keywordValue);
         }
