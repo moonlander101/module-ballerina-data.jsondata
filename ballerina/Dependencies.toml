@@ -36,7 +36,8 @@ dependencies = [
 	{org = "ballerina", name = "time"}
 ]
 modules = [
-	{org = "ballerina", packageName = "data.jsondata", moduleName = "data.jsondata"}
+	{org = "ballerina", packageName = "data.jsondata", moduleName = "data.jsondata"},
+	{org = "ballerina", packageName = "data.jsondata", moduleName = "data.jsondata.tests"}
 ]
 
 [[package]]
