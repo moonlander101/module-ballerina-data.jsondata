@@ -190,7 +190,8 @@ public class SchemaTypeParser {
             return null;
         }
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
-        extractKeywordsFromAnnotations(type, keywords);
+        Object err = extractKeywordsFromAnnotations(type, keywords);
+        if (err instanceof BError) return err;
 
         List<Type> memberTypes = unionType.getOriginalMemberTypes();
 
@@ -356,20 +357,20 @@ public class SchemaTypeParser {
         return null;
     }
 
-    public void extractKeywordsFromAnnotations(Type referredType, LinkedHashMap<String, Keyword> keywords) {
+    public Object extractKeywordsFromAnnotations(Type referredType, LinkedHashMap<String, Keyword> keywords) {
         if (keywords == null) {
             keywords = new LinkedHashMap<>();
         }
         final LinkedHashMap<String, Keyword> finalKeywords = keywords;
 
         if (!(referredType instanceof AnnotatableType annotatableType)) {
-            return;
+            return null;
         }
 
         BMap<BString, Object> annotations = annotatableType.getAnnotations();
 
         if (annotations.isEmpty()) {
-            return;
+            return null;
         }
 
         Pattern annotationNamePattern = Pattern.compile("([^:]+)$");
@@ -388,18 +389,26 @@ public class SchemaTypeParser {
                 case "NumberConstraints":
                     extractNumericValidationKeywords((BMap<BString, Object>) annotation, keywords);
                     break;
-                case "ArrayConstraints":
-                    extractArrayValidationKeywords((BMap<BString, Object>) annotation, keywords);
+                case "ArrayConstraints": {
+                    Object err = extractArrayValidationKeywords((BMap<BString, Object>) annotation, keywords);
+                    if (err instanceof BError) return err;
                     break;
-                case "ObjectConstraints":
-                    extractObjectValidationKeywords((BMap<BString, Object>) annotation, keywords);
+                }
+                case "ObjectConstraints": {
+                    Object err = extractObjectValidationKeywords((BMap<BString, Object>) annotation, keywords);
+                    if (err instanceof BError) return err;
                     break;
-                case "PatternProperties":
-                    extractPatternProperties((BMap<BString, Object>) annotation, keywords);
+                }
+                case "PatternProperties": {
+                    Object err = extractPatternProperties((BMap<BString, Object>) annotation, keywords);
+                    if (err instanceof BError) return err;
                     break;
-                case "AdditionalProperties":
-                    extractAdditionalProperties((BMap<BString, Object>) annotation, keywords);
+                }
+                case "AdditionalProperties": {
+                    Object err = extractAdditionalProperties((BMap<BString, Object>) annotation, keywords);
+                    if (err instanceof BError) return err;
                     break;
+                }
                 case "ReadOnly":
                     keywords.put(ReadOnlyKeyword.keywordName, new ReadOnlyKeyword(true));
                     break;
@@ -438,37 +447,41 @@ public class SchemaTypeParser {
                     keywords.put(AllOfKeyword.keywordName, new AllOfKeyword(new ArrayList<>()));
                     break;
                 case "OneOf":
-                    keywords.put(OneOfKeyword.keywordName, new AllOfKeyword(new ArrayList<>()));
+                    keywords.put(OneOfKeyword.keywordName, new OneOfKeyword(new ArrayList<>()));
                     break;
                 case "Not":
                     if (!(annotation instanceof BMap<?, ?> notAnnotation)) {
                         break;
                     }
-                    parseSchemaFromTypedesc((BMap<BString, Object>) notAnnotation, Constants.VALUE).ifPresent(notSchema ->
-                        finalKeywords.put(NotKeyword.keywordName, new NotKeyword(notSchema))
-                    );
-                    break;
-                case "UnevaluatedProperties":
-                    if (!(annotation instanceof BMap<?, ?> unevaluatedPropertiesAnnotation)) {
-                        break;
+                    Object notSchema = parseSchemaFromTypeDesc((BMap<BString, Object>) notAnnotation, Constants.VALUE);
+                    if (notSchema instanceof BError) {
+                        return notSchema;
                     }
-                    extractUnevaluatedProperties((BMap<BString, Object>) unevaluatedPropertiesAnnotation, keywords);
+                    if (notSchema instanceof Schema || notSchema instanceof Boolean) {
+                        finalKeywords.put(NotKeyword.keywordName, new NotKeyword(notSchema));
+                    }
                     break;
+                case "UnevaluatedProperties": {
+                    Object err = extractUnevaluatedProperties((BMap<BString, Object>) annotation, keywords);
+                    if (err instanceof BError) return err;
+                    break;
+                }
                 default:
                     break;
             }
         }
+        return null;
     }
 
-    public void extractKeywordsFromFieldAnnotations(Type type, LinkedHashMap<String, Keyword> keywords) {
+    public Object extractKeywordsFromFieldAnnotations(Type type, LinkedHashMap<String, Keyword> keywords) {
         if (!(type instanceof AnnotatableType annotatableType)) {
-            return;
+            return null;
         }
 
         BMap<BString, Object> annotations = annotatableType.getAnnotations();
 
         if (annotations.isEmpty()) {
-            return;
+            return null;
         }
 
         Pattern annotationNamePattern = Pattern.compile("([^:]+)$");
@@ -518,8 +531,14 @@ public class SchemaTypeParser {
         }
 
         if (!dependentSchemasMap.isEmpty()) {
+            for (Object schema : dependentSchemasMap.values()) {
+                if (schema instanceof BError) {
+                    return schema;
+                }
+            }
             keywords.put(DependentSchemasKeyword.keywordName, new DependentSchemasKeyword(dependentSchemasMap));
         }
+        return null;
     }
 
     private void extractDependentRequiredAnnotation(String fieldName, Object annotation,
@@ -552,14 +571,15 @@ public class SchemaTypeParser {
     }
 
     private void extractDependentSchemaAnnotation(String fieldName, Object annotation,
-                                               Map<String, Object> dependentSchemasMap) {
-        if (!(annotation instanceof BMap<?, ?> annotationMap)) {
+                                                Map<String, Object> dependentSchemasMap) {
+        if (!(annotation instanceof BMap<?, ?>)) {
             return;
         }
 
-        parseSchemaFromTypedesc((BMap<BString, Object>) annotationMap, Constants.VALUE).ifPresent(schema ->
-            dependentSchemasMap.put(fieldName, schema)
-        );
+        Object schema = parseSchemaFromTypeDesc((BMap<BString, Object>) annotation, Constants.VALUE);
+        if (schema instanceof Schema || schema instanceof Boolean) {
+            dependentSchemasMap.put(fieldName, schema);
+        }
     }
 
     public Object parseRecordType(Type type) {
@@ -579,7 +599,8 @@ public class SchemaTypeParser {
         Type restType = recordType.getRestFieldType();
 
         if (restType == null && fields.isEmpty()) {
-            extractKeywordsFromAnnotations(referredType, keywords);
+            Object err = extractKeywordsFromAnnotations(referredType, keywords);
+            if (err instanceof BError) return err;
             if (keywords.get("propertyNames") == null) {
                 keywords.put(PropertyNamesKeyword.keywordName, new PropertyNamesKeyword(false));
             }
@@ -608,9 +629,11 @@ public class SchemaTypeParser {
             keywords.put(RequiredKeyword.keywordName, new RequiredKeyword(requiredFieldNames));
         }
 
-        extractKeywordsFromAnnotations(referredType, keywords);
-        extractKeywordsFromFieldAnnotations(referredType, keywords);
-        // rest type is not exactly the additional property keyword
+        Object err = extractKeywordsFromAnnotations(referredType, keywords);
+        if (err instanceof BError) return err;
+        err = extractKeywordsFromFieldAnnotations(referredType, keywords);
+        if (err instanceof BError) return err;
+
         if (restType != null) {
             // TODO: Unevaluated properties have a rest type of json as well, check that too
             if (!keywords.containsKey(AdditionalPropertiesKeyword.keywordName)) {
@@ -634,7 +657,8 @@ public class SchemaTypeParser {
         typeNames.add("array");
         keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
 
-        extractKeywordsFromAnnotations(type, keywords);
+        Object err = extractKeywordsFromAnnotations(type, keywords);
+        if (err instanceof BError) return err;
 
         if (referredType.getTag() == TypeTags.ARRAY_TAG) {
             return parseSimpleArray(type, keywords);
@@ -763,7 +787,8 @@ public class SchemaTypeParser {
         }
 
         extractConstOrEnumKeyword(new ArrayList<Type>(List.of(referredType)), keywords);
-        extractKeywordsFromAnnotations(type, keywords);
+        Object err = extractKeywordsFromAnnotations(type, keywords);
+        if (err instanceof BError) return err;
 
         if (referredType.getTag() == TypeTags.JSON_TAG && keywords.isEmpty()) {
             return true;
@@ -820,7 +845,7 @@ public class SchemaTypeParser {
         }
     }
 
-    private void extractArrayValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
+    private Object extractArrayValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
         extractLong(annotation, "minItems").ifPresent(value ->
                 keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(value))
         );
@@ -834,32 +859,45 @@ public class SchemaTypeParser {
         if (annotation.containsKey(containsKey)) {
             Object containsObj = annotation.get(containsKey);
             if (containsObj instanceof BMap<?, ?> containsConfig) {
-                BMap<BString, Object> containsTypedescMap = (BMap<BString, Object>) containsConfig;
-                Long minContains = extractLong(containsTypedescMap, "minContains").orElse(null);
-                Long maxContains = extractLong(containsTypedescMap, "maxContains").orElse(null);
-                parseSchemaFromTypedesc(containsTypedescMap, Constants.VALUE).ifPresent(containsSchema ->
-                    keywords.put(ContainsKeyword.keywordName, new ContainsKeyword(minContains, maxContains, containsSchema))
-                );
+                BMap<BString, Object> containsTypeDescMap = (BMap<BString, Object>) containsConfig;
+                Long minContains = extractLong(containsTypeDescMap, "minContains").orElse(null);
+                Long maxContains = extractLong(containsTypeDescMap, "maxContains").orElse(null);
+                Object containsSchema = parseSchemaFromTypeDesc(containsTypeDescMap, Constants.VALUE);
+                if (containsSchema instanceof BError) {
+                    return containsSchema;
+                }
+                if (containsSchema instanceof Schema || containsSchema instanceof Boolean) {
+                    keywords.put(ContainsKeyword.keywordName, new ContainsKeyword(minContains, maxContains, containsSchema));
+                }
             }
         }
         BString unevaluatedItems = StringUtils.fromString("unevaluatedItems");
         if (annotation.containsKey(unevaluatedItems)) {
-            parseSchemaFromTypedesc(annotation, unevaluatedItems).ifPresent(schema ->
-                    keywords.put(UnevaluatedItemsKeyword.keywordName, new UnevaluatedItemsKeyword(schema))
-            );
+            Object schema = parseSchemaFromTypeDesc(annotation, unevaluatedItems);
+            if (schema instanceof BError) {
+                return schema;
+            }
+            if (schema instanceof Schema || schema instanceof Boolean) {
+                keywords.put(UnevaluatedItemsKeyword.keywordName, new UnevaluatedItemsKeyword(schema));
+            }
         }
+        return null;
     }
 
-    private void extractObjectValidationKeywords(BMap<BString, Object> annotation,
+    private Object extractObjectValidationKeywords(BMap<BString, Object> annotation,
                                              LinkedHashMap<String, Keyword> keywords) {
         ArrayList<BString> keys = new ArrayList<>(List.of(annotation.getKeys()));
 
         BString propertyNamesKey = StringUtils.fromString("propertyNames");
         if (keys.contains(propertyNamesKey)) {
-            parseSchemaFromTypedesc(annotation, propertyNamesKey).ifPresent(propertyNamesSchema ->
+            Object propertyNamesSchema = parseSchemaFromTypeDesc(annotation, propertyNamesKey);
+            if (propertyNamesSchema instanceof BError) {
+                return propertyNamesSchema;
+            }
+            if (propertyNamesSchema instanceof Schema || propertyNamesSchema instanceof Boolean) {
                 keywords.put(PropertyNamesKeyword.keywordName,
-                        new PropertyNamesKeyword(propertyNamesSchema))
-            );
+                        new PropertyNamesKeyword(propertyNamesSchema));
+            }
         }
 
         extractLong(annotation, "minProperties").ifPresent(value ->
@@ -869,13 +907,14 @@ public class SchemaTypeParser {
         extractLong(annotation, "maxProperties").ifPresent(value ->
                 keywords.put(MaxPropertiesKeyword.keywordName, new MaxPropertiesKeyword(value))
         );
+        return null;
     }
 
-    private void extractPatternProperties(BMap<BString, Object> annotation,
+    private Object extractPatternProperties(BMap<BString, Object> annotation,
                                        LinkedHashMap<String, Keyword> keywords) {
         Object value = annotation.get(Constants.VALUE);
         if (value == null) {
-            return;
+            return null;
         }
 
         List<BMap<BString, Object>> elements = new ArrayList<>();
@@ -896,9 +935,13 @@ public class SchemaTypeParser {
 
             if (element.containsKey(patternKey) && element.containsKey(Constants.VALUE)) {
                 String pattern = element.get(patternKey).toString();
-                parseSchemaFromTypedesc(element, Constants.VALUE).ifPresent(schema ->
-                    patternSchemaMap.put(pattern, schema)
-                );
+                Object schema = parseSchemaFromTypeDesc(element, Constants.VALUE);
+                if (schema instanceof BError) {
+                    return schema;
+                }
+                if (schema instanceof Schema || schema instanceof Boolean) {
+                    patternSchemaMap.put(pattern, schema);
+                }
             }
         }
 
@@ -906,59 +949,44 @@ public class SchemaTypeParser {
             keywords.put(PatternPropertiesKeyword.keywordName,
                    new PatternPropertiesKeyword(patternSchemaMap));
         }
+        return null;
     }
 
-    private void extractAdditionalProperties(BMap<BString, Object> annotation,
+    private Object extractAdditionalProperties(BMap<BString, Object> annotation,
                                            LinkedHashMap<String, Keyword> keywords) {
         if (annotation.containsKey(Constants.VALUE)) {
-            parseSchemaFromTypedesc(annotation, Constants.VALUE).ifPresent(additionalPropertiesSchema ->
+            Object additionalPropertiesSchema = parseSchemaFromTypeDesc(annotation, Constants.VALUE);
+            if (additionalPropertiesSchema instanceof BError) {
+                return additionalPropertiesSchema;
+            }
+            if (additionalPropertiesSchema instanceof Schema || additionalPropertiesSchema instanceof Boolean) {
                 keywords.put(AdditionalPropertiesKeyword.keywordName,
-                           new AdditionalPropertiesKeyword(additionalPropertiesSchema))
-            );
+                           new AdditionalPropertiesKeyword(additionalPropertiesSchema));
+            }
         }
+        return null;
     }
 
-    private void extractUnevaluatedProperties(BMap<BString, Object> annotation,
+    private Object extractUnevaluatedProperties(BMap<BString, Object> annotation,
                                               LinkedHashMap<String, Keyword> keywords) {
         final LinkedHashMap<String, Keyword> finalKeywords = keywords;
-        parseSchemaFromTypedesc(annotation, Constants.VALUE).ifPresent(unevaluatedPropertiesSchema ->
+        Object unevaluatedPropertiesSchema = parseSchemaFromTypeDesc(annotation, Constants.VALUE);
+        if (unevaluatedPropertiesSchema instanceof BError) {
+            return unevaluatedPropertiesSchema;
+        }
+        if (unevaluatedPropertiesSchema instanceof Schema || unevaluatedPropertiesSchema instanceof Boolean) {
             finalKeywords.put(UnevaluatedPropertiesKeyword.keywordName,
-                       new UnevaluatedPropertiesKeyword(unevaluatedPropertiesSchema))
-        );
+                       new UnevaluatedPropertiesKeyword(unevaluatedPropertiesSchema));
+        }
+        return null;
     }
 
-    private Optional<Object> parseSchemaFromTypedesc(BMap<BString, Object> annotation, BString keyName) {
+    private Object parseSchemaFromTypeDesc(BMap<BString, Object> annotation, BString keyName) {
         Object value = annotation.get(keyName);
-        if (!(value instanceof BTypedesc typedesc)) {
-            return Optional.empty();
+        if (!(value instanceof BTypedesc typeDesc)) {
+            return null;
         }
-        Object schema = parse(typedesc.getDescribingType());
-        if (schema instanceof Schema || schema instanceof Boolean) {
-            return Optional.of(schema);
-        }
-        return Optional.empty();
-    }
-
-    private Optional<Map<String, Object>> extractObject(BMap<BString, Object> annotation, String keyName) {
-        BString key = StringUtils.fromString(keyName);
-
-        if (!annotation.containsKey(key)) {
-            return Optional.empty();
-        }
-
-        Object value = annotation.get(key);
-
-        if (value instanceof BMap<?, ?> bMap) {
-            Map<String, Object> mapVal = new HashMap<>();
-            for (Entry<?, ?> entry : bMap.entrySet()) {
-                if (entry.getKey() instanceof BString bStrKey) {
-                    mapVal.put(bStrKey.getValue(), entry.getValue());
-                }
-            }
-            return Optional.of(mapVal);
-        }
-
-        return Optional.empty();
+        return parse(typeDesc.getDescribingType());
     }
 
     private Optional<Long> extractLong(BMap<BString, Object> annotation, String keyName) {
@@ -969,20 +997,6 @@ public class SchemaTypeParser {
         }
 
         Object value = annotation.get(key);
-
-        if (value instanceof Long longVal) {
-            return Optional.of(longVal);
-        }
-
-        return Optional.empty();
-    }
-
-    private Optional<Long> extractLongFromMap(Map<String, Object> map, String keyName) {
-        if (!map.containsKey(keyName)) {
-            return Optional.empty();
-        }
-
-        Object value = map.get(keyName);
 
         if (value instanceof Long longVal) {
             return Optional.of(longVal);
