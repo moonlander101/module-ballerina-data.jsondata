@@ -20,10 +20,7 @@ package io.ballerina.lib.data.jsondata.json;
 
 import io.ballerina.lib.data.jsondata.io.BallerinaByteBlockInputStream;
 import io.ballerina.lib.data.jsondata.json.schema.*;
-import io.ballerina.lib.data.jsondata.utils.Constants;
-import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
-import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
-import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
+import io.ballerina.lib.data.jsondata.utils.*;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
@@ -45,8 +42,8 @@ import io.ballerina.runtime.api.values.BTypedesc;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
-import java.net.StandardSocketOptions;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -96,7 +93,7 @@ public class Native {
                 err = validator.validate(jsonValue, (BString) schema);
 
             } else if (schema instanceof BMap || schema instanceof Boolean) {
-                String schemaStr = StringUtils.getJsonString(schema);
+//                String schemaStr = StringUtils.getJsonString(schema);
 
                 SchemaRegistry registry = new SchemaRegistry();
                 SchemaJsonParser parser = new SchemaJsonParser(registry);
@@ -104,7 +101,6 @@ public class Native {
                 if (parsedSchema instanceof BError) {
                     return parsedSchema;
                 }
-//                System.out.println("Custom parser result: " + parsedSchema);
                 Validator val = new Validator(false);
                 EvaluationContext context = new EvaluationContext(registry);
                 
@@ -112,10 +108,7 @@ public class Native {
                 context.pushDynamicScope(rootResourceUri);
                 if (!val.validate(jsonValue, parsedSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());
-//                    System.out.println("Custom validation failed:\n- " + errorMessage);
                     err = DiagnosticLog.createJsonError(errorMessage);
-                } else {
-                    System.out.println("Custom validation successful");
                 }
                 context.popDynamicScope();
 
@@ -123,26 +116,38 @@ public class Native {
 //                err = validator.validate(jsonValue, schemaStr);
 
             } else if (schema instanceof BArray schemaArray) {
+                SchemaRegistry registry = new SchemaRegistry();
+                SchemaJsonParser parser = new SchemaJsonParser(registry);
+
                 int length = (int) schemaArray.getLength();
-                if (length == 0) {
-                    return DiagnosticLog.createJsonError("schema array cannot be empty");
-                }
-
-                String[] schemaStrings = new String[length];
                 for (int i = 0; i < length; i++) {
-                    schemaStrings[i] = StringUtils.getJsonString(schemaArray.get(i));
+                    Object s = schemaArray.get(i);
+                    if (parser.parse(s) instanceof BError parseError) {
+                        return parseError;
+                    }
+                }
+                Object rootSchema = registry.findRootSchema();
+
+                if (rootSchema instanceof BError) {
+                    return rootSchema;
                 }
 
-                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStrings);
-                String rootSchema = validator.findRootSchema(schemaStrings);
-                err = validator.validate(jsonValue, rootSchema);
+                Validator val = new Validator(false);
+                EvaluationContext context = new EvaluationContext(registry);
+
+                URI rootResourceUri = SchemaValidatorUtils.getRootResourceUri(rootSchema);
+                context.pushDynamicScope(rootResourceUri);
+
+                if (!val.validate(jsonValue, rootSchema, context)) {
+                    String errorMessage = String.join("\n- ", context.getErrors());
+                    return DiagnosticLog.createJsonError(errorMessage);
+                }
+                context.popDynamicScope();
 
             } else if (schema instanceof BTypedesc) {
                 Type type = ((BTypedesc) schema).getDescribingType();
                 SchemaTypeParser tp = new SchemaTypeParser();
-                long startTime = System.nanoTime();
                 Object schemaObj = tp.parse(type);
-                System.out.println("Schema object: " + schemaObj);
                 if (schemaObj instanceof BError) {
                     err = schemaObj;
                 } else {
@@ -155,12 +160,6 @@ public class Native {
                             "- " + errorMessage);
                     }
                 }
-                long endTime = System.nanoTime();
-
-                // 4. Calculate the differences (and convert to milliseconds for readability)
-                long callDuration = (startTime - endTime) / 1_000_000;
-
-                System.out.println("Call took: " + callDuration + " ms");
             } else {
                 err = DiagnosticLog.createJsonError("invalid schema type: expected string, json, or json[]: " +
                         TypeUtils.getType(schema).getName());

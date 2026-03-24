@@ -61,7 +61,6 @@ import io.ballerina.runtime.api.types.UnionType;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.utils.TypeUtils;
 import io.ballerina.runtime.api.values.BArray;
-import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BRegexpValue;
@@ -74,7 +73,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
@@ -118,74 +116,26 @@ public class SchemaTypeParser {
         return schema;
     }
 
-    public TypeKeyword extractTypeKeyword(ArrayList<Type> types) {
-        TypeKeyword typeKeyword = null;
-        Set<String> typeNames = new HashSet<>();
+    public Object parseBasicType(Type type) {
+        Type referredType = TypeUtils.getReferredType(type);
 
-        for (Type memberType : types) {
-            Type referredType = TypeUtils.getReferredType(memberType);
-            switch (referredType.getTag()) {
-                case TypeTags.STRING_TAG -> typeNames.add("string");
-                case TypeTags.INT_TAG -> {
-                    if (!typeNames.contains("number")) {
-                        typeNames.add("integer");
-                    }
-                }
-                case TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG -> {
-                    typeNames.remove("integer");
-                    typeNames.add("number");
-                }
-                case TypeTags.BOOLEAN_TAG -> typeNames.add("boolean");
-                case TypeTags.RECORD_TYPE_TAG -> typeNames.add("object");
-                case TypeTags.ARRAY_TAG, TypeTags.TUPLE_TAG -> typeNames.add("array");
-                case TypeTags.UNION_TAG -> addNumericTypeFromUnion((UnionType) referredType, typeNames);
-                case TypeTags.NEVER_TAG -> typeNames.add("never");
-                case TypeTags.NULL_TAG -> typeNames.add("null");
-                default -> {}
-            }
+        TypeKeyword typeKeyword = extractTypeKeyword(new ArrayList<>(List.of(referredType)));
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
+        if (typeKeyword != null) {
+            keywords.put(TypeKeyword.keywordName, typeKeyword);
         }
 
-        if (!typeNames.isEmpty()) {
-            typeKeyword = new TypeKeyword(typeNames);
+        extractConstOrEnumKeyword(new ArrayList<Type>(List.of(referredType)), keywords);
+        Object err = extractKeywordsFromAnnotations(type, keywords);
+        if (err instanceof BError) return err;
+
+        if (referredType.getTag() == TypeTags.JSON_TAG && keywords.isEmpty()) {
+            return true;
+        } else if (referredType.getTag() == TypeTags.NEVER_TAG) {
+            return false;
         }
 
-        if (typeNames.contains("number")) {
-            typeNames.remove("integer");
-        }
-        return typeKeyword;
-    }
-
-    private void addNumericTypeFromUnion(UnionType unionType, Set<String> typeNames) {
-        boolean hasNumber = false;
-        boolean hasNumericType = false;
-
-        for (Type unionMemberType : unionType.getOriginalMemberTypes()) {
-            Type referredUnionMemberType = TypeUtils.getReferredType(unionMemberType);
-            switch (referredUnionMemberType.getTag()) {
-                case TypeTags.INT_TAG -> hasNumericType = true;
-                case TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG -> {
-                    hasNumericType = true;
-                    hasNumber = true;
-                }
-                default -> {
-                    return;
-                }
-            }
-        }
-
-        if (!hasNumericType) {
-            return;
-        }
-
-        if (hasNumber) {
-            typeNames.remove("integer");
-            typeNames.add("number");
-            return;
-        }
-
-        if (!typeNames.contains("number")) {
-            typeNames.add("integer");
-        }
+        return new Schema(keywords);
     }
 
     public Object parseUnionType(Type type) {
@@ -290,6 +240,242 @@ public class SchemaTypeParser {
         }
 
         return new Schema(keywords);
+    }
+
+    public Object parseRecordType(Type type) {
+        Type referredType = TypeUtils.getReferredType(type);
+
+        if (!(referredType instanceof RecordType recordType)) {
+            return DiagnosticLog.createJsonError("expected record type, got: " + referredType);
+        }
+
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
+
+        Set<String> typeNames = new HashSet<>();
+        typeNames.add("object");
+        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
+
+        Map<String, Field> fields = recordType.getFields();
+        Type restType = recordType.getRestFieldType();
+
+        if (restType == null && fields.isEmpty()) {
+            Object err = extractKeywordsFromAnnotations(referredType, keywords);
+            if (err instanceof BError) return err;
+            if (keywords.get("propertyNames") == null) {
+                keywords.put(PropertyNamesKeyword.keywordName, new PropertyNamesKeyword(false));
+            }
+            return new Schema(keywords);
+        }
+
+        HashMap<String, Object> propertiesMap = new HashMap<>();
+        ArrayList<String> requiredFieldNames = new ArrayList<>();
+
+        for (String fieldName : fields.keySet()) {
+            Field field = fields.get(fieldName);
+            Object fieldSchema = parse(field.getFieldType());
+            if (fieldSchema instanceof BError) {
+                return fieldSchema;
+            }
+            propertiesMap.put(fieldName, fieldSchema);
+
+            boolean isOptional = SymbolFlags.isFlagOn(field.getFlags(), SymbolFlags.OPTIONAL);
+            if (!isOptional) {
+                requiredFieldNames.add(fieldName);
+            }
+        }
+
+        keywords.put(PropertiesKeyword.keywordName, new PropertiesKeyword(propertiesMap));
+        if (!requiredFieldNames.isEmpty()) {
+            keywords.put(RequiredKeyword.keywordName, new RequiredKeyword(requiredFieldNames));
+        }
+
+        Object err = extractKeywordsFromAnnotations(referredType, keywords);
+        if (err instanceof BError) return err;
+        err = extractKeywordsFromFieldAnnotations(referredType, keywords);
+        if (err instanceof BError) return err;
+
+        if (restType != null) {
+            // TODO: Unevaluated properties have a rest type of json as well, check that too
+            if (!keywords.containsKey(AdditionalPropertiesKeyword.keywordName)) {
+                Object restSchema = parse(restType);
+                if (restSchema instanceof BError) {
+                    return restSchema;
+                }
+                keywords.put(AdditionalPropertiesKeyword.keywordName, new AdditionalPropertiesKeyword(restSchema));
+            }
+        }
+
+        return new Schema(keywords);
+    }
+
+    public Object parseArrayType(Type type) {
+        Type referredType = TypeUtils.getReferredType(type);
+
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
+
+        Set<String> typeNames = new HashSet<>();
+        typeNames.add("array");
+        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
+
+        Object err = extractKeywordsFromAnnotations(type, keywords);
+        if (err instanceof BError) return err;
+
+        if (referredType.getTag() == TypeTags.ARRAY_TAG) {
+            return parseSimpleArray(type, keywords);
+        } else if (referredType.getTag() == TypeTags.TUPLE_TAG) {
+            return parseTupleType(type, keywords);
+        }
+
+        return DiagnosticLog.createJsonError("unsupported array type: " + referredType);
+    }
+
+    private Object parseSimpleArray(Type type, LinkedHashMap<String, Keyword> keywords) {
+        ArrayType arrayType = (ArrayType) TypeUtils.getReferredType(type);
+
+        Type elementType = arrayType.getElementType();
+        Object itemsSchema = parse(elementType);
+        if (itemsSchema instanceof BError) {
+            return itemsSchema;
+        }
+        keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(itemsSchema));
+
+        if (arrayType.getSize() != -1) {
+            setArraySizeConstraints(keywords, (long) arrayType.getSize(), (long) arrayType.getSize());
+        }
+
+        return new Schema(keywords);
+    }
+
+    private Object parseTupleType(Type type, LinkedHashMap<String, Keyword> keywords) {
+        TupleType tupleType = (TupleType) TypeUtils.getReferredType(type);
+        List<Type> tupleTypes = tupleType.getTupleTypes();
+        Type restType = tupleType.getRestType();
+
+        if (tupleTypes.isEmpty()) {
+            if (restType == null) {
+                return DiagnosticLog.createJsonError("cannot create schema for empty tuple");
+            }
+            return parseTupleWithRest(type, tupleTypes, restType, keywords);
+        }
+
+        if (restType != null) {
+            return parseTupleWithRest(type, tupleTypes, restType, keywords);
+        } else {
+            return parseTupleFixedLength(type, tupleTypes, keywords);
+        }
+    }
+
+    private Object parseTupleWithRest(Type type, List<Type> tupleTypes, Type restType, LinkedHashMap<String, Keyword> keywords) {
+        List<Object> prefixSchemas = new ArrayList<>();
+        for (Type memberType : tupleTypes) {
+            Object memberSchema = parse(memberType);
+            if (memberSchema instanceof BError) {
+                return memberSchema;
+            }
+            prefixSchemas.add(memberSchema);
+        }
+
+        if (!prefixSchemas.isEmpty()) {
+            keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
+        }
+
+        Object restSchema = parse(restType);
+        if (restSchema instanceof BError) {
+            return restSchema;
+        }
+        keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(restSchema));
+
+        setArraySizeConstraints(keywords, (long) tupleTypes.size(), null);
+
+        return new Schema(keywords);
+    }
+
+    private Object parseTupleFixedLength(Type type, List<Type> tupleTypes, LinkedHashMap<String, Keyword> keywords) {
+        List<Object> prefixSchemas = new ArrayList<>();
+        for (Type memberType : tupleTypes) {
+            Object memberSchema = parse(memberType);
+            if (memberSchema instanceof BError) {
+                return memberSchema;
+            }
+            prefixSchemas.add(memberSchema);
+        }
+
+        keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
+
+        long tupleSize = tupleTypes.size();
+        setArraySizeConstraints(keywords, tupleSize, tupleSize);
+
+        return new Schema(keywords);
+    }
+
+    public TypeKeyword extractTypeKeyword(ArrayList<Type> types) {
+        TypeKeyword typeKeyword = null;
+        Set<String> typeNames = new HashSet<>();
+
+        for (Type memberType : types) {
+            Type referredType = TypeUtils.getReferredType(memberType);
+            switch (referredType.getTag()) {
+                case TypeTags.STRING_TAG -> typeNames.add("string");
+                case TypeTags.INT_TAG -> {
+                    if (!typeNames.contains("number")) {
+                        typeNames.add("integer");
+                    }
+                }
+                case TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG -> {
+                    typeNames.remove("integer");
+                    typeNames.add("number");
+                }
+                case TypeTags.BOOLEAN_TAG -> typeNames.add("boolean");
+                case TypeTags.RECORD_TYPE_TAG -> typeNames.add("object");
+                case TypeTags.ARRAY_TAG, TypeTags.TUPLE_TAG -> typeNames.add("array");
+                case TypeTags.UNION_TAG -> addNumericTypeFromUnion((UnionType) referredType, typeNames);
+                case TypeTags.NEVER_TAG -> typeNames.add("never");
+                case TypeTags.NULL_TAG -> typeNames.add("null");
+                default -> {}
+            }
+        }
+
+        if (!typeNames.isEmpty()) {
+            typeKeyword = new TypeKeyword(typeNames);
+        }
+
+        if (typeNames.contains("number")) {
+            typeNames.remove("integer");
+        }
+        return typeKeyword;
+    }
+
+    private void addNumericTypeFromUnion(UnionType unionType, Set<String> typeNames) {
+        boolean hasNumber = false;
+        boolean hasNumericType = false;
+
+        for (Type unionMemberType : unionType.getOriginalMemberTypes()) {
+            Type referredUnionMemberType = TypeUtils.getReferredType(unionMemberType);
+            switch (referredUnionMemberType.getTag()) {
+                case TypeTags.INT_TAG -> hasNumericType = true;
+                case TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG -> {
+                    hasNumericType = true;
+                    hasNumber = true;
+                }
+                default -> {
+                    return;
+                }
+            }
+        }
+
+        if (!hasNumericType) {
+            return;
+        }
+
+        if (hasNumber) {
+            typeNames.remove("integer");
+            typeNames.add("number");
+            return;
+        }
+
+        if (!typeNames.contains("number")) {
+            typeNames.add("integer");
+        }
     }
 
     public void extractConstOrEnumKeyword(ArrayList<Type> referredTypes, LinkedHashMap<String, Keyword> keywords) {
@@ -566,172 +752,6 @@ public class SchemaTypeParser {
         }
     }
 
-    public Object parseRecordType(Type type) {
-        Type referredType = TypeUtils.getReferredType(type);
-
-        if (!(referredType instanceof RecordType recordType)) {
-            return DiagnosticLog.createJsonError("expected record type, got: " + referredType);
-        }
-
-        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
-
-        Set<String> typeNames = new HashSet<>();
-        typeNames.add("object");
-        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
-
-        Map<String, Field> fields = recordType.getFields();
-        Type restType = recordType.getRestFieldType();
-
-        if (restType == null && fields.isEmpty()) {
-            Object err = extractKeywordsFromAnnotations(referredType, keywords);
-            if (err instanceof BError) return err;
-            if (keywords.get("propertyNames") == null) {
-                keywords.put(PropertyNamesKeyword.keywordName, new PropertyNamesKeyword(false));
-            }
-            return new Schema(keywords);
-        }
-
-        HashMap<String, Object> propertiesMap = new HashMap<>();
-        ArrayList<String> requiredFieldNames = new ArrayList<>();
-
-        for (String fieldName : fields.keySet()) {
-            Field field = fields.get(fieldName);
-            Object fieldSchema = parse(field.getFieldType());
-            if (fieldSchema instanceof BError) {
-                return fieldSchema;
-            }
-            propertiesMap.put(fieldName, fieldSchema);
-
-            boolean isOptional = SymbolFlags.isFlagOn(field.getFlags(), SymbolFlags.OPTIONAL);
-            if (!isOptional) {
-                requiredFieldNames.add(fieldName);
-            }
-        }
-
-        keywords.put(PropertiesKeyword.keywordName, new PropertiesKeyword(propertiesMap));
-        if (!requiredFieldNames.isEmpty()) {
-            keywords.put(RequiredKeyword.keywordName, new RequiredKeyword(requiredFieldNames));
-        }
-
-        Object err = extractKeywordsFromAnnotations(referredType, keywords);
-        if (err instanceof BError) return err;
-        err = extractKeywordsFromFieldAnnotations(referredType, keywords);
-        if (err instanceof BError) return err;
-
-        if (restType != null) {
-            // TODO: Unevaluated properties have a rest type of json as well, check that too
-            if (!keywords.containsKey(AdditionalPropertiesKeyword.keywordName)) {
-                Object restSchema = parse(restType);
-                if (restSchema instanceof BError) {
-                    return restSchema;
-                }
-                keywords.put(AdditionalPropertiesKeyword.keywordName, new AdditionalPropertiesKeyword(restSchema));
-            }
-        }
-
-        return new Schema(keywords);
-    }
-
-    public Object parseArrayType(Type type) {
-        Type referredType = TypeUtils.getReferredType(type);
-
-        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
-
-        Set<String> typeNames = new HashSet<>();
-        typeNames.add("array");
-        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
-
-        Object err = extractKeywordsFromAnnotations(type, keywords);
-        if (err instanceof BError) return err;
-
-        if (referredType.getTag() == TypeTags.ARRAY_TAG) {
-            return parseSimpleArray(type, keywords);
-        } else if (referredType.getTag() == TypeTags.TUPLE_TAG) {
-            return parseTupleType(type, keywords);
-        }
-
-        return DiagnosticLog.createJsonError("unsupported array type: " + referredType);
-    }
-
-    private Object parseSimpleArray(Type type, LinkedHashMap<String, Keyword> keywords) {
-        ArrayType arrayType = (ArrayType) TypeUtils.getReferredType(type);
-
-        Type elementType = arrayType.getElementType();
-        Object itemsSchema = parse(elementType);
-        if (itemsSchema instanceof BError) {
-            return itemsSchema;
-        }
-        keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(itemsSchema));
-
-        if (arrayType.getSize() != -1) {
-            setArraySizeConstraints(keywords, (long) arrayType.getSize(), (long) arrayType.getSize());
-        }
-
-        return new Schema(keywords);
-    }
-
-    private Object parseTupleType(Type type, LinkedHashMap<String, Keyword> keywords) {
-        TupleType tupleType = (TupleType) TypeUtils.getReferredType(type);
-        List<Type> tupleTypes = tupleType.getTupleTypes();
-        Type restType = tupleType.getRestType();
-
-        if (tupleTypes.isEmpty()) {
-            if (restType == null) {
-                return DiagnosticLog.createJsonError("cannot create schema for empty tuple");
-            }
-            return parseTupleWithRest(type, tupleTypes, restType, keywords);
-        }
-
-        if (restType != null) {
-            return parseTupleWithRest(type, tupleTypes, restType, keywords);
-        } else {
-            return parseTupleFixedLength(type, tupleTypes, keywords);
-        }
-    }
-
-    private Object parseTupleWithRest(Type type, List<Type> tupleTypes, Type restType, LinkedHashMap<String, Keyword> keywords) {
-        List<Object> prefixSchemas = new ArrayList<>();
-        for (Type memberType : tupleTypes) {
-            Object memberSchema = parse(memberType);
-            if (memberSchema instanceof BError) {
-                return memberSchema;
-            }
-            prefixSchemas.add(memberSchema);
-        }
-
-        if (!prefixSchemas.isEmpty()) {
-            keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
-        }
-
-        Object restSchema = parse(restType);
-        if (restSchema instanceof BError) {
-            return restSchema;
-        }
-        keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(restSchema));
-
-        setArraySizeConstraints(keywords, (long) tupleTypes.size(), null);
-
-        return new Schema(keywords);
-    }
-
-    private Object parseTupleFixedLength(Type type, List<Type> tupleTypes, LinkedHashMap<String, Keyword> keywords) {
-        List<Object> prefixSchemas = new ArrayList<>();
-        for (Type memberType : tupleTypes) {
-            Object memberSchema = parse(memberType);
-            if (memberSchema instanceof BError) {
-                return memberSchema;
-            }
-            prefixSchemas.add(memberSchema);
-        }
-
-        keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
-
-        long tupleSize = tupleTypes.size();
-        setArraySizeConstraints(keywords, tupleSize, tupleSize);
-
-        return new Schema(keywords);
-    }
-
     private void setArraySizeConstraints(LinkedHashMap<String, Keyword> keywords, Long derivedMin, Long derivedMax) {
         Keyword minKeyword = keywords.get(MinItemsKeyword.keywordName);
         Keyword maxKeyword = keywords.get(MaxItemsKeyword.keywordName);
@@ -759,28 +779,6 @@ public class SchemaTypeParser {
         if (annotated == null) return derived;
         if (derived == null) return annotated;
         return Math.min(annotated, derived);
-    }
-
-    public Object parseBasicType(Type type) {
-        Type referredType = TypeUtils.getReferredType(type);
-
-        TypeKeyword typeKeyword = extractTypeKeyword(new ArrayList<>(List.of(referredType)));
-        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
-        if (typeKeyword != null) {
-            keywords.put(TypeKeyword.keywordName, typeKeyword);
-        }
-
-        extractConstOrEnumKeyword(new ArrayList<Type>(List.of(referredType)), keywords);
-        Object err = extractKeywordsFromAnnotations(type, keywords);
-        if (err instanceof BError) return err;
-
-        if (referredType.getTag() == TypeTags.JSON_TAG && keywords.isEmpty()) {
-            return true;
-        } else if (referredType.getTag() == TypeTags.NEVER_TAG) {
-            return false;
-        }
-
-        return new Schema(keywords);
     }
 
     private void extractNumericValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {

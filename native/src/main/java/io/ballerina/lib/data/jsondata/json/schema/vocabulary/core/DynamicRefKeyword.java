@@ -38,8 +38,8 @@ public class DynamicRefKeyword extends Keyword {
     }
 
     @Override
-    public Object getKeywordValue() {
-        return initialRefUri.toString();
+    public URI getKeywordValue() {
+        return initialRefUri;
     }
 
     @Override

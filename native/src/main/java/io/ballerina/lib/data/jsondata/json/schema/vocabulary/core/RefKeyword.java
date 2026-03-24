@@ -36,8 +36,8 @@ public class RefKeyword extends Keyword {
     }
 
     @Override
-    public Object getKeywordValue() {
-        return refUri.toString();
+    public URI getKeywordValue() {
+        return refUri;
     }
 
     @Override

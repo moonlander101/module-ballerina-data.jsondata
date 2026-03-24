@@ -65,6 +65,7 @@ import io.ballerina.runtime.api.values.BString;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -75,21 +76,23 @@ import java.util.Stack;
 
 public class SchemaJsonParser {
     private static final String MOCK_ROOT_URI = "http://wso2.com/schema-root";
+    private final SchemaRegistry registry;
 
     private final Stack<String> scopeStack = new Stack<>();
-    private final SchemaRegistry registry;
+    private int parseCount = -1;
 
     public SchemaJsonParser(SchemaRegistry registry) {
         this.registry = registry;
     }
 
     public Object parse(Object json) {
+        parseCount++;
         if (json instanceof BMap<?, ?>) {
             return parseSchema((BMap<BString, Object>) json);
         } else if (json instanceof Boolean) {
             return json;
         } else {
-            return DiagnosticLog.createJsonError("Invalid JSON Schema: expected object or boolean");
+            return DiagnosticLog.createJsonError("Invalid JSON Schema: expected object or boolean, got " + json.getClass().getSimpleName());
         }
     }
 
@@ -110,7 +113,7 @@ public class SchemaJsonParser {
                 return DiagnosticLog.createJsonError("Invalid value for '$id': expected string");
             }
             String idStr = ((BString) idValue).getValue();
-            String base = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
+            String base = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
             resolvedId = SchemaRegistry.resolveURI(base, idStr);
             scopeStack.push(resolvedId);
             scopePushed = true;
@@ -155,16 +158,16 @@ public class SchemaJsonParser {
                             return DiagnosticLog.createJsonError("Invalid value for '$defs': expected object");
                         }
                         BMap<BString, Object> defs = (BMap<BString, Object>) value;
+                        String currentBase = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
                         for (BString defName : defs.getKeys()) {
+                            String defUriStr = "#/$defs/" + defName.getValue();
+                            String defUri = SchemaRegistry.resolveURI(currentBase, defUriStr);
+
                             Object defRaw = defs.get(defName);
-                            Object defParsed = parse(defRaw); // TODO: calling parse like this may be bad
+                            Object defParsed = parse(defRaw);
                             if (defParsed instanceof BError) {
                                 return defParsed;
                             }
-                            // Register under  <baseUri>#/$defs/<name>
-                            String currentBase = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
-                            String fragment = "#/$defs/" + SchemaParserUtils.escapeJsonPointerFragment(defName.getValue());
-                            String defUri = SchemaRegistry.resolveURI(currentBase, fragment);
                             try {
                                 registry.put(URI.create(defUri), defParsed);
                             } catch (IllegalArgumentException ignored) {
@@ -181,30 +184,32 @@ public class SchemaJsonParser {
                     }
                 }
             }
-            System.out.println(registry);
 
             Schema schema = new Schema(keywords);
             // The root case with no id
             if (scopeStack.isEmpty() && resolvedId == null) {
-                registry.put(URI.create(MOCK_ROOT_URI), schema);
+                registry.put(URI.create(getMockRootURI()), schema);
             }
 
             // Register by $id so that absolute-URI $refs resolve to this schema
             if (resolvedId != null) {
                 try {
-                    registry.put(URI.create(resolvedId), schema);
+                    URI idUri = URI.create(resolvedId);
+                    if (registry.containsKey(idUri)) {
+                        return DiagnosticLog.createJsonError("Duplicate $id: " + resolvedId);
+                    }
+                    registry.put(idUri, schema);
                 } catch (IllegalArgumentException ignored) {
                     // Malformed $id — skip
                 }
             }
 
             if (anchorName != null) {
-                String currentBase = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
+                String currentBase = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
                 String anchorUriStr = currentBase + "#" + anchorName;
                 URI anchorUri;
                 try {
                     anchorUri = URI.create(anchorUriStr);
-                    System.out.println("Registering anchor URI: " + anchorUri);
                 } catch (IllegalArgumentException e) {
                     return DiagnosticLog.createJsonError("Invalid $anchor URI: " + anchorUriStr);
                 }
@@ -216,12 +221,11 @@ public class SchemaJsonParser {
             }
 
             if (dynamicAnchorName != null) {
-                String currentBase = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
+                String currentBase = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
                 String dynamicAnchorUriStr = currentBase + "#" + dynamicAnchorName;
                 URI dynamicAnchorUri;
                 try {
                     dynamicAnchorUri = URI.create(dynamicAnchorUriStr);
-                    System.out.println("Registering dynamicAnchor URI: " + dynamicAnchorUri);
                 } catch (IllegalArgumentException e) {
                     return DiagnosticLog.createJsonError("Invalid $dynamicAnchor URI: " + dynamicAnchorUriStr);
                 }
@@ -735,5 +739,12 @@ public class SchemaJsonParser {
             result.add(parsed);
         }
         return result;
+    }
+
+    private String getMockRootURI() {
+        if (parseCount == 0) {
+            return MOCK_ROOT_URI;
+        }
+        return MOCK_ROOT_URI + parseCount;
     }
 }

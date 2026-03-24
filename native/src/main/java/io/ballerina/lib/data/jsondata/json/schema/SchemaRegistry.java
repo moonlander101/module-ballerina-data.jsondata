@@ -19,6 +19,7 @@ package io.ballerina.lib.data.jsondata.json.schema;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 import java.net.URI;
+import java.security.Key;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -125,6 +126,67 @@ public class SchemaRegistry {
         }
 
         return null;
+    }
+
+    public Object findRootSchema() {
+        HashMap<URI, Boolean> isRoot = new HashMap<>();
+        for (URI uri : schemas.keySet()) {
+            isRoot.put(uri, true);
+        }
+        for (Object schema : schemas.values()) {
+            checkReferences(isRoot, schema);
+        }
+
+        int count = 0;
+        URI rootUri = null;
+        for (URI uri : isRoot.keySet()) {
+            if (isRoot.get(uri)) {
+                count += 1;
+                rootUri = uri;
+            }
+        }
+        if (count != 1) {
+            throw new IllegalStateException("Expected exactly one root schema, found " + count);
+        }
+        return schemas.get(rootUri);
+    }
+
+    private void checkReferences(HashMap<URI, Boolean> isRoot, Object schema) {
+        if (schema instanceof Schema) {
+            Keyword refKeyword = ((Schema) schema).getKeyword("$ref");
+            Keyword dynamicRefKeyword = ((Schema) schema).getKeyword("$dynamicRef");
+            if (refKeyword != null) {
+                Object refValue = refKeyword.getKeywordValue();
+                if (refValue instanceof URI refURI) {
+                    isRoot.put(refURI, false);
+                }
+            }
+            if (dynamicRefKeyword != null) {
+                Object refValue = dynamicRefKeyword.getKeywordValue();
+                if (refValue instanceof URI refURI) {
+                    isRoot.put(refURI, false);
+                }
+            }
+
+            for (Keyword kw : ((Schema) schema).getKeywords().values()) {
+                Object keywordValue = kw.getKeywordValue();
+                if (keywordValue instanceof Schema) {
+                    checkReferences(isRoot, keywordValue);
+                } else if (keywordValue instanceof List<?>) {
+                    for (Object item : (List<?>) keywordValue) {
+                        if (item instanceof Schema) {
+                            checkReferences(isRoot, item);
+                        }
+                    }
+                } else if (keywordValue instanceof Map<?, ?>) {
+                    for (Object value : ((Map<?, ?>) keywordValue).values()) {
+                        if (value instanceof Schema) {
+                            checkReferences(isRoot, value);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public static boolean isAbsoluteUri(String uriString) {
