@@ -38,6 +38,9 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.WriteOnlyK
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.DependentRequiredKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.FormatKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentEncodingKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentMediaTypeKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentSchemaKeyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
@@ -417,33 +420,13 @@ public class SchemaTypeParser {
                     keywords.put(WriteOnlyKeyword.keywordName, new WriteOnlyKeyword(true));
                     break;
                 case "MetaData":
-                    if (!(annotation instanceof BMap<?, ?> metaData)) {
-                        break;
-                    }
-                    BString titleKey = StringUtils.fromString("title");
-                    if (metaData.containsKey(titleKey)) {
-                        Object title = metaData.get(titleKey);
-                        if (title instanceof BString titleValue) {
-                            keywords.put(TitleKeyword.keywordName, new TitleKeyword(titleValue.getValue()));
-                        }
-                    }
-                    BString examplesKey = StringUtils.fromString("examples");
-                    if (metaData.containsKey(examplesKey)) {
-                        Object examples = metaData.get(examplesKey);
-                        if (examples instanceof BArray examplesValue) {
-                            keywords.put(ExamplesKeyword.keywordName, new ExamplesKeyword(examplesValue));
-                        }
-                    }
-                    BString commentKey = StringUtils.fromString("comment");
-                    if (metaData.containsKey(commentKey)) {
-                        Object comment = metaData.get(commentKey);
-                        if (comment instanceof BString commentValue) {
-                            keywords.put(CommentKeyword.keywordName, new CommentKeyword(commentValue.getValue()));
-                        }
-                    }
+                    extractMetaDataKeywords((BMap<BString, Object>) annotation, keywords);
                     break;
-                case "StringEncodedData":
+                case "StringEncodedData": {
+                    Object err = extractStringEncodedDataKeywords((BMap<BString, Object>) annotation, keywords);
+                    if (err instanceof BError) return err;
                     break;
+                }
                 case "AllOf":
                     keywords.put(AllOfKeyword.keywordName, new AllOfKeyword(new ArrayList<>()));
                     break;
@@ -980,6 +963,58 @@ public class SchemaTypeParser {
                        new UnevaluatedPropertiesKeyword(unevaluatedPropertiesSchema));
         }
         return null;
+    }
+
+    private Object extractStringEncodedDataKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
+        BString contentEncodingKey = StringUtils.fromString("contentEncoding");
+        if (annotation.containsKey(contentEncodingKey)) {
+            Object encoding = annotation.get(contentEncodingKey);
+            if (encoding instanceof BString encodingValue) {
+                keywords.put(ContentEncodingKeyword.keywordName, new ContentEncodingKeyword(encodingValue.getValue()));
+            }
+        }
+        BString contentMediaTypeKey = StringUtils.fromString("contentMediaType");
+        if (annotation.containsKey(contentMediaTypeKey)) {
+            Object mediaType = annotation.get(contentMediaTypeKey);
+            if (mediaType instanceof BString mediaTypeValue) {
+                keywords.put(ContentMediaTypeKeyword.keywordName, new ContentMediaTypeKeyword(mediaTypeValue.getValue()));
+            }
+        }
+        BString contentSchemaKey = StringUtils.fromString("contentSchema");
+        if (annotation.containsKey(contentSchemaKey)) {
+            Object contentSchema = parseSchemaFromTypeDesc(annotation, contentSchemaKey);
+            if (contentSchema instanceof BError) {
+                return contentSchema;
+            }
+            if (contentSchema instanceof Schema || contentSchema instanceof Boolean) {
+                keywords.put(ContentSchemaKeyword.keywordName, new ContentSchemaKeyword(contentSchema));
+            }
+        }
+        return null;
+    }
+
+    private void extractMetaDataKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
+        BString titleKey = StringUtils.fromString("title");
+        if (annotation.containsKey(titleKey)) {
+            Object title = annotation.get(titleKey);
+            if (title instanceof BString titleValue) {
+                keywords.put(TitleKeyword.keywordName, new TitleKeyword(titleValue.getValue()));
+            }
+        }
+        BString examplesKey = StringUtils.fromString("examples");
+        if (annotation.containsKey(examplesKey)) {
+            Object examples = annotation.get(examplesKey);
+            if (examples instanceof BArray examplesValue) {
+                keywords.put(ExamplesKeyword.keywordName, new ExamplesKeyword(examplesValue));
+            }
+        }
+        BString commentKey = StringUtils.fromString("comment");
+        if (annotation.containsKey(commentKey)) {
+            Object comment = annotation.get(commentKey);
+            if (comment instanceof BString commentValue) {
+                keywords.put(CommentKeyword.keywordName, new CommentKeyword(commentValue.getValue()));
+            }
+        }
     }
 
     private Object parseSchemaFromTypeDesc(BMap<BString, Object> annotation, BString keyName) {

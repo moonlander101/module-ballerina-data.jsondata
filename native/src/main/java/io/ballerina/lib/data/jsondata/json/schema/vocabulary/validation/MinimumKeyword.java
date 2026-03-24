@@ -15,6 +15,7 @@ public class MinimumKeyword extends Keyword {
         } else if (instance instanceof Long) {
             valid = (Long) instance >= keywordValue;
         }
+
         if (!valid) {
             context.addError("minimum", "At " + context.getInstanceLocation() + ": [minimum] value " + instance + " is less than minimum " + keywordValue);
         }

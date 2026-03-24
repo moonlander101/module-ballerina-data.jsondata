@@ -52,6 +52,9 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.Required
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.TypeKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.FormatKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.UniqueItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentEncodingKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentMediaTypeKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentSchemaKeyword;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 import io.ballerina.runtime.api.utils.StringUtils;
@@ -160,7 +163,7 @@ public class SchemaJsonParser {
                             }
                             // Register under  <baseUri>#/$defs/<name>
                             String currentBase = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
-                            String fragment = "#/$defs/" + defName.getValue();
+                            String fragment = "#/$defs/" + SchemaParserUtils.escapeJsonPointerFragment(defName.getValue());
                             String defUri = SchemaRegistry.resolveURI(currentBase, fragment);
                             try {
                                 registry.put(URI.create(defUri), defParsed);
@@ -168,9 +171,6 @@ public class SchemaJsonParser {
                                 // Malformed URI — skip registration; $ref to it will fail at eval time
                             }
                         }
-                    }
-
-                    case "minContains", "maxContains", "$schema", "$comment", "$anchor", "$dynamicAnchor" -> {
                     }
 
                     default -> {
@@ -181,6 +181,7 @@ public class SchemaJsonParser {
                     }
                 }
             }
+            System.out.println(registry);
 
             Schema schema = new Schema(keywords);
             // The root case with no id
@@ -681,6 +682,31 @@ public class SchemaJsonParser {
                     return parsed;
                 }
                 keywords.put(UnevaluatedPropertiesKeyword.keywordName, new UnevaluatedPropertiesKeyword(parsed));
+            }
+
+            case "contentEncoding" -> {
+                if (!(value instanceof BString encoding)) {
+                    return DiagnosticLog.createJsonError("Invalid value for 'contentEncoding' keyword: expected string");
+                }
+                keywords.put(ContentEncodingKeyword.keywordName, new ContentEncodingKeyword(encoding.getValue()));
+            }
+
+            case "contentMediaType" -> {
+                if (!(value instanceof BString mediaType)) {
+                    return DiagnosticLog.createJsonError("Invalid value for 'contentMediaType' keyword: expected string");
+                }
+                keywords.put(ContentMediaTypeKeyword.keywordName, new ContentMediaTypeKeyword(mediaType.getValue()));
+            }
+
+            case "contentSchema" -> {
+                Object parsed = parse(value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                if (!(parsed instanceof Schema || parsed instanceof Boolean)) {
+                    return DiagnosticLog.createJsonError("Invalid value for 'contentSchema' keyword: expected valid schema");
+                }
+                keywords.put(ContentSchemaKeyword.keywordName, new ContentSchemaKeyword(parsed));
             }
 
         }
