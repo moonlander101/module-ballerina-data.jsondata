@@ -1,0 +1,14 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "string",
+    "format": "email",
+    "$id": "http://data.jsondata/schemas/format/network_email.json"
+  },
+  "valid": [
+    "test@example.com"
+  ],
+  "invalid": [
+    "not-an-email"
+  ]
+}

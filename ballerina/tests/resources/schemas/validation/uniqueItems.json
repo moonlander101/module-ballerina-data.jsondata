@@ -1,0 +1,22 @@
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "uniqueItems": true,
+    "$id": "http://data.jsondata/schemas/uniqueItems.json"
+  },
+  "valid": [
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "invalid": [
+    [
+      1,
+      2,
+      1
+    ]
+  ]
+}

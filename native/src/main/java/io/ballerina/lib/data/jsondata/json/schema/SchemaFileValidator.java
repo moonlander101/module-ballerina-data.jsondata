@@ -46,14 +46,7 @@ public class SchemaFileValidator {
     private final SchemaRegistry schemaRegistry;
     private static SchemaFileValidator instance;
 
-    public static SchemaFileValidator getInstance(BString firstFilePath) {
-        if (instance == null) {
-            instance = new SchemaFileValidator(firstFilePath.getValue());
-        }
-        return instance;
-    }
-
-    private SchemaFileValidator(String baseFilePath) {
+    public SchemaFileValidator(String baseFilePath) {
         if (baseFilePath == null || baseFilePath.isEmpty()) {
             throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_PATH_NULL_OR_EMPTY);
         }
