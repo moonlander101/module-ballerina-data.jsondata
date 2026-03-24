@@ -19,16 +19,14 @@
 package io.ballerina.lib.data.jsondata.json;
 
 import io.ballerina.lib.data.jsondata.io.BallerinaByteBlockInputStream;
-import io.ballerina.lib.data.jsondata.json.schema.SchemaFileValidator;
-import io.ballerina.lib.data.jsondata.json.schema.SchemaJsonValidator;
-import io.ballerina.lib.data.jsondata.utils.Constants;
-import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
-import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.json.schema.*;
+import io.ballerina.lib.data.jsondata.utils.*;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.PredefinedTypes;
 import io.ballerina.runtime.api.types.RecordType;
+import io.ballerina.runtime.api.types.Type;
 import io.ballerina.runtime.api.utils.JsonUtils;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.utils.TypeUtils;
@@ -44,6 +42,8 @@ import io.ballerina.runtime.api.values.BTypedesc;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.net.URI;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -91,27 +91,75 @@ public class Native {
             if (schema instanceof BString) {
                 SchemaFileValidator validator = new SchemaFileValidator(((BString) schema).getValue());
                 err = validator.validate(jsonValue, (BString) schema);
+
             } else if (schema instanceof BMap || schema instanceof Boolean) {
-                String schemaStr = StringUtils.getJsonString(schema);
+//                String schemaStr = StringUtils.getJsonString(schema);
 
-                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
-                err = validator.validate(jsonValue, schemaStr);
+                SchemaRegistry registry = new SchemaRegistry();
+                SchemaJsonParser parser = new SchemaJsonParser(registry);
+                Object parsedSchema = parser.parse(schema);
+                if (parsedSchema instanceof BError) {
+                    return parsedSchema;
+                }
+                Validator val = new Validator(false);
+                EvaluationContext context = new EvaluationContext(registry);
+                
+                URI rootResourceUri = SchemaValidatorUtils.getRootResourceUri(parsedSchema);
+                context.pushDynamicScope(rootResourceUri);
+                if (!val.validate(jsonValue, parsedSchema, context)) {
+                    String errorMessage = String.join("\n- ", context.getErrors());
+                    err = DiagnosticLog.createJsonError(errorMessage);
+                }
+                context.popDynamicScope();
+
+//                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
+//                err = validator.validate(jsonValue, schemaStr);
+
             } else if (schema instanceof BArray schemaArray) {
+                SchemaRegistry registry = new SchemaRegistry();
+                SchemaJsonParser parser = new SchemaJsonParser(registry);
+
                 int length = (int) schemaArray.getLength();
-                if (length == 0) {
-                    return DiagnosticLog.createJsonError("schema array cannot be empty");
-                }
-
-                String[] schemaStrings = new String[length];
                 for (int i = 0; i < length; i++) {
-                    schemaStrings[i] = StringUtils.getJsonString(schemaArray.get(i));
+                    Object s = schemaArray.get(i);
+                    if (parser.parse(s) instanceof BError parseError) {
+                        return parseError;
+                    }
+                }
+                Object rootSchema = registry.findRootSchema();
+
+                if (rootSchema instanceof BError) {
+                    return rootSchema;
                 }
 
-                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStrings);
-                String rootSchema = validator.findRootSchema(schemaStrings);
-                err = validator.validate(jsonValue, rootSchema);
+                Validator val = new Validator(false);
+                EvaluationContext context = new EvaluationContext(registry);
+
+                URI rootResourceUri = SchemaValidatorUtils.getRootResourceUri(rootSchema);
+                context.pushDynamicScope(rootResourceUri);
+
+                if (!val.validate(jsonValue, rootSchema, context)) {
+                    String errorMessage = String.join("\n- ", context.getErrors());
+                    return DiagnosticLog.createJsonError(errorMessage);
+                }
+                context.popDynamicScope();
+
             } else if (schema instanceof BTypedesc) {
-                err = DiagnosticLog.createJsonError("type validation not supported yet");
+                Type type = ((BTypedesc) schema).getDescribingType();
+                SchemaTypeParser tp = new SchemaTypeParser();
+                Object schemaObj = tp.parse(type);
+                if (schemaObj instanceof BError) {
+                    err = schemaObj;
+                } else {
+                    Validator validator = new Validator(false);
+                    EvaluationContext context = new EvaluationContext();
+                    if (!validator.validate(jsonValue, schemaObj, context)) {
+                        String errorMessage = String.join("\n- ", context.getErrors());
+                        err = DiagnosticLog.error(
+                            DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
+                            "- " + errorMessage);
+                    }
+                }
             } else {
                 err = DiagnosticLog.createJsonError("invalid schema type: expected string, json, or json[]: " +
                         TypeUtils.getType(schema).getName());
