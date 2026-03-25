@@ -225,7 +225,7 @@ const schemaUrnB = {
     "type": "object"
 };
 
-function dataProviderForSchemaJsonValidation() returns [json, json, boolean][] {
+function dataProviderForSchemaJsonValidation() returns [json, map<json>, boolean][] {
     json validProduct1 = {
         "product_id": "1024",
         "product_name": "Devant",
@@ -321,7 +321,7 @@ function dataProviderForSchemaJsonValidation() returns [json, json, boolean][] {
 @test:Config {
     dataProvider: dataProviderForSchemaJsonValidation
 }
-isolated function testSchemaJsonValidation(json inputData, json schema, boolean shouldPass) {
+isolated function testSchemaJsonValidation(json inputData, map<json> schema, boolean shouldPass) {
     Error? result = validate(inputData, schema);
     if shouldPass {
         test:assertTrue(result is (),  "Valid data should pass schema validation");
@@ -369,7 +369,7 @@ function dataProviderForSchemaJsonIdHandling() returns [json, json, boolean][] {
 @test:Config {
     dataProvider: dataProviderForSchemaJsonIdHandling
 }
-isolated function testSchemaJsonIdHandling(json inputData, json schema, boolean shouldPass) {
+isolated function testSchemaJsonIdHandling(json inputData, map<json> schema, boolean shouldPass) {
     Error? result = validate(inputData, schema);
     if shouldPass {
         test:assertTrue(result is (),  "Valid schema array should pass");
@@ -378,7 +378,7 @@ isolated function testSchemaJsonIdHandling(json inputData, json schema, boolean 
     }
 }
 
-function dataProviderForSchemaArrayValidation() returns [json, (json[]), boolean][] {
+function dataProviderForSchemaArrayValidation() returns [json, (map<json>[]), boolean][] {
     json validPerson1 = {
         "firstName": "John",
         "lastName": "Doe",
@@ -406,7 +406,7 @@ function dataProviderForSchemaArrayValidation() returns [json, (json[]), boolean
 @test:Config {
     dataProvider: dataProviderForSchemaArrayValidation
 }
-isolated function testSchemaArrayValidation(json inputData, json[] schemas, boolean shouldPass) {
+isolated function testSchemaArrayValidation(json inputData, map<json>[] schemas, boolean shouldPass) {
     Error? result = validate(inputData, schemas);
     if shouldPass {
         test:assertTrue(result is (),  "Valid data should pass schema array validation");
@@ -415,7 +415,7 @@ isolated function testSchemaArrayValidation(json inputData, json[] schemas, bool
     }
 }
 
-function dataProviderForSchemaArrayWithReferences() returns [json, (json[]), boolean][] {
+function dataProviderForSchemaArrayWithReferences() returns [json, (map<json>[]), boolean][] {
     json validPersonWithAddress = {
         "firstName": "John",
         "lastName": "Doe",
@@ -455,7 +455,7 @@ function dataProviderForSchemaArrayWithReferences() returns [json, (json[]), boo
 @test:Config {
     dataProvider: dataProviderForSchemaArrayWithReferences
 }
-isolated function testSchemaArrayWithReferences(json inputData, json[] schemas, boolean shouldPass) {
+isolated function testSchemaArrayWithReferences(json inputData, map<json>[] schemas, boolean shouldPass) {
     Error? result = validate(inputData, schemas);
     if shouldPass {
         test:assertTrue(result is (),  "Valid data with schema references should pass");
@@ -464,7 +464,7 @@ isolated function testSchemaArrayWithReferences(json inputData, json[] schemas, 
     }
 }
 
-function dataProviderForSchemaArrayMultipleIdHandling() returns [json, (json[]), boolean][] {
+function dataProviderForSchemaArrayMultipleIdHandling() returns [json, (map<json>[]), boolean][] {
     json testData = {"key": "value"};
 
     return [
@@ -483,7 +483,7 @@ function dataProviderForSchemaArrayMultipleIdHandling() returns [json, (json[]),
 @test:Config {
     dataProvider: dataProviderForSchemaArrayMultipleIdHandling
 }
-isolated function testSchemaArrayMultipleIdHandling(json inputData, json[] schemas, boolean shouldPass) {
+isolated function testSchemaArrayMultipleIdHandling(json inputData, map<json>[] schemas, boolean shouldPass) {
     Error? result = validate(inputData, schemas);
     if shouldPass {
         test:assertTrue(result is (), "Valid multiple schema array should pass");

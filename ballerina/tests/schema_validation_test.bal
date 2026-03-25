@@ -19,7 +19,7 @@ import ballerina/io;
 import ballerina/file;
 
 type ValidationTestCase record {|
-    json schema;
+    map<json> schema;
     json[] valid;
     json[] invalid;
 |};
@@ -83,8 +83,8 @@ const testFiles = [
     "validation/format/uri_uuid.json"
 ];
 
-function dataProviderForSchemaValidation() returns [json, json, string, boolean, string][] {
-    [json, json, string, boolean, string][] testData = [];
+function dataProviderForSchemaValidation() returns [json, map<json>, string, boolean, string][] {
+    [json, map<json>, string, boolean, string][] testData = [];
     
     foreach string testFile in testFiles {
         json|error testCaseJson = getJsonSchemaTestContentFromFile(testFile);
@@ -125,7 +125,7 @@ function dataProviderForSchemaValidation() returns [json, json, string, boolean,
 @test:Config {
     dataProvider: dataProviderForSchemaValidation
 }
-isolated function testSchemaAsJsonValidation(json inputData, json schema, string schemaPath, boolean shouldPass, string testCase) {
+isolated function testSchemaAsJsonValidation(json inputData, map<json> schema, string schemaPath, boolean shouldPass, string testCase) {
     Error? result = validate(inputData, schema);
     if shouldPass {
         test:assertTrue(result is (), testCase + ": Valid data should pass schema validation");
@@ -138,7 +138,7 @@ isolated function testSchemaAsJsonValidation(json inputData, json schema, string
     dataProvider: dataProviderForSchemaValidation
 }
 
-isolated function testSchemaAsFilePathValidation(json inputData, json schema, string schemaPath, boolean shouldPass, string testCase) returns error? {
+isolated function testSchemaAsFilePathValidation(json inputData, map<json> schema, string schemaPath, boolean shouldPass, string testCase) returns error? {
     string tempDir = check file:createTempDir(prefix = "schema_test_");
     string:RegExp separator = re `/`;
     string safeFileName = separator.replaceAll(schemaPath, "_");
