@@ -47,6 +47,7 @@ public class ElseKeyword extends Keyword {
                     SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(elseContext);
                     context.setAnnotation("elseEvaluatedProperties", elseContext.getAnnotation("evaluatedProperties"));
                 }
+                return elseValid;
             }
         }
         return true;
