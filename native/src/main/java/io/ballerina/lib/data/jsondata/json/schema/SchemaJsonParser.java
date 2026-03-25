@@ -79,14 +79,14 @@ public class SchemaJsonParser {
     private final SchemaRegistry registry;
 
     private final Stack<String> scopeStack = new Stack<>();
-    private int parseCount = -1;
+    private static int parseCount = -1;
 
     public SchemaJsonParser(SchemaRegistry registry) {
+        parseCount++;
         this.registry = registry;
     }
 
     public Object parse(Object json) {
-        parseCount++;
         if (json instanceof BMap<?, ?>) {
             return parseSchema((BMap<BString, Object>) json);
         } else if (json instanceof Boolean) {
@@ -640,7 +640,7 @@ public class SchemaJsonParser {
                 }
                 String refStr = refVal.getValue();
                 // Resolve against current scope — always yields an absolute URI
-                String base = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
+                String base = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
                 String resolved = SchemaRegistry.resolveURI(base, refStr);
                 URI refUri;
                 try {
@@ -657,7 +657,7 @@ public class SchemaJsonParser {
                 }
                 String dynamicRefStr = dynamicRefVal.getValue();
                 // Resolve against current scope — always yields an absolute URI
-                String base = scopeStack.isEmpty() ? MOCK_ROOT_URI : scopeStack.peek();
+                String base = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
                 String resolved = SchemaRegistry.resolveURI(base, dynamicRefStr);
                 URI dynamicRefUri;
                 try {

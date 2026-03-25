@@ -87,7 +87,7 @@ public class SchemaValidatorUtils {
                 }
             }
         }
-        return URI.create("urn:jsonschema:root");
+        return URI.create("http://wso2.com/schema-root");
     }
 
     public static void createEvaluatedItemsAnnotation(EvaluationContext context) {
