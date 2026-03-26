@@ -106,7 +106,7 @@ public class SchemaJsonParser {
         Long minContains = SchemaParserUtils.extractInteger(json, "minContains");
         Long maxContains = SchemaParserUtils.extractInteger(json, "maxContains");
 
-        BString idKey = StringUtils.fromString("$id");
+        BString idKey = StringUtils.fromString(IdKeyword.keywordName);
         if (json.containsKey(idKey)) {
             Object idValue = json.get(idKey);
             if (!(idValue instanceof BString)) {
@@ -120,7 +120,7 @@ public class SchemaJsonParser {
             keywords.put(IdKeyword.keywordName, new IdKeyword(idValue));
         }
 
-        BString anchorKey = StringUtils.fromString("$anchor");
+        BString anchorKey = StringUtils.fromString(AnchorKeyword.keywordName);
         if (json.containsKey(anchorKey)) {
             Object anchorValue = json.get(anchorKey);
             if (!(anchorValue instanceof BString)) {
@@ -133,7 +133,7 @@ public class SchemaJsonParser {
             keywords.put(AnchorKeyword.keywordName, new AnchorKeyword(anchorValue));
         }
 
-        BString dynamicAnchorKey = StringUtils.fromString("$dynamicAnchor");
+        BString dynamicAnchorKey = StringUtils.fromString(DynamicAnchorKeyword.keywordName);
         if (json.containsKey(dynamicAnchorKey)) {
             Object dynamicAnchorValue = json.get(dynamicAnchorKey);
             if (!(dynamicAnchorValue instanceof BString)) {
@@ -250,7 +250,7 @@ public class SchemaJsonParser {
                                   LinkedHashMap<String, Keyword> keywords,
                                   Long minContains, Long maxContains) {
         switch (key) {
-            case "type" -> {
+            case TypeKeyword.keywordName -> {
                 if (value instanceof BString typeName) {
                     keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeName.getValue()));
                 } else if (value instanceof BArray typeArray) {
@@ -271,7 +271,7 @@ public class SchemaJsonParser {
                 }
             }
 
-            case "properties" -> {
+            case PropertiesKeyword.keywordName -> {
                 if (!(value instanceof BMap<?, ?>)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'properties' keyword");
                 }
@@ -283,7 +283,7 @@ public class SchemaJsonParser {
                         new PropertiesKeyword((Map<String, Object>) parsed));
             }
 
-            case "patternProperties" -> {
+            case PatternPropertiesKeyword.keywordName -> {
                 if (!(value instanceof BMap<?, ?>)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'patternProperties' keyword");
                 }
@@ -295,7 +295,7 @@ public class SchemaJsonParser {
                         new PatternPropertiesKeyword((Map<String, Object>) parsed));
             }
 
-            case "additionalProperties" -> {
+            case AdditionalPropertiesKeyword.keywordName -> {
                 if (value instanceof Boolean) {
                     keywords.put(AdditionalPropertiesKeyword.keywordName,
                             new AdditionalPropertiesKeyword(value));
@@ -311,7 +311,7 @@ public class SchemaJsonParser {
                 }
             }
 
-            case "propertyNames" -> {
+            case PropertyNamesKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
@@ -319,7 +319,7 @@ public class SchemaJsonParser {
                 keywords.put(PropertyNamesKeyword.keywordName, new PropertyNamesKeyword(parsed));
             }
 
-            case "items" -> {
+            case ItemsKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
@@ -327,7 +327,7 @@ public class SchemaJsonParser {
                 keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(parsed));
             }
 
-            case "prefixItems" -> {
+            case PrefixItemsKeyword.keywordName -> {
                 if (!(value instanceof BArray)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'prefixItems' keyword");
                 }
@@ -339,7 +339,7 @@ public class SchemaJsonParser {
                         new PrefixItemsKeyword((List<Object>) parsed));
             }
 
-            case "contains" -> {
+            case ContainsKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
@@ -348,7 +348,7 @@ public class SchemaJsonParser {
                         new ContainsKeyword(minContains, maxContains, parsed));
             }
 
-            case "allOf" -> {
+            case AllOfKeyword.keywordName -> {
                 if (!(value instanceof BArray)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'allOf' keyword");
                 }
@@ -359,7 +359,7 @@ public class SchemaJsonParser {
                 keywords.put(AllOfKeyword.keywordName, new AllOfKeyword((List<Object>) parsed));
             }
 
-            case "anyOf" -> {
+            case AnyOfKeyword.keywordName -> {
                 if (!(value instanceof BArray)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'anyOf' keyword");
                 }
@@ -370,7 +370,7 @@ public class SchemaJsonParser {
                 keywords.put(AnyOfKeyword.keywordName, new AnyOfKeyword((List<Object>) parsed));
             }
 
-            case "oneOf" -> {
+            case OneOfKeyword.keywordName -> {
                 if (!(value instanceof BArray)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'oneOf' keyword");
                 }
@@ -381,7 +381,7 @@ public class SchemaJsonParser {
                 keywords.put(OneOfKeyword.keywordName, new OneOfKeyword((List<Object>) parsed));
             }
 
-            case "not" -> {
+            case NotKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
@@ -389,7 +389,7 @@ public class SchemaJsonParser {
                 keywords.put(NotKeyword.keywordName, new NotKeyword(parsed));
             }
 
-            case "if" -> {
+            case IfKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
@@ -397,7 +397,7 @@ public class SchemaJsonParser {
                 keywords.put(IfKeyword.keywordName, new IfKeyword(parsed));
             }
 
-            case "then" -> {
+            case ThenKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
@@ -405,7 +405,7 @@ public class SchemaJsonParser {
                 keywords.put(ThenKeyword.keywordName, new ThenKeyword(parsed));
             }
 
-            case "else" -> {
+            case ElseKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
@@ -413,7 +413,7 @@ public class SchemaJsonParser {
                 keywords.put(ElseKeyword.keywordName, new ElseKeyword(parsed));
             }
 
-            case "required" -> {
+            case RequiredKeyword.keywordName -> {
                 if (!(value instanceof BArray)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'required' keyword");
                 }
@@ -430,7 +430,7 @@ public class SchemaJsonParser {
                 keywords.put(RequiredKeyword.keywordName, new RequiredKeyword(required));
             }
 
-            case "dependentRequired" -> {
+            case DependentRequiredKeyword.keywordName -> {
                 if (!(value instanceof BMap<?, ?>)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'dependentRequired' keyword");
                 }
@@ -460,7 +460,7 @@ public class SchemaJsonParser {
                         new DependentRequiredKeyword(depRequired));
             }
 
-            case "dependentSchemas" -> {
+            case DependentSchemasKeyword.keywordName -> {
                 if (!(value instanceof BMap<?, ?>)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'dependentSchemas' keyword");
                 }
@@ -472,14 +472,14 @@ public class SchemaJsonParser {
                         new DependentSchemasKeyword((Map<String, Object>) parsed));
             }
 
-            case "pattern" -> {
+            case PatternKeyword.keywordName -> {
                 if (!(value instanceof BString pv)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'pattern' keyword");
                 }
                 keywords.put(PatternKeyword.keywordName, new PatternKeyword(pv.getValue()));
             }
 
-            case "minLength" -> {
+            case MinLengthKeyword.keywordName -> {
                 Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'minLength' keyword");
@@ -487,7 +487,7 @@ public class SchemaJsonParser {
                 keywords.put(MinLengthKeyword.keywordName, new MinLengthKeyword(v));
             }
 
-            case "maxLength" -> {
+            case MaxLengthKeyword.keywordName -> {
                 Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'maxLength' keyword");
@@ -495,14 +495,14 @@ public class SchemaJsonParser {
                 keywords.put(MaxLengthKeyword.keywordName, new MaxLengthKeyword(v));
             }
 
-            case "format" -> {
+            case FormatKeyword.keywordName -> {
                 if (!(value instanceof BString fv)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'format' keyword");
                 }
                 keywords.put(FormatKeyword.keywordName, new FormatKeyword(fv.getValue()));
             }
 
-            case "minimum" -> {
+            case MinimumKeyword.keywordName -> {
                 Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'minimum' keyword");
@@ -510,7 +510,7 @@ public class SchemaJsonParser {
                 keywords.put(MinimumKeyword.keywordName, new MinimumKeyword(v));
             }
 
-            case "maximum" -> {
+            case MaximumKeyword.keywordName -> {
                 Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'maximum' keyword");
@@ -518,7 +518,7 @@ public class SchemaJsonParser {
                 keywords.put(MaximumKeyword.keywordName, new MaximumKeyword(v));
             }
 
-            case "exclusiveMinimum" -> {
+            case ExclusiveMinimumKeyword.keywordName -> {
                 Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'exclusiveMinimum' keyword");
@@ -526,7 +526,7 @@ public class SchemaJsonParser {
                 keywords.put(ExclusiveMinimumKeyword.keywordName, new ExclusiveMinimumKeyword(v));
             }
 
-            case "exclusiveMaximum" -> {
+            case ExclusiveMaximumKeyword.keywordName -> {
                 Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'exclusiveMaximum' keyword");
@@ -534,7 +534,7 @@ public class SchemaJsonParser {
                 keywords.put(ExclusiveMaximumKeyword.keywordName, new ExclusiveMaximumKeyword(v));
             }
 
-            case "multipleOf" -> {
+            case MultipleOfKeyword.keywordName -> {
                 Double v = SchemaParserUtils.toNumber(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'multipleOf' keyword");
@@ -542,7 +542,7 @@ public class SchemaJsonParser {
                 keywords.put(MultipleOfKeyword.keywordName, new MultipleOfKeyword(v));
             }
 
-            case "minItems" -> {
+            case MinItemsKeyword.keywordName -> {
                 Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'minItems' keyword");
@@ -550,7 +550,7 @@ public class SchemaJsonParser {
                 keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(v));
             }
 
-            case "maxItems" -> {
+            case MaxItemsKeyword.keywordName -> {
                 Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'maxItems' keyword");
@@ -558,14 +558,14 @@ public class SchemaJsonParser {
                 keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(v));
             }
 
-            case "uniqueItems" -> {
+            case UniqueItemsKeyword.keywordName -> {
                 if (!(value instanceof Boolean)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'uniqueItems' keyword");
                 }
                 keywords.put(UniqueItemsKeyword.keywordName, new UniqueItemsKeyword((Boolean) value));
             }
 
-            case "minProperties" -> {
+            case MinPropertiesKeyword.keywordName -> {
                 Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'minProperties' keyword");
@@ -573,7 +573,7 @@ public class SchemaJsonParser {
                 keywords.put(MinPropertiesKeyword.keywordName, new MinPropertiesKeyword(v));
             }
 
-            case "maxProperties" -> {
+            case MaxPropertiesKeyword.keywordName -> {
                 Long v = SchemaParserUtils.toInteger(value);
                 if (v == null) {
                     return DiagnosticLog.createJsonError("Invalid value for 'maxProperties' keyword");
@@ -581,47 +581,47 @@ public class SchemaJsonParser {
                 keywords.put(MaxPropertiesKeyword.keywordName, new MaxPropertiesKeyword(v));
             }
 
-            case "title" -> {
+            case TitleKeyword.keywordName -> {
                 if (value instanceof BString title) {
                     keywords.put(TitleKeyword.keywordName, new TitleKeyword(title.getValue()));
                 }
             }
 
-            case "description" -> {
+            case DescriptionKeyword.keywordName -> {
                 if (value instanceof BString description) {
                     keywords.put(DescriptionKeyword.keywordName, new DescriptionKeyword(description.getValue()));
                 }
             }
 
-            case "default" -> {
+            case DefaultKeyword.keywordName -> {
                 keywords.put(DefaultKeyword.keywordName, new DefaultKeyword(value));
             }
 
-            case "examples" -> {
+            case ExamplesKeyword.keywordName -> {
                 if (value instanceof BArray) {
                     keywords.put(ExamplesKeyword.keywordName, new ExamplesKeyword(value));
                 }
             }
 
-            case "readOnly" -> {
+            case ReadOnlyKeyword.keywordName -> {
                 if (value instanceof Boolean readOnly) {
                     keywords.put(ReadOnlyKeyword.keywordName, new ReadOnlyKeyword(readOnly));
                 }
             }
 
-            case "writeOnly" -> {
+            case WriteOnlyKeyword.keywordName -> {
                 if (value instanceof Boolean writeOnly) {
                     keywords.put(WriteOnlyKeyword.keywordName, new WriteOnlyKeyword(writeOnly));
                 }
             }
 
-            case "deprecated" -> {
+            case DeprecatedKeyword.keywordName -> {
                 if (value instanceof Boolean deprecated) {
                     keywords.put(DeprecatedKeyword.keywordName, new DeprecatedKeyword(deprecated));
                 }
             }
 
-            case "enum" -> {
+            case EnumKeyword.keywordName -> {
                 if (!(value instanceof BArray arr)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'enum' keyword");
                 }
@@ -632,9 +632,9 @@ public class SchemaJsonParser {
                 keywords.put(EnumKeyword.keywordName, new EnumKeyword(enumValues));
             }
 
-            case "const" -> keywords.put(ConstKeyword.keywordName, new ConstKeyword(value));
+            case ConstKeyword.keywordName -> keywords.put(ConstKeyword.keywordName, new ConstKeyword(value));
 
-            case "$ref" -> {
+            case RefKeyword.keywordName -> {
                 if (!(value instanceof BString refVal)) {
                     return DiagnosticLog.createJsonError("Invalid value for '$ref' keyword");
                 }
@@ -651,7 +651,7 @@ public class SchemaJsonParser {
                 keywords.put(RefKeyword.keywordName, new RefKeyword(refUri));
             }
 
-            case "$dynamicRef" -> {
+            case DynamicRefKeyword.keywordName -> {
                 if (!(value instanceof BString dynamicRefVal)) {
                     return DiagnosticLog.createJsonError("Invalid value for '$dynamicRef' keyword");
                 }
@@ -672,7 +672,7 @@ public class SchemaJsonParser {
                 keywords.put(DynamicRefKeyword.keywordName, new DynamicRefKeyword(dynamicRefUri, anchorNameForRef));
             }
 
-            case "unevaluatedItems" -> {
+            case UnevaluatedItemsKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
@@ -680,7 +680,7 @@ public class SchemaJsonParser {
                 keywords.put(UnevaluatedItemsKeyword.keywordName, new UnevaluatedItemsKeyword(parsed));
             }
 
-            case "unevaluatedProperties" -> {
+            case UnevaluatedPropertiesKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
@@ -688,21 +688,21 @@ public class SchemaJsonParser {
                 keywords.put(UnevaluatedPropertiesKeyword.keywordName, new UnevaluatedPropertiesKeyword(parsed));
             }
 
-            case "contentEncoding" -> {
+            case ContentEncodingKeyword.keywordName -> {
                 if (!(value instanceof BString encoding)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'contentEncoding' keyword: expected string");
                 }
                 keywords.put(ContentEncodingKeyword.keywordName, new ContentEncodingKeyword(encoding.getValue()));
             }
 
-            case "contentMediaType" -> {
+            case ContentMediaTypeKeyword.keywordName -> {
                 if (!(value instanceof BString mediaType)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'contentMediaType' keyword: expected string");
                 }
                 keywords.put(ContentMediaTypeKeyword.keywordName, new ContentMediaTypeKeyword(mediaType.getValue()));
             }
 
-            case "contentSchema" -> {
+            case ContentSchemaKeyword.keywordName -> {
                 Object parsed = parse(value);
                 if (parsed instanceof BError) {
                     return parsed;
