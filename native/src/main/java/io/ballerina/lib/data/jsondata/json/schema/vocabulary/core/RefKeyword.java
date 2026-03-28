@@ -17,7 +17,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.core;
 
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
-import io.ballerina.lib.data.jsondata.json.schema.Schema;
 import io.ballerina.lib.data.jsondata.json.schema.SchemaRegistry;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
@@ -58,49 +57,16 @@ public class RefKeyword extends Keyword {
             return false;
         }
 
-        URI resourceUri = getResourceUri(target);
-        boolean pushed = false;
-        if (resourceUri != null) {
-            context.pushDynamicScope(resourceUri);
-            pushed = true;
+        EvaluationContext refContext = context.createChildContext("", keywordName);
+        Validator validator = new Validator(false);
+        boolean isValid = validator.validate(instance, target, refContext);
+        if (isValid) {
+            SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
+            SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
+            refContext.moveToParentContext("evaluatedProperties");
+            refContext.moveToParentContext("evaluatedItems");
         }
-        try {
-            EvaluationContext refContext = context.createChildContext("", keywordName);
-            Validator validator = new Validator(false);
-            boolean isValid = validator.validate(instance, target, refContext);
-            if (isValid) {
-                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
-                SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
-                refContext.moveToParentContext("evaluatedProperties");
-                refContext.moveToParentContext("evaluatedItems");
-            }
-            return isValid;
-        } finally {
-            if (pushed) {
-                context.popDynamicScope();
-            }
-        }
-    }
-
-    private static URI getResourceUri(Object target) {
-        if (!(target instanceof Schema schema)) {
-            return null;
-        }
-        Keyword idKeyword = schema.getKeyword(IdKeyword.keywordName);
-        if (idKeyword == null) {
-            return null;
-        }
-        Object idValue = idKeyword.getKeywordValue();
-        if (idValue == null) {
-            return null;
-        }
-        String idStr = idValue.toString();
-        try {
-            URI full = URI.create(idStr);
-            return new URI(full.getScheme(), full.getSchemeSpecificPart(), null);
-        } catch (Exception e) {
-            return null;
-        }
+        return isValid;
     }
 }
 

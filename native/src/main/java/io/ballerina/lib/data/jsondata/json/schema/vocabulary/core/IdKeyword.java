@@ -3,9 +3,11 @@ package io.ballerina.lib.data.jsondata.json.schema.vocabulary.core;
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
+import java.net.URI;
+
 public class IdKeyword extends Keyword {
     public static final String keywordName = "$id";
-    private final Object keywordValue;
+    private final URI keywordValue;
 
 
     @Override
@@ -13,11 +15,11 @@ public class IdKeyword extends Keyword {
         return true;
     }
 
-    public IdKeyword(Object keywordValue) {
+    public IdKeyword(URI keywordValue) {
         this.keywordValue = keywordValue;
     }
 
-    public Object getKeywordValue() {
+    public URI getKeywordValue() {
         return keywordValue;
     }
 

@@ -87,41 +87,36 @@ public class Native {
 
     public static Object validate(Object jsonValue, Object schema) {
         Object err = null;
+        SchemaTypeParser typeParser = new SchemaTypeParser();
+        Validator schemaValidator = new Validator(false);
+
         try {
             if (schema instanceof BString) {
                 SchemaFileValidator validator = new SchemaFileValidator(((BString) schema).getValue());
                 err = validator.validate(jsonValue, (BString) schema);
 
             } else if (schema instanceof BMap || schema instanceof Boolean) {
-//                String schemaStr = StringUtils.getJsonString(schema);
-
                 SchemaRegistry registry = new SchemaRegistry();
                 SchemaJsonParser parser = new SchemaJsonParser(registry);
                 Object parsedSchema = parser.parse(schema);
                 if (parsedSchema instanceof BError) {
                     return parsedSchema;
                 }
-                Validator val = new Validator(false);
+
                 EvaluationContext context = new EvaluationContext(registry);
-                
-                URI rootResourceUri = SchemaValidatorUtils.getRootResourceUri(parsedSchema);
-                context.pushDynamicScope(rootResourceUri);
-                if (!val.validate(jsonValue, parsedSchema, context)) {
+
+                boolean isValid = schemaValidator.validate(jsonValue, parsedSchema, context);
+                if (!isValid) {
                     String errorMessage = String.join("\n- ", context.getErrors());
                     err = DiagnosticLog.createJsonError(errorMessage);
                 }
-                context.popDynamicScope();
-
-//                SchemaJsonValidator validator = new SchemaJsonValidator(schemaStr);
-//                err = validator.validate(jsonValue, schemaStr);
 
             } else if (schema instanceof BArray schemaArray) {
                 SchemaRegistry registry = new SchemaRegistry();
-                SchemaJsonParser parser = new SchemaJsonParser(registry);
-
                 int length = (int) schemaArray.getLength();
                 for (int i = 0; i < length; i++) {
                     Object s = schemaArray.get(i);
+                    SchemaJsonParser parser = new SchemaJsonParser(registry);
                     if (parser.parse(s) instanceof BError parseError) {
                         return parseError;
                     }
@@ -146,8 +141,7 @@ public class Native {
 
             } else if (schema instanceof BTypedesc) {
                 Type type = ((BTypedesc) schema).getDescribingType();
-                SchemaTypeParser tp = new SchemaTypeParser();
-                Object schemaObj = tp.parse(type);
+                Object schemaObj = typeParser.parse(type);
                 if (schemaObj instanceof BError) {
                     err = schemaObj;
                 } else {

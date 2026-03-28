@@ -73,21 +73,30 @@ public class SchemaValidatorUtils {
     }
 
     public static URI getRootResourceUri(Object parsedSchema) {
-        if (parsedSchema instanceof Schema schema) {
-            Keyword idKeyword = schema.getKeyword(IdKeyword.keywordName);
-            if (idKeyword != null) {
-                Object idValue = idKeyword.getKeywordValue();
-                if (idValue != null) {
-                    try {
-                        URI full = URI.create(idValue.toString());
-                        return new URI(full.getScheme(), full.getSchemeSpecificPart(), null);
-                    } catch (Exception ignored) {
-                        // fall through to mock root
-                    }
-                }
-            }
+        URI resourceUri = getResourceUri(parsedSchema);
+        if (resourceUri != null) {
+            return resourceUri;
         }
         return URI.create("http://wso2.com/schema-root");
+    }
+
+    public static URI getResourceUri(Object schema) {
+        if (!(schema instanceof Schema)) {
+            return null;
+        }
+        Keyword idKeyword = ((Schema) schema).getKeyword(IdKeyword.keywordName);
+        if (idKeyword == null) {
+            return null;
+        }
+        Object idValue = idKeyword.getKeywordValue();
+        if (!(idValue instanceof URI uri)) {
+            return null;
+        }
+        try {
+            return new URI(uri.getScheme(), uri.getSchemeSpecificPart(), null);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static void createEvaluatedItemsAnnotation(EvaluationContext context) {

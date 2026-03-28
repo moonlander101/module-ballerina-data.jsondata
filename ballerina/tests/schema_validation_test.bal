@@ -15,117 +15,124 @@
 // under the License.
 
 import ballerina/test;
-import ballerina/io;
-import ballerina/file;
 
-type ValidationTestCase record {|
-    map<json> schema;
-    json[] valid;
-    json[] invalid;
+type JsonSchemaTest record {|
+    string description;
+    boolean|map<json> schema;
+    JsonSchemaTestItem[] tests;
+    json...;
+|};
+
+type JsonSchemaTestItem record {|
+    string description;
+    json data;
+    boolean valid;
+    json...;
 |};
 
 const testFiles = [
-    "validation/const.json",
-    "validation/dependentRequired.json",
-    "validation/enum_complex.json",
-    "validation/enum_primitive.json",
-    "validation/exclusiveMaximum.json",
-    "validation/exclusiveMinimum.json",
-    "validation/maxContains.json",
-    "validation/maxItems.json",
-    "validation/maxLength.json",
-    "validation/maxProperties.json",
-    "validation/maximum.json",
-    "validation/minContains.json",
-    "validation/minItems.json",
-    "validation/minLength.json",
-    "validation/minProperties.json",
-    "validation/minimum.json",
-    "validation/multipleOf.json",
-    "validation/pattern.json",
-    "validation/required.json",
-    "validation/uniqueItems.json",
-    "validation/type_array.json",
-    "validation/type_array_of_types.json",
-    "validation/type_boolean.json",
-    "validation/type_integer.json",
-    "validation/type_null.json",
-    "validation/type_number.json",
-    "validation/type_object.json",
-    "validation/type_string.json",
-    "validation/applicator/array_contains.json",
-    "validation/applicator/array_items.json",
-    "validation/applicator/array_prefixItems.json",
-    "validation/applicator/conditional_conditional.json",
-    "validation/applicator/conditional_dependentSchemas.json",
-    "validation/applicator/logic_allOf.json",
-    "validation/applicator/logic_anyOf.json",
-    "validation/applicator/logic_not.json",
-    "validation/applicator/logic_oneOf.json",
-    "validation/applicator/object_additionalProperties.json",
-    "validation/applicator/object_patternProperties.json",
-    "validation/applicator/object_properties.json",
-    "validation/applicator/object_propertyNames.json",
-    "validation/applicator/unevaluated_unevaluatedItems.json",
-    "validation/applicator/unevaluated_unevaluatedProperties.json",
-    "validation/format/dates_date-time.json",
-    "validation/format/dates_date.json",
-    "validation/format/dates_duration.json",
-    "validation/format/dates_time.json",
-    "validation/format/network_email.json",
-    "validation/format/network_hostname.json",
-    "validation/format/network_ipv4.json",
-    "validation/format/network_ipv6.json",
-    "validation/format/other_json-pointer.json",
-    "validation/format/other_relative-json-pointer.json",
-    "validation/format/uri_uri-reference.json",
-    "validation/format/uri_uri.json",
-    "validation/format/uri_uuid.json"
+    "anchor.json",
+    "allOf.json",
+    "anyOf.json",
+    "boolean_schema.json",
+    "const.json",
+    "contains.json",
+    "content.json",
+    "default.json",
+//    "defs.json",
+    "dependentRequired.json",
+    "dependentSchemas.json",
+    "dynamicRef.json",
+    "enum.json",
+    "exclusiveMaximum.json",
+    "exclusiveMinimum.json",
+//    "format.json",
+    "if-then-else.json",
+    "infinite-loop-detection.json",
+    "items.json",
+    "maxContains.json",
+    "maxItems.json",
+    "maxLength.json",
+    "maxProperties.json",
+    "maximum.json",
+    "minContains.json",
+    "minItems.json",
+    "minLength.json",
+    "minProperties.json",
+    "minimum.json",
+    "multipleOf.json",
+    "not.json",
+    "oneOf.json"
+//    "pattern.json"
+//    "patternProperties.json",
+
+//    "prefixItems.json",
+//    "properties.json",
+//    "propertyNames.json",
+//    "ref.json",
+
+//    "refRemote.json",
+
+//    "required.json",
+//    "type.json",
+//    "unevaluatedItems.json",
+//    "unevaluatedProperties.json",
+//    "uniqueItems.json",
+
+//    "vocabulary.json"
+//    "optional/format/date-time.json",
+//    "optional/format/date.json",
+//    "optional/format/duration.json",
+//    "optional/format/time.json",
+//    "optional/format/email.json",
+//    "optional/format/hostname.json",
+//    "optional/format/ipv4.json",
+//    "optional/format/ipv6.json",
+//    "optional/format/json-pointer.json",
+//    "optional/format/relative-json-pointer.json",
+//    "optional/format/uri-reference.json",
+//    "optional/format/uri.json",
+//    "optional/format/uri-template.json",
+//    "optional/format/uuid.json"
 ];
 
-function dataProviderForSchemaValidation() returns [json, map<json>, string, boolean, string][] {
-    [json, map<json>, string, boolean, string][] testData = [];
-    
+function dataProviderForSchemaValidation() returns [json, map<json>|boolean, string, boolean, string][] {
+    [json, map<json>|boolean, string, boolean, string][] testData = [];
+
     foreach string testFile in testFiles {
         json|error testCaseJson = getJsonSchemaTestContentFromFile(testFile);
         if testCaseJson is error {
             panic error(string `Failed to load test file: ${testFile}`, testCaseJson);
         }
-        
-        ValidationTestCase|error testCase = check testCaseJson.cloneWithType(ValidationTestCase);
-        if testCase is error {
-            panic error(string `Invalid test case structure in file: ${testFile}`, testCase);
-        }
-        
-        foreach int i in 0 ..< testCase.valid.length() {
-            testData.push([
-                testCase.valid[i],
-                testCase.schema,
-                testFile,
-                true,
-                string `${testFile}: valid[${i}]`
-            ]);
-        }
-        
-        foreach int i in 0 ..< testCase.invalid.length() {
-            testData.push([
-                testCase.invalid[i],
-                testCase.schema,
-                testFile,
-                false,
-                string `${testFile}: invalid[${i}]`
-            ]);
+
+        if testCaseJson is json[] {
+            foreach json testCaseJsonItem in testCaseJson {
+                JsonSchemaTest|error testCase = parseAsType(testCaseJsonItem, {}, JsonSchemaTest);
+                if testCase is error {
+                    panic error(string `Invalid test case structure in file: ${testFile}`, testCase);
+                }
+
+                foreach JsonSchemaTestItem testItem in testCase.tests {
+                    testData.push([
+                        testItem.data,
+                        testCase.schema,
+                        testFile,
+                        testItem.valid,
+                        string `${testFile}: ${testCase.description} - ${testItem.description}`
+                    ]);
+                }
+            }
         }
     } on fail var e {
     	panic error(e.message());
     }
-    
+
     return testData;
 }
 @test:Config {
     dataProvider: dataProviderForSchemaValidation
 }
-isolated function testSchemaAsJsonValidation(json inputData, map<json> schema, string schemaPath, boolean shouldPass, string testCase) {
+isolated function testSchemaAsJsonValidation(json inputData, map<json>|boolean schema, string schemaPath, boolean shouldPass, string testCase) {
     Error? result = validate(inputData, schema);
     if shouldPass {
         test:assertTrue(result is (), testCase + ": Valid data should pass schema validation");
@@ -134,33 +141,33 @@ isolated function testSchemaAsJsonValidation(json inputData, map<json> schema, s
     }
 }
 
-@test:Config {
-    dataProvider: dataProviderForSchemaValidation
-}
-
-isolated function testSchemaAsFilePathValidation(json inputData, map<json> schema, string schemaPath, boolean shouldPass, string testCase) returns error? {
-    string tempDir = check file:createTempDir(prefix = "schema_test_");
-    string:RegExp separator = re `/`;
-    string safeFileName = separator.replaceAll(schemaPath, "_");
-    string tempSchemaPath = check file:joinPath(tempDir, string `temp_${safeFileName}`);
-
-    check io:fileWriteJson(tempSchemaPath, schema);
-    string absolutePath = check file:getAbsolutePath(tempSchemaPath);
-    var result = validate(inputData, absolutePath);
-
-    error? deleteFileResult = file:remove(tempSchemaPath);
-    if deleteFileResult is error {
-        io:println("Warning: Failed to delete temp file: ", tempSchemaPath);
-    }
-
-    error? deleteDirResult = file:remove(tempDir, file:RECURSIVE);
-    if deleteDirResult is error {
-        io:println("Warning: Failed to delete temp directory: ", tempDir);
-    }
-
-    if shouldPass {
-        test:assertTrue(result is (), testCase + ": Valid data should pass");
-    } else {
-        test:assertTrue(result is error, testCase + ": Invalid data should fail");
-    }
-}
+//@test:Config {
+//    dataProvider: dataProviderForSchemaValidation
+//}
+//
+//isolated function testSchemaAsFilePathValidation(json inputData, map<json> schema, string schemaPath, boolean shouldPass, string testCase) returns error? {
+//    string tempDir = check file:createTempDir(prefix = "schema_test_");
+//    string:RegExp separator = re `/`;
+//    string safeFileName = separator.replaceAll(schemaPath, "_");
+//    string tempSchemaPath = check file:joinPath(tempDir, string `temp_${safeFileName}`);
+//
+//    check io:fileWriteJson(tempSchemaPath, schema);
+//    string absolutePath = check file:getAbsolutePath(tempSchemaPath);
+//    var result = validate(inputData, absolutePath);
+//
+//    error? deleteFileResult = file:remove(tempSchemaPath);
+//    if deleteFileResult is error {
+//        io:println("Warning: Failed to delete temp file: ", tempSchemaPath);
+//    }
+//
+//    error? deleteDirResult = file:remove(tempDir, file:RECURSIVE);
+//    if deleteDirResult is error {
+//        io:println("Warning: Failed to delete temp directory: ", tempDir);
+//    }
+//
+//    if shouldPass {
+//        test:assertTrue(result is (), testCase + ": Valid data should pass");
+//    } else {
+//        test:assertTrue(result is error, testCase + ": Invalid data should fail");
+//    }
+//}

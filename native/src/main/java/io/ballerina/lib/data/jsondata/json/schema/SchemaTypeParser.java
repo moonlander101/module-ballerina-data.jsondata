@@ -80,7 +80,7 @@ import java.util.regex.Pattern;
 
 
 public class SchemaTypeParser {
-    private final HashMap<String, Object> typeAliasToSchema = new HashMap<String, Object>();
+    private static final HashMap<String, Object> typeAliasToSchema = new HashMap<>();
 
     public Object parse(Type type) {
         if (typeAliasToSchema.containsKey(type.getName())) {

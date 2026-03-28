@@ -117,7 +117,7 @@ public class SchemaJsonParser {
             resolvedId = SchemaRegistry.resolveURI(base, idStr);
             scopeStack.push(resolvedId);
             scopePushed = true;
-            keywords.put(IdKeyword.keywordName, new IdKeyword(idValue));
+            keywords.put(IdKeyword.keywordName, new IdKeyword(URI.create(resolvedId)));
         }
 
         BString anchorKey = StringUtils.fromString(AnchorKeyword.keywordName);
@@ -152,35 +152,31 @@ public class SchemaJsonParser {
                 String key = bKey.getValue();
                 Object value = json.get(bKey);
 
-                switch (key) {
-                    case "$defs" -> {
-                        if (!(value instanceof BMap<?, ?>)) {
-                            return DiagnosticLog.createJsonError("Invalid value for '$defs': expected object");
-                        }
-                        BMap<BString, Object> defs = (BMap<BString, Object>) value;
-                        String currentBase = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
-                        for (BString defName : defs.getKeys()) {
-                            String defUriStr = "#/$defs/" + defName.getValue();
-                            String defUri = SchemaRegistry.resolveURI(currentBase, defUriStr);
+                if (key.equals("$defs")) {
+                    if (!(value instanceof BMap<?, ?>)) {
+                        return DiagnosticLog.createJsonError("Invalid value for '$defs': expected object");
+                    }
+                    BMap<BString, Object> defs = (BMap<BString, Object>) value;
+                    String currentBase = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
+                    for (BString defName : defs.getKeys()) {
+                        String defUriStr = "#/$defs/" + defName.getValue();
+                        String defUri = SchemaRegistry.resolveURI(currentBase, defUriStr);
 
-                            Object defRaw = defs.get(defName);
-                            Object defParsed = parse(defRaw);
-                            if (defParsed instanceof BError) {
-                                return defParsed;
-                            }
-                            try {
-                                registry.put(URI.create(defUri), defParsed);
-                            } catch (IllegalArgumentException ignored) {
-                                // Malformed URI — skip registration; $ref to it will fail at eval time
-                            }
+                        Object defRaw = defs.get(defName);
+                        Object defParsed = parse(defRaw);
+                        if (defParsed instanceof BError) {
+                            return defParsed;
+                        }
+                        try {
+                            registry.put(URI.create(defUri), defParsed);
+                        } catch (IllegalArgumentException ignored) {
+                            // Malformed URI — skip registration; $ref to it will fail at eval time
                         }
                     }
-
-                    default -> {
-                        Object err = extractKeyword(key, value, keywords, minContains, maxContains);
-                        if (err instanceof BError) {
-                            return err;
-                        }
+                } else {
+                    Object err = extractKeyword(key, value, keywords, minContains, maxContains);
+                    if (err instanceof BError) {
+                        return err;
                     }
                 }
             }

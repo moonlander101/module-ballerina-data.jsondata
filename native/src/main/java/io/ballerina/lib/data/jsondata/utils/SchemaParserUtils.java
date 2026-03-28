@@ -16,19 +16,15 @@
 
 package io.ballerina.lib.data.jsondata.utils;
 
-import io.ballerina.lib.data.jsondata.json.schema.Schema;
 import io.ballerina.runtime.api.utils.StringUtils;
-import io.ballerina.runtime.api.values.BArray;
 import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
-public class SchemaParserUtils {
+public class SchemaParserUtils { // consider protected
 
     public static final String VALID_ANCHOR_REGEX = "^[A-Za-z_][A-Za-z0-9_.-]*$";
 

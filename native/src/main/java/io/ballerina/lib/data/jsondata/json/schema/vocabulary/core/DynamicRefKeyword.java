@@ -17,7 +17,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.core;
 
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
-import io.ballerina.lib.data.jsondata.json.schema.Schema;
 import io.ballerina.lib.data.jsondata.json.schema.SchemaRegistry;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
@@ -56,8 +55,8 @@ public class DynamicRefKeyword extends Keyword {
         if (anchorName != null && registry.isDynamicAnchor(initialRefUri)) {
             ArrayList<URI> scopeArray = context.getDynamicScope();
             String lastSeenResource = null;
-            for (int i = scopeArray.size() - 1; i >= 0; i--) {
-                String resourceStr = stripFragment(scopeArray.get(i));
+            for (URI uri : scopeArray) {
+                String resourceStr = stripFragment(uri);
                 if (resourceStr.equals(lastSeenResource)) {
                     continue; // skip duplicate resource entries in scope
                 }
@@ -88,28 +87,17 @@ public class DynamicRefKeyword extends Keyword {
                             + ": unresolved $dynamicRef '" + initialRefUri + "'");
             return false;
         }
+        System.out.println("Resolved $dynamicRef '" + initialRefUri + "' to target: " + target);
 
-        URI resourceUri = getResourceUri(target);
-        boolean pushed = false;
-        if (resourceUri != null) {
-            context.pushDynamicScope(resourceUri);
-            pushed = true;
+        EvaluationContext refContext = context.createChildContext("", keywordName);
+        boolean isValid = new Validator(false).validate(instance, target, refContext);
+        if (isValid) {
+            SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
+            SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
+            refContext.moveToParentContext("evaluatedItems");
+            refContext.moveToParentContext("evaluatedProperties");
         }
-        try {
-            EvaluationContext refContext = context.createChildContext("", keywordName);
-            boolean isValid = new Validator(false).validate(instance, target, refContext);
-            if (isValid) {
-                SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
-                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
-                refContext.moveToParentContext("evaluatedItems");
-                refContext.moveToParentContext("evaluatedProperties");
-            }
-            return isValid;
-        } finally {
-            if (pushed) {
-                context.popDynamicScope();
-            }
-        }
+        return isValid;
     }
 
     private static String stripFragment(URI uri) {
@@ -119,28 +107,6 @@ public class DynamicRefKeyword extends Keyword {
             String s = uri.toString();
             int hash = s.indexOf('#');
             return hash >= 0 ? s.substring(0, hash) : s;
-        }
-    }
-
-    private static URI getResourceUri(Object target) {
-        if (!(target instanceof Schema schema)) {
-            return null;
-        }
-        Keyword idKeyword = schema.getKeyword(IdKeyword.keywordName);
-        if (idKeyword == null) {
-            return null;
-        }
-        Object idValue = idKeyword.getKeywordValue();
-        if (idValue == null) {
-            return null;
-        }
-        String idStr = idValue.toString();
-        // Strip any fragment — the resource URI is the base without fragment
-        try {
-            URI full = URI.create(idStr);
-            return new URI(full.getScheme(), full.getSchemeSpecificPart(), null);
-        } catch (Exception e) {
-            return null;
         }
     }
 }
