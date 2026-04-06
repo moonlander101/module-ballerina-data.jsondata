@@ -72,14 +72,6 @@ public class SchemaValidatorUtils {
         return errorMessage.toString();
     }
 
-    public static URI getRootResourceUri(Object parsedSchema) {
-        URI resourceUri = getResourceUri(parsedSchema);
-        if (resourceUri != null) {
-            return resourceUri;
-        }
-        return URI.create("http://wso2.com/schema-root");
-    }
-
     public static URI getResourceUri(Object schema) {
         if (!(schema instanceof Schema)) {
             return null;

@@ -62,22 +62,22 @@ const testFiles = [
     "minimum.json",
     "multipleOf.json",
     "not.json",
-    "oneOf.json"
+    "oneOf.json",
 //    "pattern.json"
 //    "patternProperties.json",
 
 //    "prefixItems.json",
-//    "properties.json",
+    "properties.json",
 //    "propertyNames.json",
 //    "ref.json",
 
 //    "refRemote.json",
 
-//    "required.json",
-//    "type.json",
-//    "unevaluatedItems.json",
-//    "unevaluatedProperties.json",
-//    "uniqueItems.json",
+    "required.json",
+    "type.json",
+    "unevaluatedItems.json",
+    "unevaluatedProperties.json",
+    "uniqueItems.json"
 
 //    "vocabulary.json"
 //    "optional/format/date-time.json",

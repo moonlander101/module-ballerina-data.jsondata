@@ -77,13 +77,15 @@ import java.util.Stack;
 public class SchemaJsonParser {
     private static final String MOCK_ROOT_URI = "http://wso2.com/schema-root";
     private final SchemaRegistry registry;
+    private final Set<URI> currentCallUris;
 
     private final Stack<String> lexicalScopeStack = new Stack<>();
     private static int parseCount = -1;
 
-    public SchemaJsonParser(SchemaRegistry registry) {
+    public SchemaJsonParser(SchemaRegistry registry, Set<URI> currentCallUris) {
         parseCount++;
         this.registry = registry;
+        this.currentCallUris = currentCallUris;
     }
 
     public Object parse(Object json) {
@@ -115,9 +117,16 @@ public class SchemaJsonParser {
             String idStr = ((BString) idValue).getValue();
             String base = lexicalScopeStack.isEmpty() ? getMockRootURI() : lexicalScopeStack.peek();
             resolvedId = SchemaRegistry.resolveURI(base, idStr);
+
+            URI resolvedIdUri = URI.create(resolvedId);
+            if (registry.containsKey(resolvedIdUri)) {
+                currentCallUris.add(resolvedIdUri);
+                return registry.get(resolvedIdUri);
+            }
+
             lexicalScopeStack.push(resolvedId);
             scopePushed = true;
-            keywords.put(IdKeyword.keywordName, new IdKeyword(URI.create(resolvedId)));
+            keywords.put(IdKeyword.keywordName, new IdKeyword(resolvedIdUri));
         }
 
         BString anchorKey = StringUtils.fromString(AnchorKeyword.keywordName);
@@ -182,12 +191,12 @@ public class SchemaJsonParser {
             }
 
             Schema schema = new Schema(keywords);
-            // The root case with no id
             if (lexicalScopeStack.isEmpty() && resolvedId == null) {
-                registry.put(URI.create(getMockRootURI()), schema);
+                URI mockUri = URI.create(getMockRootURI());
+                registry.put(mockUri, schema);
+                currentCallUris.add(mockUri);
             }
 
-            // Register by $id so that absolute-URI $refs resolve to this schema
             if (resolvedId != null) {
                 try {
                     URI idUri = URI.create(resolvedId);
@@ -195,8 +204,8 @@ public class SchemaJsonParser {
                         return DiagnosticLog.createJsonError("Duplicate $id: " + resolvedId);
                     }
                     registry.put(idUri, schema);
+                    currentCallUris.add(idUri);
                 } catch (IllegalArgumentException ignored) {
-                    // Malformed $id — skip
                 }
             }
 

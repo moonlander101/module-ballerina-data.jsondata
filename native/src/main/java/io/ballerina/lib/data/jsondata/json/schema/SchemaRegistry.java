@@ -19,17 +19,15 @@ package io.ballerina.lib.data.jsondata.json.schema;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 import java.net.URI;
-import java.security.Key;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class SchemaRegistry {
-    private final Map<URI, Object> schemas = new HashMap<>();
-    private final Set<URI> dynamicAnchorUris = new HashSet<>();
+    private final Map<URI, Object> schemas = new ConcurrentHashMap<>();
+    private final Set<URI> dynamicAnchorUris = ConcurrentHashMap.newKeySet();
 
     public void put(URI uri, Object schema) {
         this.schemas.put(uri, schema);
@@ -128,13 +126,16 @@ public class SchemaRegistry {
         return null;
     }
 
-    public Object findRootSchema() {
-        HashMap<URI, Boolean> isRoot = new HashMap<>();
-        for (URI uri : schemas.keySet()) {
+    public Object findRootSchema(Set<URI> currentCallUris) {
+        Map<URI, Boolean> isRoot = new ConcurrentHashMap<>();
+        for (URI uri : currentCallUris) {
             isRoot.put(uri, true);
         }
-        for (Object schema : schemas.values()) {
-            checkReferences(isRoot, schema);
+        for (URI uri : currentCallUris) {
+            Object schema = schemas.get(uri);
+            if (schema != null) {
+                checkReferences(isRoot, schema);
+            }
         }
 
         int count = 0;
@@ -151,7 +152,7 @@ public class SchemaRegistry {
         return schemas.get(rootUri);
     }
 
-    private void checkReferences(HashMap<URI, Boolean> isRoot, Object schema) {
+    private void checkReferences(Map<URI, Boolean> isRoot, Object schema) {
         if (schema instanceof Schema) {
             Keyword refKeyword = ((Schema) schema).getKeyword("$ref");
             Keyword dynamicRefKeyword = ((Schema) schema).getKeyword("$dynamicRef");

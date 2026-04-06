@@ -43,7 +43,6 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -59,6 +58,8 @@ import static io.ballerina.lib.data.jsondata.utils.DataReader.resolveNextMethod;
  * @since 0.1.0
  */
 public class Native {
+
+    private static final SchemaRegistry sharedRegistry = new SchemaRegistry();
 
     public static Object parseAsType(Object json, BMap<BString, Object> options, BTypedesc typed) {
         try {
@@ -96,14 +97,14 @@ public class Native {
                 err = validator.validate(jsonValue, (BString) schema);
 
             } else if (schema instanceof BMap || schema instanceof Boolean) {
-                SchemaRegistry registry = new SchemaRegistry();
-                SchemaJsonParser parser = new SchemaJsonParser(registry);
+                Set<URI> currentCallUris = new HashSet<>();
+                SchemaJsonParser parser = new SchemaJsonParser(sharedRegistry, currentCallUris);
                 Object parsedSchema = parser.parse(schema);
                 if (parsedSchema instanceof BError) {
                     return parsedSchema;
                 }
 
-                EvaluationContext context = new EvaluationContext(registry);
+                EvaluationContext context = new EvaluationContext(sharedRegistry);
 
                 boolean isValid = schemaValidator.validate(jsonValue, parsedSchema, context);
                 if (!isValid) {
@@ -112,32 +113,28 @@ public class Native {
                 }
 
             } else if (schema instanceof BArray schemaArray) {
-                SchemaRegistry registry = new SchemaRegistry();
+                Set<URI> currentCallUris = new HashSet<>();
                 int length = (int) schemaArray.getLength();
                 for (int i = 0; i < length; i++) {
                     Object s = schemaArray.get(i);
-                    SchemaJsonParser parser = new SchemaJsonParser(registry);
+                    SchemaJsonParser parser = new SchemaJsonParser(sharedRegistry, currentCallUris);
                     if (parser.parse(s) instanceof BError parseError) {
                         return parseError;
                     }
                 }
-                Object rootSchema = registry.findRootSchema();
+                Object rootSchema = sharedRegistry.findRootSchema(currentCallUris);
 
                 if (rootSchema instanceof BError) {
                     return rootSchema;
                 }
 
                 Validator val = new Validator(false);
-                EvaluationContext context = new EvaluationContext(registry);
-
-                URI rootResourceUri = SchemaValidatorUtils.getRootResourceUri(rootSchema);
-                context.pushDynamicScope(rootResourceUri);
+                EvaluationContext context = new EvaluationContext(sharedRegistry);
 
                 if (!val.validate(jsonValue, rootSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());
                     return DiagnosticLog.createJsonError(errorMessage);
                 }
-                context.popDynamicScope();
 
             } else if (schema instanceof BTypedesc) {
                 Type type = ((BTypedesc) schema).getDescribingType();

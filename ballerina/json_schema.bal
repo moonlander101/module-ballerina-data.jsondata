@@ -48,6 +48,8 @@ public annotation NumberConstraintsConfig NumberConstraints on type;
 
 # The configuration for JSON array type constraints
 public type ArrayConstraintsConfig record {|
+    # Items that should be in the beginning of the array
+    typedesc<json>[] prefixItems?;
     # The minimum number of items required in the array
     int:Unsigned32 minItems = 0;
     # The maximum number of items allowed in the array

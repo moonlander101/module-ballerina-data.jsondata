@@ -87,7 +87,6 @@ public class DynamicRefKeyword extends Keyword {
                             + ": unresolved $dynamicRef '" + initialRefUri + "'");
             return false;
         }
-        System.out.println("Resolved $dynamicRef '" + initialRefUri + "' to target: " + target);
 
         EvaluationContext refContext = context.createChildContext("", keywordName);
         boolean isValid = new Validator(false).validate(instance, target, refContext);

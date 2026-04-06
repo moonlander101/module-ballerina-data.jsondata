@@ -17,7 +17,6 @@
 package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
 import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
@@ -84,18 +83,16 @@ public class Validator {
         boolean pushedScope = false;
 
         List<String> orderedKeys = getOrderedKeys(((Schema) schema).getKeywords());
-        Keyword idKeyword = ((Schema) schema).getKeyword(IdKeyword.keywordName);
-        if (idKeyword != null) {
-            Object idValue = idKeyword.getKeywordValue();
-            if (idValue instanceof URI) {
-                System.out.println("Pushing dynamic scope for $id: " + idValue);
-                context.pushDynamicScope((URI) idValue);
-                pushedScope = true;
-            }
+        URI resourceUri = SchemaValidatorUtils.getResourceUri(schema);
+        if (resourceUri != null) {
+            context.pushDynamicScope(resourceUri);
+            pushedScope = true;
+        } else if (context.getDynamicScope().isEmpty()) {
+            context.pushDynamicScope(URI.create("http://wso2.com/schema-root"));
+            pushedScope = true;
         }
 
         for (String key : orderedKeys) {
-//            System.out.println("Evaluating keyword: " + key);
             Keyword keyword = ((Schema) schema).getKeyword(key);
             if (keyword != null) {
                 boolean keywordValid = keyword.evaluate(instance, context);
@@ -103,6 +100,9 @@ public class Validator {
             }
 
             if (!isValid && failFast) {
+                if (pushedScope) {
+                    context.popDynamicScope();
+                }
                 return false;
             }
         }
