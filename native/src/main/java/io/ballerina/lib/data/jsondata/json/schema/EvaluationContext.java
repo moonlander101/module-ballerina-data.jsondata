@@ -18,12 +18,9 @@
 
 package io.ballerina.lib.data.jsondata.json.schema;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.net.URISyntaxException;
+import java.util.*;
 import java.net.URI;
-import java.util.Set;
 
 public class EvaluationContext {
     private final String instanceLocation;
@@ -32,18 +29,18 @@ public class EvaluationContext {
     private final List<String> errors;
     private final Map<String, Object> annotations;
     private final SchemaRegistry schemaRegistry;
-    private final ArrayList<URI> dynamicScope;
+    private final LinkedHashSet<URI> dynamicScope;
 
     public EvaluationContext() {
-        this(null, "", "", null, new ArrayList<>());
+        this(null, "", "", null, new LinkedHashSet<>());
     }
 
     public EvaluationContext(SchemaRegistry schemaRegistry) {
-        this(null, "", "", schemaRegistry, new ArrayList<>());
+        this(null, "", "", schemaRegistry, new LinkedHashSet<>());
     }
 
     private EvaluationContext(EvaluationContext parent, String instanceLocation, String schemaLocation,
-                              SchemaRegistry schemaRegistry, ArrayList<URI> dynamicScope) {
+                              SchemaRegistry schemaRegistry, LinkedHashSet<URI> dynamicScope) {
         this.parent = parent;
         this.instanceLocation = instanceLocation;
         this.schemaLocation = schemaLocation;
@@ -54,7 +51,12 @@ public class EvaluationContext {
     }
 
     public void pushDynamicScope(URI resourceUri) {
-        dynamicScope.add(resourceUri);
+        try {
+            URI baseUri = new URI(resourceUri.getScheme(), resourceUri.getSchemeSpecificPart(), null);
+            dynamicScope.add(baseUri);
+        } catch (URISyntaxException e) {
+            // If the URI is not valid, we can choose to ignore it or handle it as needed.
+        }
     }
 
     public void popDynamicScope() {
@@ -63,7 +65,7 @@ public class EvaluationContext {
         }
     }
 
-    public ArrayList<URI> getDynamicScope() {
+    public LinkedHashSet<URI> getDynamicScope() {
         return dynamicScope;
     }
 

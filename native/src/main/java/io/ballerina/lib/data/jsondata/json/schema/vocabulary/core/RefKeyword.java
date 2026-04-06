@@ -57,6 +57,8 @@ public class RefKeyword extends Keyword {
             return false;
         }
 
+        context.pushDynamicScope(refUri);
+
         EvaluationContext refContext = context.createChildContext("", keywordName);
         Validator validator = new Validator(false);
         boolean isValid = validator.validate(instance, target, refContext);
@@ -66,6 +68,8 @@ public class RefKeyword extends Keyword {
             refContext.moveToParentContext("evaluatedProperties");
             refContext.moveToParentContext("evaluatedItems");
         }
+
+        context.popDynamicScope();
         return isValid;
     }
 }

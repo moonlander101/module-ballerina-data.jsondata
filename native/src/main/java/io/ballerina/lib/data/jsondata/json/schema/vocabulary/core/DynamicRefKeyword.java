@@ -24,6 +24,7 @@ import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 
 
 public class DynamicRefKeyword extends Keyword {
@@ -53,7 +54,7 @@ public class DynamicRefKeyword extends Keyword {
 
         Object target = null;
         if (anchorName != null && registry.isDynamicAnchor(initialRefUri)) {
-            ArrayList<URI> scopeArray = context.getDynamicScope();
+            LinkedHashSet<URI> scopeArray = context.getDynamicScope();
             String lastSeenResource = null;
             for (URI uri : scopeArray) {
                 String resourceStr = stripFragment(uri);

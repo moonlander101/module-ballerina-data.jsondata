@@ -42,7 +42,7 @@ const testFiles = [
 //    "defs.json",
     "dependentRequired.json",
     "dependentSchemas.json",
-//    "dynamicRef.json",
+    "dynamicRef.json",
     "enum.json",
     "exclusiveMaximum.json",
     "exclusiveMinimum.json",
@@ -69,9 +69,9 @@ const testFiles = [
 //    "prefixItems.json",
     "properties.json",
 //    "propertyNames.json",
-//    "ref.json",
+    "ref.json",
 
-//    "refRemote.json",
+    "refRemote.json",
 
     "required.json",
     "type.json",
@@ -97,6 +97,7 @@ const testFiles = [
 ];
 
 function dataProviderForSchemaValidation() returns [json, map<json>|boolean, string, boolean, string][] {
+    checkpanic loadRemoteSchemas();
     [json, map<json>|boolean, string, boolean, string][] testData = [];
 
     foreach string testFile in testFiles {

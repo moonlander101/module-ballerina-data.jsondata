@@ -31,3 +31,24 @@ isolated function getJsonSchemaTestContentFromFile(string fileName) returns json
     string path = check file:joinPath("tests", "resources", "schemas", "JSON-Schema-Test-Suite", "tests", "draft2020-12", fileName);
     return io:fileReadJson(path);
 }
+
+isolated function loadRemoteSchemas() returns Error? {
+    json remotesJson = checkpanic io:fileReadJson("tests/resources/schemas/remotes.json");
+    
+    map<json> remoteMap = checkpanic remotesJson.cloneWithType();
+    
+    (boolean|map<json>)[] schemaArray = [];
+    foreach string url in remoteMap.keys() {
+        json schema = remoteMap.get(url);
+        if schema is map<json> {
+            if !schema.hasKey("$id") {
+                schema["$id"] = url;
+            }
+            schemaArray.push(schema);
+        } else if schema is boolean {
+            schemaArray.push(schema);
+        }
+    }
+    // Used to load schemas to registry, error is expected and ignored
+    Error? err = validate(1, schemaArray);
+}

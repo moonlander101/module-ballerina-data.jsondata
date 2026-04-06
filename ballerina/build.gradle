@@ -161,9 +161,25 @@ task initTestSubmodules {
     }
 }
 
+task generateRemotesJson {
+    def suiteDir = "${project.projectDir}/tests/resources/schemas/JSON-Schema-Test-Suite"
+    def outputFile = file("${project.projectDir}/tests/resources/schemas/remotes.json")
+    outputs.file(outputFile)
+    doLast {
+        outputFile.text = new ByteArrayOutputStream().withStream { os ->
+            exec {
+                commandLine 'python3', "${suiteDir}/bin/jsonschema_suite", 'remotes'
+                standardOutput = os
+            }
+            os.toString()
+        }
+    }
+}
+
 test.dependsOn ":${packageName}-native:build"
 test.dependsOn ":${packageName}-compiler-plugin:build"
 test.dependsOn initTestSubmodules
+test.dependsOn generateRemotesJson
 
 publish.dependsOn build
 publishToMavenLocal.dependsOn build

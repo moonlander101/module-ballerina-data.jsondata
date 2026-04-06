@@ -17,7 +17,20 @@
 package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.*;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AdditionalPropertiesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AllOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AnyOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.DependentSchemasKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.IfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ThenKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ElseKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.NotKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.OneOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PatternPropertiesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertiesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.AnchorKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicAnchorKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicRefKeyword;
