@@ -41,9 +41,11 @@ isolated function loadRemoteSchemas() returns Error? {
     foreach string url in remoteMap.keys() {
         json schema = remoteMap.get(url);
         if schema is map<json> {
-            if !schema.hasKey("$id") {
-                schema["$id"] = url;
+            if schema.hasKey("$id") {
+                map<json> schemaFromRemoteRef = schema.clone();
+                schemaArray.push(schemaFromRemoteRef);
             }
+            schema["$id"] = url;
             schemaArray.push(schema);
         } else if schema is boolean {
             schemaArray.push(schema);
