@@ -78,7 +78,7 @@ public class SchemaJsonParser {
     private static final String MOCK_ROOT_URI = "http://wso2.com/schema-root";
     private final SchemaRegistry registry;
 
-    private final Stack<String> scopeStack = new Stack<>();
+    private final Stack<String> lexicalScopeStack = new Stack<>();
     private static int parseCount = -1;
 
     public SchemaJsonParser(SchemaRegistry registry) {
@@ -113,9 +113,9 @@ public class SchemaJsonParser {
                 return DiagnosticLog.createJsonError("Invalid value for '$id': expected string");
             }
             String idStr = ((BString) idValue).getValue();
-            String base = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
+            String base = lexicalScopeStack.isEmpty() ? getMockRootURI() : lexicalScopeStack.peek();
             resolvedId = SchemaRegistry.resolveURI(base, idStr);
-            scopeStack.push(resolvedId);
+            lexicalScopeStack.push(resolvedId);
             scopePushed = true;
             keywords.put(IdKeyword.keywordName, new IdKeyword(URI.create(resolvedId)));
         }
@@ -157,7 +157,7 @@ public class SchemaJsonParser {
                         return DiagnosticLog.createJsonError("Invalid value for '$defs': expected object");
                     }
                     BMap<BString, Object> defs = (BMap<BString, Object>) value;
-                    String currentBase = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
+                    String currentBase = lexicalScopeStack.isEmpty() ? getMockRootURI() : lexicalScopeStack.peek();
                     for (BString defName : defs.getKeys()) {
                         String defUriStr = "#/$defs/" + defName.getValue();
                         String defUri = SchemaRegistry.resolveURI(currentBase, defUriStr);
@@ -183,7 +183,7 @@ public class SchemaJsonParser {
 
             Schema schema = new Schema(keywords);
             // The root case with no id
-            if (scopeStack.isEmpty() && resolvedId == null) {
+            if (lexicalScopeStack.isEmpty() && resolvedId == null) {
                 registry.put(URI.create(getMockRootURI()), schema);
             }
 
@@ -201,7 +201,7 @@ public class SchemaJsonParser {
             }
 
             if (anchorName != null) {
-                String currentBase = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
+                String currentBase = lexicalScopeStack.isEmpty() ? getMockRootURI() : lexicalScopeStack.peek();
                 String anchorUriStr = currentBase + "#" + anchorName;
                 URI anchorUri;
                 try {
@@ -217,7 +217,7 @@ public class SchemaJsonParser {
             }
 
             if (dynamicAnchorName != null) {
-                String currentBase = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
+                String currentBase = lexicalScopeStack.isEmpty() ? getMockRootURI() : lexicalScopeStack.peek();
                 String dynamicAnchorUriStr = currentBase + "#" + dynamicAnchorName;
                 URI dynamicAnchorUri;
                 try {
@@ -236,8 +236,8 @@ public class SchemaJsonParser {
             return schema;
 
         } finally {
-            if (scopePushed && !scopeStack.isEmpty()) {
-                scopeStack.pop();
+            if (scopePushed && !lexicalScopeStack.isEmpty()) {
+                lexicalScopeStack.pop();
             }
         }
     }
@@ -636,7 +636,7 @@ public class SchemaJsonParser {
                 }
                 String refStr = refVal.getValue();
                 // Resolve against current scope — always yields an absolute URI
-                String base = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
+                String base = lexicalScopeStack.isEmpty() ? getMockRootURI() : lexicalScopeStack.peek();
                 String resolved = SchemaRegistry.resolveURI(base, refStr);
                 URI refUri;
                 try {
@@ -653,7 +653,7 @@ public class SchemaJsonParser {
                 }
                 String dynamicRefStr = dynamicRefVal.getValue();
                 // Resolve against current scope — always yields an absolute URI
-                String base = scopeStack.isEmpty() ? getMockRootURI() : scopeStack.peek();
+                String base = lexicalScopeStack.isEmpty() ? getMockRootURI() : lexicalScopeStack.peek();
                 String resolved = SchemaRegistry.resolveURI(base, dynamicRefStr);
                 URI dynamicRefUri;
                 try {
