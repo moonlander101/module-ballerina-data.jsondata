@@ -43,6 +43,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -58,8 +59,6 @@ import static io.ballerina.lib.data.jsondata.utils.DataReader.resolveNextMethod;
  * @since 0.1.0
  */
 public class Native {
-
-    private static final SchemaRegistry sharedRegistry = new SchemaRegistry();
 
     public static Object parseAsType(Object json, BMap<BString, Object> options, BTypedesc typed) {
         try {
@@ -93,18 +92,43 @@ public class Native {
 
         try {
             if (schema instanceof BString) {
-                SchemaFileValidator validator = new SchemaFileValidator(((BString) schema).getValue());
-                err = validator.validate(jsonValue, (BString) schema);
+                String schemaPath = ((BString) schema).getValue();
+                Object rootJson = SchemaParserUtils.readSchemaFile(schemaPath);
+                if (rootJson instanceof BError) {
+                    return rootJson;
+                }
+
+                Set<URI> currentCallUris = new HashSet<>();
+                SchemaJsonParser rootParser = new SchemaJsonParser(currentCallUris);
+                Object rootSchema = rootParser.parse(rootJson);
+                if (rootSchema instanceof BError) {
+                    return rootSchema;
+                }
+
+                ArrayList<Object> siblings = SchemaParserUtils.readSiblingSchemas(schemaPath);
+                for (Object s : siblings) {
+                    SchemaJsonParser parser = new SchemaJsonParser(currentCallUris);
+                    if (parser.parse(s) instanceof BError parseError) {
+                        return parseError;
+                    }
+                }
+
+                EvaluationContext context = new EvaluationContext(SchemaJsonParser.getRegistry());
+                Validator val = new Validator(false);
+                if (!val.validate(jsonValue, rootSchema, context)) {
+                    String errorMessage = String.join("\n- ", context.getErrors());
+                    return DiagnosticLog.createJsonError(errorMessage);
+                }
 
             } else if (schema instanceof BMap || schema instanceof Boolean) {
                 Set<URI> currentCallUris = new HashSet<>();
-                SchemaJsonParser parser = new SchemaJsonParser(sharedRegistry, currentCallUris);
+                SchemaJsonParser parser = new SchemaJsonParser(currentCallUris);
                 Object parsedSchema = parser.parse(schema);
                 if (parsedSchema instanceof BError) {
                     return parsedSchema;
                 }
 
-                EvaluationContext context = new EvaluationContext(sharedRegistry);
+                EvaluationContext context = new EvaluationContext(SchemaJsonParser.getRegistry());
 
                 boolean isValid = schemaValidator.validate(jsonValue, parsedSchema, context);
                 if (!isValid) {
@@ -117,19 +141,19 @@ public class Native {
                 int length = (int) schemaArray.getLength();
                 for (int i = 0; i < length; i++) {
                     Object s = schemaArray.get(i);
-                    SchemaJsonParser parser = new SchemaJsonParser(sharedRegistry, currentCallUris);
+                    SchemaJsonParser parser = new SchemaJsonParser(currentCallUris);
                     if (parser.parse(s) instanceof BError parseError) {
                         return parseError;
                     }
                 }
-                Object rootSchema = sharedRegistry.findRootSchema(currentCallUris);
+                Object rootSchema = SchemaJsonParser.getRegistry().findRootSchema(currentCallUris);
 
                 if (rootSchema instanceof BError) {
                     return rootSchema;
                 }
 
                 Validator val = new Validator(false);
-                EvaluationContext context = new EvaluationContext(sharedRegistry);
+                EvaluationContext context = new EvaluationContext(SchemaJsonParser.getRegistry());
 
                 if (!val.validate(jsonValue, rootSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());

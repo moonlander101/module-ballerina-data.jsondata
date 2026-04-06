@@ -65,7 +65,6 @@ import io.ballerina.runtime.api.values.BString;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -76,15 +75,18 @@ import java.util.Stack;
 
 public class SchemaJsonParser {
     private static final String MOCK_ROOT_URI = "http://wso2.com/schema-root";
-    private final SchemaRegistry registry;
+    private static final SchemaRegistry registry = new SchemaRegistry();
     private final Set<URI> currentCallUris;
 
     private final Stack<String> lexicalScopeStack = new Stack<>();
     private static int parseCount = -1;
 
-    public SchemaJsonParser(SchemaRegistry registry, Set<URI> currentCallUris) {
+    public static SchemaRegistry getRegistry() {
+        return registry;
+    }
+
+    public SchemaJsonParser(Set<URI> currentCallUris) {
         parseCount++;
-        this.registry = registry;
         this.currentCallUris = currentCallUris;
     }
 

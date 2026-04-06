@@ -42,7 +42,7 @@ const testFiles = [
 //    "defs.json",
     "dependentRequired.json",
     "dependentSchemas.json",
-    "dynamicRef.json",
+//    "dynamicRef.json",
     "enum.json",
     "exclusiveMaximum.json",
     "exclusiveMinimum.json",

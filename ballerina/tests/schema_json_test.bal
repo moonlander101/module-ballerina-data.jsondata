@@ -164,7 +164,7 @@ const addressSchema = {
 };
 
 const personSchemaRef = {
-  "$id": "https://example.com/person.schema.json",
+  "$id": "https://example.com/person-ref.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
