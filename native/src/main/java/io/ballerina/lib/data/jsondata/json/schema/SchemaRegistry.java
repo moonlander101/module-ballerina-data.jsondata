@@ -105,13 +105,15 @@ public class SchemaRegistry {
             return root;
         }
 
-        return traversePath(root, fragment);
+        Object result = traversePath(root, fragment);
+        if (result != null) {
+            schemas.put(refUri, result);
+        }
+        return result;
     }
 
     private boolean loadMetaSchema(String refStr) {
-        System.out.println(refStr);
         String resourcePath = BUILTIN_SCHEMAS.get(refStr);
-        System.out.println("resource path is " + resourcePath);
         if (resourcePath == null) {
             int hashIdx = refStr.indexOf('#');
             if (hashIdx >= 0) {
@@ -133,14 +135,11 @@ public class SchemaRegistry {
 
         SchemaJsonParser parser = new SchemaJsonParser(new HashSet<>());
         parser.parse(raw);
-        System.out.println("After parsing " + this);
         return true;
     }
 
     private Object traversePath(Object node, String fragment) {
         String[] segments = fragment.split("/", -1);
-        System.out.println("segments are " + List.of(segments));
-        System.out.println("regstyry is " + this);
 
         Object current = node;
         boolean isFirst = true;
@@ -273,7 +272,18 @@ public class SchemaRegistry {
                 return uri.toString();
             }
 
+            if (base.isOpaque() && uriToResolve.startsWith("#")) {
+                String baseNoFrag = baseUri.split("#", 2)[0];
+                return baseNoFrag + uriToResolve;
+            }
+
             URI resolved = base.resolve(uri);
+            if ("file".equals(base.getScheme()) && base.getAuthority() == null && resolved.getAuthority() == null) {
+                String r = resolved.toString();
+                if (r.startsWith("file:/") && !r.startsWith("file:///")) {
+                    return "file:///" + r.substring("file:/".length());
+                }
+        }
             return resolved.toString();
         } catch (Exception e) {
             return uriToResolve;

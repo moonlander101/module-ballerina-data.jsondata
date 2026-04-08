@@ -32,6 +32,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixIt
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.AnchorKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DefsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicAnchorKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicRefKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
@@ -176,34 +177,9 @@ public class SchemaJsonParser {
                 String key = bKey.getValue();
                 Object value = json.get(bKey);
 
-                if (key.equals("$defs")) {
-                    if (!(value instanceof BMap<?, ?>)) {
-                        return DiagnosticLog.createJsonError("Invalid value for '$defs': expected object");
-                    }
-                    BMap<BString, Object> defs = (BMap<BString, Object>) value;
-                    String currentBase = lexicalScopeStack.isEmpty() ? getMockRootURI() : lexicalScopeStack.peek();
-                    for (BString defName : defs.getKeys()) {
-                        String rawName = defName.getValue();
-                        String escaped = SchemaParserUtils.escapeJsonPointerToken(rawName);
-                        String defUriStr = "#/$defs/" + SchemaParserUtils.encodeFragmentComponent(escaped);
-                        String defUri = SchemaRegistry.resolveURI(currentBase, defUriStr);
-
-                        Object defRaw = defs.get(defName);
-                        Object defParsed = parse(defRaw);
-                        if (defParsed instanceof BError) {
-                            return defParsed;
-                        }
-                        try {
-                            registry.put(URI.create(defUri), defParsed);
-                        } catch (IllegalArgumentException ignored) {
-                            // Malformed URI — skip registration; $ref to it will fail at eval time
-                        }
-                    }
-                } else {
-                    Object err = extractKeyword(key, value, keywords, minContains, maxContains);
-                    if (err instanceof BError) {
-                        return err;
-                    }
+                Object err = extractKeyword(key, value, keywords, minContains, maxContains);
+                if (err instanceof BError) {
+                    return err;
                 }
             }
 
@@ -271,6 +247,7 @@ public class SchemaJsonParser {
     private Object extractKeyword(String key, Object value,
                                   LinkedHashMap<String, Keyword> keywords,
                                   Long minContains, Long maxContains) {
+        System.out.println("Parsing keyword: " + key + " with value: " + value);
         switch (key) {
             case TypeKeyword.keywordName -> {
                 if (value instanceof BString typeName) {
@@ -733,6 +710,24 @@ public class SchemaJsonParser {
                     return DiagnosticLog.createJsonError("Invalid value for 'contentSchema' keyword: expected valid schema");
                 }
                 keywords.put(ContentSchemaKeyword.keywordName, new ContentSchemaKeyword(parsed));
+            }
+
+            case DefsKeyword.keywordName -> {
+                if (!(value instanceof BMap<?, ?>)) {
+                    return DiagnosticLog.createJsonError("Invalid value for '$defs': expected object");
+                }
+                BMap<BString, Object> defs = (BMap<BString, Object>) value;
+                Map<String, Object> defsMap = new LinkedHashMap<>();
+                for (BString defName : defs.getKeys()) {
+                    String rawName = defName.getValue();
+                    Object defRaw = defs.get(defName);
+                    Object defParsed = parse(defRaw);
+                    if (defParsed instanceof BError) {
+                        return defParsed;
+                    }
+                    defsMap.put(rawName, defParsed);
+                }
+                keywords.put(DefsKeyword.keywordName, new DefsKeyword(defsMap));
             }
 
         }
