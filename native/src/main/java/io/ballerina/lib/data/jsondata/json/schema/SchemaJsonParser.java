@@ -183,7 +183,9 @@ public class SchemaJsonParser {
                     BMap<BString, Object> defs = (BMap<BString, Object>) value;
                     String currentBase = lexicalScopeStack.isEmpty() ? getMockRootURI() : lexicalScopeStack.peek();
                     for (BString defName : defs.getKeys()) {
-                        String defUriStr = "#/$defs/" + defName.getValue();
+                        String rawName = defName.getValue();
+                        String escaped = SchemaParserUtils.escapeJsonPointerToken(rawName);
+                        String defUriStr = "#/$defs/" + SchemaParserUtils.encodeFragmentComponent(escaped);
                         String defUri = SchemaRegistry.resolveURI(currentBase, defUriStr);
 
                         Object defRaw = defs.get(defName);

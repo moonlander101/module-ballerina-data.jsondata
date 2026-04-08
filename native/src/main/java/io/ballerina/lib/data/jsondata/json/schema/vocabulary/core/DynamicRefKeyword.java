@@ -23,7 +23,6 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 
 
@@ -79,7 +78,7 @@ public class DynamicRefKeyword extends Keyword {
         }
 
         if (target == null) {
-            target = registry.resolve(initialRefUri);
+            target = registry.resolveReference(initialRefUri);
         }
 
         if (target == null) {

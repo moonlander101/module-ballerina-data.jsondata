@@ -17,8 +17,10 @@
 package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 
 import java.net.URI;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +28,25 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 public class SchemaRegistry {
+    private static final Map<String, String> BUILTIN_SCHEMAS = Map.of(
+            "https://json-schema.org/draft/2020-12/schema",
+            "metaschemas/draft2020-12/draft2020-12-schema.json",
+            "https://json-schema.org/draft/2020-12/meta/core",
+            "metaschemas/draft2020-12/draft2020-12-meta-core.json",
+            "https://json-schema.org/draft/2020-12/meta/applicator",
+            "metaschemas/draft2020-12/draft2020-12-meta-applicator.json",
+            "https://json-schema.org/draft/2020-12/meta/unevaluated",
+            "metaschemas/draft2020-12/draft2020-12-meta-unevaluated.json",
+            "https://json-schema.org/draft/2020-12/meta/validation",
+            "metaschemas/draft2020-12/draft2020-12-meta-validation.json",
+            "https://json-schema.org/draft/2020-12/meta/meta-data",
+            "metaschemas/draft2020-12/draft2020-12-meta-meta-data.json",
+            "https://json-schema.org/draft/2020-12/meta/format-annotation",
+            "metaschemas/draft2020-12/draft2020-12-meta-format-annotation.json",
+            "https://json-schema.org/draft/2020-12/meta/content",
+            "metaschemas/draft2020-12/draft2020-12-meta-content.json"
+    );
+
     private final Map<URI, Object> schemas = new ConcurrentHashMap<>();
     private final Set<URI> dynamicAnchorUris = ConcurrentHashMap.newKeySet();
 
@@ -49,10 +70,17 @@ public class SchemaRegistry {
         return dynamicAnchorUris.contains(uri);
     }
 
-    public Object resolve(URI refUri) {
+    public Object resolveReference(URI refUri) {
         Object direct = schemas.get(refUri);
         if (direct != null) {
             return direct;
+        }
+
+        if (loadMetaSchema(refUri.toString())) {
+            Object loaded = schemas.get(refUri);
+            if (loaded != null) {
+                return loaded;
+            }
         }
 
         String refStr = refUri.toString();
@@ -72,24 +100,57 @@ public class SchemaRegistry {
         }
 
         Object root = schemas.get(longestPrefixKey);
-        String remaining = refStr.substring(longestLen);
-
-        return traversePath(root, remaining);
-    }
-
-    private Object traversePath(Object node, String remaining) {
-        if (remaining.startsWith("#")) {
-            remaining = remaining.substring(1);
+        String fragment = refUri.getFragment();
+        if (fragment == null) {
+            return root;
         }
 
-        String[] segments = remaining.split("/", -1);
+        return traversePath(root, fragment);
+    }
+
+    private boolean loadMetaSchema(String refStr) {
+        System.out.println(refStr);
+        String resourcePath = BUILTIN_SCHEMAS.get(refStr);
+        System.out.println("resource path is " + resourcePath);
+        if (resourcePath == null) {
+            int hashIdx = refStr.indexOf('#');
+            if (hashIdx >= 0) {
+                String baseUri = refStr.substring(0, hashIdx);
+                if (schemas.containsKey(URI.create(baseUri))) {
+                    return true;
+                }
+                resourcePath = BUILTIN_SCHEMAS.get(baseUri);
+            }
+        }
+        if (resourcePath == null) {
+            return false;
+        }
+
+        Object raw = SchemaParserUtils.readSchemaResource(resourcePath);
+        if (raw == null) {
+            return false;
+        }
+
+        SchemaJsonParser parser = new SchemaJsonParser(new HashSet<>());
+        parser.parse(raw);
+        System.out.println("After parsing " + this);
+        return true;
+    }
+
+    private Object traversePath(Object node, String fragment) {
+        String[] segments = fragment.split("/", -1);
+        System.out.println("segments are " + List.of(segments));
+        System.out.println("regstyry is " + this);
 
         Object current = node;
+        boolean isFirst = true;
         for (String segment : segments) {
-            if (segment.isEmpty()) {
+            if (isFirst) {
+                isFirst = false;
                 continue;
             }
-            current = step(current, segment);
+            String unescaped = SchemaParserUtils.unescapeJsonPointerToken(segment);
+            current = step(current, unescaped);
             if (current == null) {
                 return null;
             }

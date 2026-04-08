@@ -49,7 +49,7 @@ public class RefKeyword extends Keyword {
             return false;
         }
 
-        Object target = registry.resolve(refUri);
+        Object target = registry.resolveReference(refUri);
         if (target == null) {
             context.addError(keywordName,
                     "At " + context.getInstanceLocation()

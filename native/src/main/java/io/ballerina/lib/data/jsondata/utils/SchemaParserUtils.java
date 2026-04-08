@@ -25,7 +25,9 @@ import io.ballerina.runtime.api.values.BString;
 import io.ballerina.runtime.api.values.BError;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -86,6 +88,18 @@ public class SchemaParserUtils {
             throw new RuntimeException(e);
         }
         return schemas;
+    }
+
+    public static Object readSchemaResource(String resourcePath) {
+        try (InputStream is = SchemaParserUtils.class.getClassLoader().getResourceAsStream(resourcePath)) {
+            if (is == null) {
+                return null;
+            }
+            String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            return JsonUtils.parse(content);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     public static Long toInteger(Object value) {
@@ -179,5 +193,37 @@ public class SchemaParserUtils {
         }
 
         return Optional.empty();
+    }
+
+    public static String escapeJsonPointerToken(String token) {
+        return token.replace("~", "~0").replace("/", "~1");
+    }
+
+    public static String unescapeJsonPointerToken(String token) {
+        return token.replace("~1", "/").replace("~0", "~");
+    }
+
+    public static String encodeFragmentComponent(String s) {
+        byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+        StringBuilder sb = new StringBuilder(bytes.length * 3);
+        for (byte b : bytes) {
+            int unsigned = b & 0xFF;
+            if (isFragmentAllowed(unsigned)) {
+                sb.append((char) unsigned);
+            } else {
+                sb.append(String.format("%%%02X", unsigned));
+            }
+        }
+        return sb.toString();
+    }
+
+    private static boolean isFragmentAllowed(int c) {
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
+            return true;
+        }
+        return switch (c) {
+            case '-', '.', '_', '~', '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=', ':', '@', '/', '?' -> true;
+            default -> false;
+        };
     }
 }
