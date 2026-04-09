@@ -72,10 +72,9 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentSche
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 import io.ballerina.runtime.api.utils.StringUtils;
-import io.ballerina.runtime.api.values.BArray;
-import io.ballerina.runtime.api.values.BError;
-import io.ballerina.runtime.api.values.BMap;
-import io.ballerina.runtime.api.values.BString;
+import io.ballerina.runtime.api.values.*;
+import org.ballerinalang.langlib.regexp.FromString;
+import org.ballerinalang.langlib.regexp.RegexUtil;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -247,7 +246,6 @@ public class SchemaJsonParser {
     private Object extractKeyword(String key, Object value,
                                   LinkedHashMap<String, Keyword> keywords,
                                   Long minContains, Long maxContains) {
-        System.out.println("Parsing keyword: " + key + " with value: " + value);
         switch (key) {
             case TypeKeyword.keywordName -> {
                 if (value instanceof BString typeName) {
@@ -475,7 +473,13 @@ public class SchemaJsonParser {
                 if (!(value instanceof BString pv)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'pattern' keyword");
                 }
-                keywords.put(PatternKeyword.keywordName, new PatternKeyword(pv.getValue()));
+
+                Object regex = FromString.fromString(pv);
+                if (regex instanceof BRegexpValue regexVal) {
+                    keywords.put(PatternKeyword.keywordName, new PatternKeyword(regexVal));
+                } else {
+                    return DiagnosticLog.createJsonError("Invalid regular expression in 'pattern' keyword: " + pv);
+                }
             }
 
             case MinLengthKeyword.keywordName -> {

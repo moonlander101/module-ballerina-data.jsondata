@@ -78,6 +78,8 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.ballerinalang.langlib.regexp.*;
+
 
 public class SchemaTypeParser {
     private static final HashMap<String, Object> typeAliasToSchema = new HashMap<>();
@@ -811,10 +813,9 @@ public class SchemaTypeParser {
         if (annotation.containsKey(patternKey)) {
             Object value = annotation.get(patternKey);
             if (value instanceof BRegexpValue regExVal) {
-                String regexString = regExVal.toString();
-                keywords.put(PatternKeyword.keywordName, new PatternKeyword(regexString));
+                keywords.put(PatternKeyword.keywordName, new PatternKeyword(regExVal));
             } else if (value instanceof BString strVal) {
-                keywords.put(PatternKeyword.keywordName, new PatternKeyword(strVal.getValue()));
+                keywords.put(PatternKeyword.keywordName, new PatternKeyword(strVal));
             }
         }
 

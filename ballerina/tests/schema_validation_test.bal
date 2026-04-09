@@ -15,6 +15,8 @@
 // under the License.
 
 import ballerina/test;
+import ballerina/io;
+import ballerina/file;
 
 type JsonSchemaTest record {|
     string description;
@@ -39,7 +41,7 @@ const testFiles = [
     "contains.json",
     "content.json",
     "default.json",
-//    "defs.json",
+    "defs.json",
     "dependentRequired.json",
     "dependentSchemas.json",
     "dynamicRef.json",
@@ -63,38 +65,60 @@ const testFiles = [
     "multipleOf.json",
     "not.json",
     "oneOf.json",
-//    "pattern.json"
-//    "patternProperties.json",
-
-//    "prefixItems.json",
+    "pattern.json",
+    "patternProperties.json",
+    "prefixItems.json",
     "properties.json",
-//    "propertyNames.json",
+    "propertyNames.json",
     "ref.json",
-
     "refRemote.json",
-
     "required.json",
     "type.json",
     "unevaluatedItems.json",
     "unevaluatedProperties.json",
-    "uniqueItems.json"
-
+    "uniqueItems.json",
 //    "vocabulary.json"
-//    "optional/format/date-time.json",
-//    "optional/format/date.json",
-//    "optional/format/duration.json",
-//    "optional/format/time.json",
-//    "optional/format/email.json",
-//    "optional/format/hostname.json",
-//    "optional/format/ipv4.json",
-//    "optional/format/ipv6.json",
-//    "optional/format/json-pointer.json",
-//    "optional/format/relative-json-pointer.json",
-//    "optional/format/uri-reference.json",
-//    "optional/format/uri.json",
-//    "optional/format/uri-template.json",
-//    "optional/format/uuid.json"
+    "optional/format/date-time.json",
+    "optional/format/date.json",
+    "optional/format/duration.json",
+    "optional/format/time.json",
+    "optional/format/email.json",
+    "optional/format/hostname.json",
+    "optional/format/ipv4.json",
+    "optional/format/ipv6.json",
+    "optional/format/json-pointer.json",
+    "optional/format/relative-json-pointer.json",
+    "optional/format/uri-reference.json",
+    "optional/format/uri.json",
+    "optional/format/uri-template.json",
+    "optional/format/uuid.json"
 ];
+
+// Format: [groupIdx, testIdx]
+const ignoredTestCases = {
+    "pattern.json": [[2, -1]], // unsupported regex features in ballerina
+    "patternProperties.json": [[5, -1]], // unsupported regex features in ballerina
+    "optional/format/hostname.json": [
+        [0, 19],
+        [1, -1]  // Ignore punycode processing
+    ]
+};
+
+function isTestCaseIgnored(string testFile, int groupIdx, int testIdx) returns boolean {
+    int[][]? ignoredEntries = ignoredTestCases[testFile];
+
+    if ignoredEntries is () {
+        return false;
+    }
+
+    foreach int[] entry in ignoredEntries {
+        if entry[0] == groupIdx && (entry[1] == -1 || entry[1] == testIdx) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 function dataProviderForSchemaValidation() returns [json, map<json>|boolean, string, boolean, string][] {
     checkpanic loadRemoteSchemas();
@@ -107,21 +131,27 @@ function dataProviderForSchemaValidation() returns [json, map<json>|boolean, str
         }
 
         if testCaseJson is json[] {
+            int groupIdx = 0;
             foreach json testCaseJsonItem in testCaseJson {
                 JsonSchemaTest|error testCase = parseAsType(testCaseJsonItem, {}, JsonSchemaTest);
                 if testCase is error {
                     panic error(string `Invalid test case structure in file: ${testFile}`, testCase);
                 }
 
+                int testIdx = 0;
                 foreach JsonSchemaTestItem testItem in testCase.tests {
-                    testData.push([
-                        testItem.data,
-                        testCase.schema,
-                        testFile,
-                        testItem.valid,
-                        string `${testFile}: ${testCase.description} - ${testItem.description}`
-                    ]);
+                    if !isTestCaseIgnored(testFile, groupIdx, testIdx) {
+                        testData.push([
+                            testItem.data,
+                            testCase.schema,
+                            testFile,
+                            testItem.valid,
+                            string `${testFile}: ${testCase.description} - ${testItem.description}`
+                        ]);
+                    }
+                    testIdx += 1;
                 }
+                groupIdx += 1;
             }
         }
     } on fail var e {
@@ -142,33 +172,33 @@ isolated function testSchemaAsJsonValidation(json inputData, map<json>|boolean s
     }
 }
 
-//@test:Config {
-//    dataProvider: dataProviderForSchemaValidation
-//}
-//
-//isolated function testSchemaAsFilePathValidation(json inputData, map<json> schema, string schemaPath, boolean shouldPass, string testCase) returns error? {
-//    string tempDir = check file:createTempDir(prefix = "schema_test_");
-//    string:RegExp separator = re `/`;
-//    string safeFileName = separator.replaceAll(schemaPath, "_");
-//    string tempSchemaPath = check file:joinPath(tempDir, string `temp_${safeFileName}`);
-//
-//    check io:fileWriteJson(tempSchemaPath, schema);
-//    string absolutePath = check file:getAbsolutePath(tempSchemaPath);
-//    var result = validate(inputData, absolutePath);
-//
-//    error? deleteFileResult = file:remove(tempSchemaPath);
-//    if deleteFileResult is error {
-//        io:println("Warning: Failed to delete temp file: ", tempSchemaPath);
-//    }
-//
-//    error? deleteDirResult = file:remove(tempDir, file:RECURSIVE);
-//    if deleteDirResult is error {
-//        io:println("Warning: Failed to delete temp directory: ", tempDir);
-//    }
-//
-//    if shouldPass {
-//        test:assertTrue(result is (), testCase + ": Valid data should pass");
-//    } else {
-//        test:assertTrue(result is error, testCase + ": Invalid data should fail");
-//    }
-//}
+@test:Config {
+    dataProvider: dataProviderForSchemaValidation
+}
+
+isolated function testSchemaAsFilePathValidation(json inputData, map<json>|boolean schema, string schemaPath, boolean shouldPass, string testCase) returns error? {
+    string tempDir = check file:createTempDir(prefix = "schema_test_");
+    string:RegExp separator = re `/`;
+    string safeFileName = separator.replaceAll(schemaPath, "_");
+    string tempSchemaPath = check file:joinPath(tempDir, string `temp_${safeFileName}`);
+
+    check io:fileWriteJson(tempSchemaPath, schema);
+    string absolutePath = check file:getAbsolutePath(tempSchemaPath);
+    var result = validate(inputData, absolutePath);
+
+    error? deleteFileResult = file:remove(tempSchemaPath);
+    if deleteFileResult is error {
+        io:println("Warning: Failed to delete temp file: ", tempSchemaPath);
+    }
+
+    error? deleteDirResult = file:remove(tempDir, file:RECURSIVE);
+    if deleteDirResult is error {
+        io:println("Warning: Failed to delete temp directory: ", tempDir);
+    }
+
+    if shouldPass {
+        test:assertTrue(result is (), testCase + ": Valid data should pass");
+    } else {
+        test:assertTrue(result is error, testCase + ": Invalid data should fail");
+    }
+}

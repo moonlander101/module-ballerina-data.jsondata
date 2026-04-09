@@ -20,28 +20,34 @@ import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BMap;
+import io.ballerina.runtime.api.values.BRegexpValue;
 import io.ballerina.runtime.api.values.BString;
 
+import org.ballerinalang.langlib.regexp.Find;
+import org.ballerinalang.langlib.regexp.FromString;
+
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 public class PatternPropertiesKeyword extends Keyword {
     public static final String keywordName = "patternProperties";
-    private final Map<Pattern, Object> patternSchemaMap;
+    private final List<PatternEntry> entries;
+
+    private record PatternEntry(String patternStr, BRegexpValue regex, Object schema) {}
 
     public PatternPropertiesKeyword(Map<String, Object> patternSchemaMap) {
-        this.patternSchemaMap = new LinkedHashMap<>();
+        this.entries = new ArrayList<>();
         for (Map.Entry<String, Object> entry : patternSchemaMap.entrySet()) {
             String patternStr = entry.getKey();
-            try {
-                Pattern regex = Pattern.compile(patternStr);
-                this.patternSchemaMap.put(regex, entry.getValue());
-            } catch (PatternSyntaxException e) {
+            Object result = FromString.fromString(StringUtils.fromString(patternStr));
+            if (result instanceof BRegexpValue regex) {
+                this.entries.add(new PatternEntry(patternStr, regex, entry.getValue()));
+            } else {
                 throw DiagnosticLog.createJsonError("invalid regex pattern: " + patternStr);
             }
         }
@@ -62,16 +68,14 @@ public class PatternPropertiesKeyword extends Keyword {
             Object propertyValue = bMap.get(propertyKey);
             boolean propertyMatched = false;
 
-            for (Map.Entry<Pattern, Object> entry : patternSchemaMap.entrySet()) {
-                Pattern pattern = entry.getKey();
-                Object schema = entry.getValue();
-                if (pattern.matcher(propertyName).find()) {
+            for (PatternEntry entry : entries) {
+                if (Find.find(entry.regex, propertyKey, 0) != null) {
                     propertyMatched = true;
 
                     EvaluationContext propertyContext = context.createChildContext(
-                        propertyName, "patternProperties/" + pattern.pattern());
+                        propertyName, "patternProperties/" + entry.patternStr);
 
-                    if (!validator.validate(propertyValue, schema, propertyContext)) {
+                    if (!validator.validate(propertyValue, entry.schema, propertyContext)) {
                         isValid = false;
                     }
                 }
@@ -88,6 +92,6 @@ public class PatternPropertiesKeyword extends Keyword {
 
     @Override
     public Object getKeywordValue() {
-        return patternSchemaMap;
+        return entries;
     }
 }
