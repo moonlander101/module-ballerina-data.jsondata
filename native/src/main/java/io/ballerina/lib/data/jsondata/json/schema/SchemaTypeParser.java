@@ -85,11 +85,12 @@ public class SchemaTypeParser {
     private static final HashMap<String, Object> typeAliasToSchema = new HashMap<>();
 
     public Object parse(Type type) {
+        System.out.println("parsing type with tag " + type.getTag() + " and name " + type.getName());
         if (typeAliasToSchema.containsKey(type.getName())) {
             return typeAliasToSchema.get(type.getName());
         }
 
-        if (type.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG) {
+        if (type.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG || type.getTag() == TypeTags.RECORD_TYPE_TAG) {
             typeAliasToSchema.put(type.getName(), new Schema());
         }
 
@@ -109,7 +110,7 @@ public class SchemaTypeParser {
             return schema;
         }
 
-        if (type.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG) {
+        if (type.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG || type.getTag() == TypeTags.RECORD_TYPE_TAG) {
             Schema cachedSchema = (Schema) typeAliasToSchema.get(type.getName());
             cachedSchema.setKeywords(((Schema) schema).getKeywords());
             return cachedSchema;
@@ -252,10 +253,7 @@ public class SchemaTypeParser {
         }
 
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
-
-        Set<String> typeNames = new HashSet<>();
-        typeNames.add("object");
-        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
+        keywords.put(TypeKeyword.keywordName, new TypeKeyword(new HashSet<>(Set.of("object"))));
 
         Map<String, Field> fields = recordType.getFields();
         Type restType = recordType.getRestFieldType();
@@ -428,7 +426,7 @@ public class SchemaTypeParser {
                     typeNames.add("number");
                 }
                 case TypeTags.BOOLEAN_TAG -> typeNames.add("boolean");
-                case TypeTags.RECORD_TYPE_TAG -> typeNames.add("object");
+                case TypeTags.RECORD_TYPE_TAG, TypeTags.MAP_TAG -> typeNames.add("object");
                 case TypeTags.ARRAY_TAG, TypeTags.TUPLE_TAG -> typeNames.add("array");
                 case TypeTags.UNION_TAG -> addNumericTypeFromUnion((UnionType) referredType, typeNames);
                 case TypeTags.NEVER_TAG -> typeNames.add("never");
@@ -1027,9 +1025,12 @@ public class SchemaTypeParser {
     public LinkedHashMap<String, Keyword> extractAnnotationKeywords(Type type) {
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         Type referredType = TypeUtils.getReferredType(type);
-        
-        extractKeywordsFromAnnotations(referredType, keywords);
-        extractKeywordsFromFieldAnnotations(referredType, keywords);
+        if (referredType.getTag() == TypeTags.RECORD_TYPE_TAG) {
+            extractKeywordsFromAnnotations(referredType, keywords);
+            extractKeywordsFromFieldAnnotations(referredType, keywords);
+        } else {
+            extractKeywordsFromAnnotations(type, keywords);
+        }
         
         return keywords;
     }
