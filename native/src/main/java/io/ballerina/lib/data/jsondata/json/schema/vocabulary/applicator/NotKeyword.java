@@ -30,10 +30,9 @@ public class NotKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        Validator validator = new Validator(false);
         EvaluationContext notContext = context.createChildContext("", "not");
 
-        boolean isValid = validator.validate(instance, schema, notContext);
+        boolean isValid = Validator.validate(instance, schema, notContext);
         if (isValid) {
             context.addError("not", "At " + context.getInstanceLocation() + ": [not] value matches the schema, which is not allowed");
         }

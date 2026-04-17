@@ -59,7 +59,6 @@ public class PatternPropertiesKeyword extends Keyword {
             return true;
         }
 
-        Validator validator = new Validator(false);
         boolean isValid = true;
         Set<String> matchedPropertyNames = new HashSet<>();
 
@@ -75,18 +74,20 @@ public class PatternPropertiesKeyword extends Keyword {
                     EvaluationContext propertyContext = context.createChildContext(
                         propertyName, "patternProperties/" + entry.patternStr);
 
-                    if (!validator.validate(propertyValue, entry.schema, propertyContext)) {
+                    if (!Validator.validate(propertyValue, entry.schema, propertyContext)) {
                         isValid = false;
                     }
                 }
             }
 
-            if (propertyMatched) {
+            if (propertyMatched && matchedPropertyNames != null) {
                 matchedPropertyNames.add(propertyName);
             }
         }
 
-        context.setAnnotation(keywordName, matchedPropertyNames);
+        if (matchedPropertyNames != null) {
+            context.setAnnotation(keywordName, matchedPropertyNames);
+        }
         return isValid;
     }
 

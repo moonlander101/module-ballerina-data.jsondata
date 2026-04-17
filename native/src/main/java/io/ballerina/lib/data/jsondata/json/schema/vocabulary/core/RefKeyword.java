@@ -60,8 +60,7 @@ public class RefKeyword extends Keyword {
         context.pushDynamicScope(refUri);
 
         EvaluationContext refContext = context.createChildContext("", keywordName);
-        Validator validator = new Validator(false);
-        boolean isValid = validator.validate(instance, target, refContext);
+        boolean isValid = Validator.validate(instance, target, refContext);
         if (isValid) {
             SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
             SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);

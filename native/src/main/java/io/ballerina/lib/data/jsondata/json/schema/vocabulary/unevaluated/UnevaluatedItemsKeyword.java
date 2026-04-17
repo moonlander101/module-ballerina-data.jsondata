@@ -52,13 +52,12 @@ public class UnevaluatedItemsKeyword extends Keyword {
         Set<Long> evaluatedIndices = collectEvaluatedIndices(context);
         mergeBranchEvaluatedIndices(context, evaluatedIndices);
 
-        Validator validator = new Validator(false);
         boolean isValid = true;
         for (long i = 0; i < array.size(); i++) {
             if (!evaluatedIndices.contains(i)) {
                 Object item = array.get(i);
                 EvaluationContext itemContext = context.createChildContext(String.valueOf(i), "unevaluatedItems");
-                if (!validator.validate(item, keywordValue, itemContext)) {
+                if (!Validator.validate(item, keywordValue, itemContext)) {
                     context.addError("unevaluatedItems", "At " + context.getInstanceLocation() + "/" + i +
                             ": [unevaluatedItems] item at index " + i + " is not valid against the unevaluatedItems schema");
                     isValid = false;

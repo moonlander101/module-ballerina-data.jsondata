@@ -42,11 +42,10 @@ public class ContainsKeyword extends Keyword {
             return true;
         }
 
-        Validator validator = new Validator(false);
         List<Long> matchingIndices = new ArrayList<>();
         for (long i = 0; i < array.size(); i++) {
             EvaluationContext itemContext = context.createChildContext(String.valueOf(i), "contains/" + i);
-            if (validator.validate(array.get(i), containsSchema, itemContext)) {
+            if (Validator.validate(array.get(i), containsSchema, itemContext)) {
                 matchingIndices.add(i);
             }
         }

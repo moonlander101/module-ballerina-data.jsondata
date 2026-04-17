@@ -18,16 +18,15 @@
 
 package io.ballerina.lib.data.jsondata.json.schema;
 
-import java.net.URISyntaxException;
-import java.util.*;
 import java.net.URI;
+import java.util.*;
 
 public class EvaluationContext {
     private final String instanceLocation;
     private final String schemaLocation;
     private final EvaluationContext parent;
     private final List<String> errors;
-    private final Map<String, Object> annotations;
+    private HashMap<String, Object> annotations;
     private final SchemaRegistry schemaRegistry;
     private final LinkedHashSet<URI> dynamicScope;
 
@@ -45,18 +44,13 @@ public class EvaluationContext {
         this.instanceLocation = instanceLocation;
         this.schemaLocation = schemaLocation;
         this.errors = parent != null ? parent.errors : new ArrayList<>();
-        this.annotations = new HashMap<>();
+        this.annotations = null;
         this.schemaRegistry = schemaRegistry;
         this.dynamicScope = dynamicScope;
     }
 
     public void pushDynamicScope(URI resourceUri) {
-        try {
-            URI baseUri = new URI(resourceUri.getScheme(), resourceUri.getSchemeSpecificPart(), null);
-            dynamicScope.add(baseUri);
-        } catch (URISyntaxException e) {
-            // If the URI is not valid, we can choose to ignore it or handle it as needed.
-        }
+        dynamicScope.add(resourceUri);
     }
 
     public void popDynamicScope() {
@@ -70,23 +64,25 @@ public class EvaluationContext {
     }
 
     public EvaluationContext createChildContext(String instancePathSegment, String schemaPathSegment) {
-        StringBuilder newInstanceLocation = new StringBuilder(instanceLocation);
-        if (!instancePathSegment.isEmpty()) {
-            if (!instanceLocation.isEmpty()) {
-                newInstanceLocation.append("/");
-            }
-            newInstanceLocation.append(instancePathSegment);
+        String childInstanceLocation;
+        if (instancePathSegment.isEmpty()) {
+            childInstanceLocation = instanceLocation;
+        } else if (instanceLocation.isEmpty()) {
+            childInstanceLocation = instancePathSegment;
+        } else {
+            childInstanceLocation = instanceLocation + "/" + instancePathSegment;
         }
 
-        StringBuilder newSchemaLocation = new StringBuilder(schemaLocation);
-        if (!schemaPathSegment.isEmpty()) {
-            if (!schemaLocation.isEmpty()) {
-                newSchemaLocation.append("/");
-            }
-            newSchemaLocation.append(schemaPathSegment);
+        String childSchemaLocation;
+        if (schemaPathSegment.isEmpty()) {
+            childSchemaLocation = schemaLocation;
+        } else if (schemaLocation.isEmpty()) {
+            childSchemaLocation = schemaPathSegment;
+        } else {
+            childSchemaLocation = schemaLocation + "/" + schemaPathSegment;
         }
 
-        return new EvaluationContext(this, newInstanceLocation.toString(), newSchemaLocation.toString(), schemaRegistry, this.dynamicScope);
+        return new EvaluationContext(this, childInstanceLocation, childSchemaLocation, schemaRegistry, this.dynamicScope);
     }
 
     public void addError(String keywordName, String message) {
@@ -98,11 +94,14 @@ public class EvaluationContext {
     }
 
     public void setAnnotation(String keywordName, Object value) {
+        if (annotations == null) {
+            annotations = new HashMap<>();
+        }
         annotations.put(keywordName, value);
     }
 
     public Object getAnnotation(String keywordName) {
-        return annotations.get(keywordName);
+        return annotations == null ? null : annotations.get(keywordName);
     }
 
     public String getInstanceLocation() {
@@ -114,7 +113,7 @@ public class EvaluationContext {
     }
 
     public void moveToParentContext(String annotationKey) {
-        if (parent == null) {
+        if (parent == null || annotations == null) {
             return;
         }
 

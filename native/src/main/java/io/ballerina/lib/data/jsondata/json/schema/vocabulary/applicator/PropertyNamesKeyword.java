@@ -36,7 +36,6 @@ public class PropertyNamesKeyword extends Keyword {
             return true;
         }
 
-        Validator validator = new Validator(false);
         boolean isValid = true;
 
         for (BString propertyKey : ((BMap<BString, Object>) bMap).getKeys()) {
@@ -45,7 +44,7 @@ public class PropertyNamesKeyword extends Keyword {
             EvaluationContext propertyNameContext = context.createChildContext(
                 propertyName, "propertyNames/" + propertyName);
 
-            if (!validator.validate(propertyKey, schema, propertyNameContext)) {
+            if (!Validator.validate(propertyKey, schema, propertyNameContext)) {
                 isValid = false;
             }
         }

@@ -89,7 +89,7 @@ public class DynamicRefKeyword extends Keyword {
         }
 
         EvaluationContext refContext = context.createChildContext("", keywordName);
-        boolean isValid = new Validator(false).validate(instance, target, refContext);
+        boolean isValid = Validator.validate(instance, target, refContext);
         if (isValid) {
             SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
             SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);

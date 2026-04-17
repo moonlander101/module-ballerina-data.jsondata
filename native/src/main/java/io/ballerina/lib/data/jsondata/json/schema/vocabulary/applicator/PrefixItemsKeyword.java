@@ -36,12 +36,11 @@ public class PrefixItemsKeyword extends Keyword {
         if (!(instance instanceof BArray array)) {
             return true;
         }
-        Validator validator = new Validator(false);
         long size = Math.min(array.size(), keywordValue.size());
         boolean isValid = true;
         for (long i = 0; i < size; i++) {
             EvaluationContext itemContext = context.createChildContext(String.valueOf(i), "prefixItems/" + i);
-            if (!validator.validate(array.get(i), keywordValue.get((int) i), itemContext)) {
+            if (!Validator.validate(array.get(i), keywordValue.get((int) i), itemContext)) {
                 isValid = false;
             }
         }

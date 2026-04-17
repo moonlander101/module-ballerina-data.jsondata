@@ -20,10 +20,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 
 import java.net.URI;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -47,8 +44,8 @@ public class SchemaRegistry {
             "metaschemas/draft2020-12/draft2020-12-meta-content.json"
     );
 
-    private final Map<URI, Object> schemas = new ConcurrentHashMap<>();
-    private final Set<URI> dynamicAnchorUris = ConcurrentHashMap.newKeySet();
+    private final Map<URI, Object> schemas = new HashMap<>();
+    private final Set<URI> dynamicAnchorUris = new LinkedHashSet<>();
 
     public void put(URI uri, Object schema) {
         this.schemas.put(uri, schema);

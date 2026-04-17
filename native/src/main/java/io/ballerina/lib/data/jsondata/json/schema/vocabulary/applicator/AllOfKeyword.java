@@ -33,10 +33,9 @@ public class AllOfKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        Validator validator = new Validator(false);
         for (int i = 0; i < keywordValue.size(); i++) {
             EvaluationContext schemaContext = context.createChildContext("", "allOf/" + i);
-            if (!validator.validate(instance, keywordValue.get(i), schemaContext)) {
+            if (!Validator.validate(instance, keywordValue.get(i), schemaContext)) {
                 return false;
             }
             SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
