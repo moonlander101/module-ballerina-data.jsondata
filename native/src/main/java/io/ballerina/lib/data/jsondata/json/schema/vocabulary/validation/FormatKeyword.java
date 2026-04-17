@@ -16,9 +16,6 @@
 
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
-// TODO: NOT THE FINAL FORMAT CASES
-
-
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BString;

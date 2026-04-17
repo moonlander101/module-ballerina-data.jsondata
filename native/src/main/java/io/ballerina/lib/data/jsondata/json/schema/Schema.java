@@ -44,6 +44,7 @@ public class Schema {
         return keywords;
     }
 
+    // For debugging purposes.
     @Override
     public String toString() {
         Map<Schema, Integer> visited = visitedSchemas.get();
