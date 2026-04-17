@@ -33,12 +33,11 @@ public class AnyOfKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        Validator validator = new Validator(false);
         boolean isValid = false;
         for (int i = 0; i < keywordValue.size(); i++) {
             EvaluationContext schemaContext = context.createChildContext("", "anyOf/" + i);
 
-            if (validator.validate(instance, keywordValue.get(i), schemaContext)) {
+            if (Validator.validate(instance, keywordValue.get(i), schemaContext)) {
                 isValid = true;
                 SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
                 SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(schemaContext);

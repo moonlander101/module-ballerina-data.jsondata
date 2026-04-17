@@ -17,61 +17,15 @@
 package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
-import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
 
 public class Validator {
-    private final boolean failFast;
-
-    private static final List<String> KEYWORD_ORDER = List.of(
-            "properties",
-            "patternProperties",
-            "additionalProperties",
-            "propertyNames",
-            "prefixItems",
-            "items",
-            "$ref",
-            "$dynamicRef",
-            "dependentSchemas",
-            "if",
-            "then",
-            "else",
-            "contains",
-            "anyOf",
-            "allOf",
-            "oneOf",
-            "unevaluatedProperties",
-            "unevaluatedItems"
-    );
-
-    public Validator(boolean failFast) {
-        this.failFast = failFast;
+    public static boolean validate(Object instance, Object schema, EvaluationContext context) {
+        return validate(instance, schema, context, false);
     }
 
-    private List<String> getOrderedKeys(LinkedHashMap<String, Keyword> keywords) {
-        List<String> result = new ArrayList<>();
-        Set<String> remainingKeywords = new LinkedHashSet<>(keywords.keySet());
-
-        for (String orderedKeyword : KEYWORD_ORDER) {
-            if (remainingKeywords.contains(orderedKeyword)) {
-                result.add(orderedKeyword);
-                remainingKeywords.remove(orderedKeyword);
-            }
-        }
-
-        result.addAll(remainingKeywords);
-
-        return result;
-    }
-
-    public boolean validate(Object instance, Object schema, EvaluationContext context) {
+    public static boolean validate(Object instance, Object schema, EvaluationContext context, boolean failFast) {
         if (schema instanceof Boolean boolSchema) {
             if (!boolSchema) {
                 context.addError("schema", "At " + context.getInstanceLocation() + ": value is not allowed (false schema)");
@@ -79,31 +33,29 @@ public class Validator {
             return boolSchema;
         }
 
+        Schema s = (Schema) schema;
         boolean isValid = true;
         boolean pushedScope = false;
 
-        List<String> orderedKeys = getOrderedKeys(((Schema) schema).getKeywords());
-        URI resourceUri = SchemaValidatorUtils.getResourceUri(schema);
+        URI resourceUri = s.getResourceUri();
         if (resourceUri != null) {
             context.pushDynamicScope(resourceUri);
             pushedScope = true;
         } else if (context.getDynamicScope().isEmpty()) {
-            context.pushDynamicScope(URI.create("http://wso2.com/schema-root"));
+            context.pushDynamicScope(Schema.DEFAULT_SCOPE_URI);
             pushedScope = true;
         }
 
-        for (String key : orderedKeys) {
-            Keyword keyword = ((Schema) schema).getKeyword(key);
+        for (String key : s.getOrderedKeys()) {
+            Keyword keyword = s.getKeyword(key);
             if (keyword != null) {
-                boolean keywordValid = keyword.evaluate(instance, context);
-                isValid = isValid && keywordValid;
-            }
-
-            if (!isValid && failFast) {
-                if (pushedScope) {
-                    context.popDynamicScope();
+                isValid = isValid && keyword.evaluate(instance, context);
+                if (failFast) {
+                    if (pushedScope) {
+                        context.popDynamicScope();
+                    }
+                    return isValid;
                 }
-                return false;
             }
         }
         if (pushedScope) {

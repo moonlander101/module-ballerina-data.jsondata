@@ -71,6 +71,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentMedi
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentSchemaKeyword;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
+import io.ballerina.runtime.api.utils.JsonUtils;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.*;
 import org.ballerinalang.langlib.regexp.FromString;

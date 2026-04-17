@@ -85,7 +85,6 @@ public class SchemaTypeParser {
     private static final HashMap<String, Object> typeAliasToSchema = new HashMap<>();
 
     public Object parse(Type type) {
-        System.out.println("parsing type with tag " + type.getTag() + " and name " + type.getName());
         if (typeAliasToSchema.containsKey(type.getName())) {
             return typeAliasToSchema.get(type.getName());
         }

@@ -33,9 +33,8 @@ public class IfKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        Validator validator = new Validator(false);
         EvaluationContext ifContext = context.createChildContext("", "if");
-        boolean ifValid = validator.validate(instance, keywordValue, ifContext);
+        boolean ifValid = Validator.validate(instance, keywordValue, ifContext);
         context.setAnnotation(keywordName, ifValid);
         if (ifValid) {
             SchemaValidatorUtils.createEvaluatedItemsAnnotation(ifContext);

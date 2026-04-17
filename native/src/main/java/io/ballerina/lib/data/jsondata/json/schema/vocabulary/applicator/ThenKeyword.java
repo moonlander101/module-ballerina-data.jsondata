@@ -39,9 +39,8 @@ public class ThenKeyword extends Keyword {
         }
         if (ifResult instanceof Boolean ifValid) {
             if (ifValid) {
-                Validator validator = new Validator(false);
                 EvaluationContext thenContext = context.createChildContext("", "then");
-                boolean thenValid = validator.validate(instance, keywordValue, thenContext);
+                boolean thenValid = Validator.validate(instance, keywordValue, thenContext);
                 if (thenValid) {
                     SchemaValidatorUtils.createEvaluatedItemsAnnotation(thenContext);
                     context.setAnnotation("thenEvaluatedItems", thenContext.getAnnotation("evaluatedItems"));

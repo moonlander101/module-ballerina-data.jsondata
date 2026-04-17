@@ -40,7 +40,6 @@ public class PropertiesKeyword extends Keyword {
             return true;
         }
 
-        Validator validator = new Validator(false);
         boolean isValid = true;
 
         Set<String> matchedPropertyNames = new HashSet<>();
@@ -48,19 +47,23 @@ public class PropertiesKeyword extends Keyword {
         for (BString propertyKey : ((BMap<BString, Object>) bMap).getKeys()) {
             String propertyName = propertyKey.getValue();
 
-            if (propertiesMap.containsKey(propertyName)) {
-                Object schema = propertiesMap.get(propertyName);
+            Object schema = propertiesMap.get(propertyName);
+            if (schema != null) {
                 EvaluationContext propertyContext = context.createChildContext(propertyName, "properties/" + propertyName);
 
-                if (validator.validate(bMap.get(propertyKey), schema, propertyContext)) {
-                    matchedPropertyNames.add(propertyName);
+                if (Validator.validate(bMap.get(propertyKey), schema, propertyContext)) {
+                    if (matchedPropertyNames != null) {
+                        matchedPropertyNames.add(propertyName);
+                    }
                 } else {
                     isValid = false;
                 }
             }
         }
 
-        context.setAnnotation(keywordName, matchedPropertyNames);
+        if (matchedPropertyNames != null) {
+            context.setAnnotation(keywordName, matchedPropertyNames);
+        }
 
         return isValid;
     }

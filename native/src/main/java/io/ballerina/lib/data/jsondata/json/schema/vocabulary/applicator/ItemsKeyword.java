@@ -41,11 +41,10 @@ public class ItemsKeyword extends Keyword {
             startIndex = prefixEndIndex + 1;
         }
 
-        Validator validator = new Validator(false);
         boolean isValid = true;
         for (long i = startIndex; i < array.size(); i++) {
             EvaluationContext itemContext = context.createChildContext(String.valueOf(i), "items");
-            if (!validator.validate(array.get(i), keywordValue, itemContext)) {
+            if (!Validator.validate(array.get(i), keywordValue, itemContext)) {
                 isValid = false;
             }
         }

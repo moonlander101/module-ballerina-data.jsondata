@@ -17,11 +17,10 @@ public class OneOfKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        Validator validator = new Validator(false);
         int matchCount = 0;
         for (int i = 0; i < keywordValue.size(); i++) {
             EvaluationContext schemaContext = context.createChildContext("", "oneOf/" + i);
-            if (validator.validate(instance, keywordValue.get(i), schemaContext)) {
+            if (Validator.validate(instance, keywordValue.get(i), schemaContext)) {
                 matchCount++;
                 if (matchCount > 1) {
                     context.addError("oneOf", "At " + context.getInstanceLocation() + ": [oneOf] value matches more than one subschema");

@@ -74,7 +74,6 @@ public class AdditionalPropertiesKeyword extends Keyword {
             }
         }
 
-        Validator validator = new Validator(false);
         boolean isValid = true;
 
         Set<String> validatedPropertyNames = new HashSet<>();
@@ -92,14 +91,16 @@ public class AdditionalPropertiesKeyword extends Keyword {
             EvaluationContext propertyContext = context.createChildContext(
                 propertyName, "additionalProperties/" + propertyName);
 
-            if (validator.validate(bMap.get(key), additionalSchema, propertyContext)) {
-                validatedPropertyNames.add(propertyName);
+            if (Validator.validate(bMap.get(key), additionalSchema, propertyContext)) {
+                if (validatedPropertyNames != null) {
+                    validatedPropertyNames.add(propertyName);
+                }
             } else {
                 isValid = false;
             }
         }
 
-        if (isValid) {
+        if (isValid && validatedPropertyNames != null) {
             context.setAnnotation(keywordName, validatedPropertyNames);
         }
 

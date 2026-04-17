@@ -18,30 +18,120 @@ package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
+import java.net.URI;
 
 public class Schema {
+    public static final URI DEFAULT_SCOPE_URI = URI.create("http://wso2.com/schema-root");
     private static final ThreadLocal<Map<Schema, Integer>> visitedSchemas = ThreadLocal.withInitial(HashMap::new);
+
+    private static final List<String> KEYWORD_ORDER = List.of(
+            "properties",
+            "patternProperties",
+            "additionalProperties",
+            "propertyNames",
+            "prefixItems",
+            "items",
+            "$ref",
+            "$dynamicRef",
+            "dependentSchemas",
+            "if",
+            "then",
+            "else",
+            "contains",
+            "anyOf",
+            "allOf",
+            "oneOf",
+            "unevaluatedProperties",
+            "unevaluatedItems"
+    );
+
     private LinkedHashMap<String, Keyword> keywords;
+    private List<String> orderedKeys;
+    private URI resourceUri;
 
     public Schema() {}
 
     public Schema(LinkedHashMap<String, Keyword> keywords) {
         this.keywords = keywords;
+        this.orderedKeys = computeOrderedKeys(keywords);
+        this.resourceUri = computeResourceUri(keywords);
+    }
+
+
+    public void setKeywords(LinkedHashMap<String, Keyword> keywords) {
+        this.keywords = keywords;
+        this.orderedKeys = computeOrderedKeys(keywords);
+        this.resourceUri = computeResourceUri(keywords);
+    }
+
+    public LinkedHashMap<String, Keyword> getKeywords() {
+        return keywords;
     }
 
     public Keyword getKeyword(String keywordName) {
         return keywords.get(keywordName);
     }
 
-    public void setKeywords(LinkedHashMap<String, Keyword> keywords) {
-        this.keywords = keywords;
+    public List<String> getOrderedKeys() {
+        return orderedKeys;
     }
 
-    public LinkedHashMap<String, Keyword> getKeywords() {
-        return keywords;
+    public URI getResourceUri() {
+        return resourceUri;
+    }
+
+    public boolean hasAdditionalProperties() {
+        return keywords.containsKey("additionalProperties");
+    }
+
+    public boolean hasPatternProperties() {
+        return keywords.containsKey("patternProperties");
+    }
+
+    public boolean hasUnevaluatedProperties() {
+        return keywords.containsKey("unevaluatedProperties");
+    }
+
+    public boolean hasUnevaluatedItems() {
+        return keywords.containsKey("unevaluatedItems");
+    }
+
+    boolean needsPropertyAnnotations() {
+        return hasAdditionalProperties() || hasPatternProperties() || hasUnevaluatedProperties();
+    }
+
+    boolean needsItemAnnotations() {
+        return hasUnevaluatedItems();
+    }
+
+    private static List<String> computeOrderedKeys(LinkedHashMap<String, Keyword> keywords) {
+        List<String> result = new ArrayList<>();
+        Set<String> remainingKeywords = new LinkedHashSet<>(keywords.keySet());
+        for (String orderedKeyword : KEYWORD_ORDER) {
+            if (remainingKeywords.contains(orderedKeyword)) {
+                result.add(orderedKeyword);
+                remainingKeywords.remove(orderedKeyword);
+            }
+        }
+        result.addAll(remainingKeywords);
+        return result;
+    }
+
+    private static URI computeResourceUri(LinkedHashMap<String, Keyword> keywords) {
+        Keyword idKeyword = keywords.get("$id");
+        if (idKeyword == null) {
+            return null;
+        }
+        Object idValue = idKeyword.getKeywordValue();
+        if (!(idValue instanceof URI uri)) {
+            return null;
+        }
+        try {
+            return new URI(uri.getScheme(), uri.getSchemeSpecificPart(), null);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // For debugging purposes.

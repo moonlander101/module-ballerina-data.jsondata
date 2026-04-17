@@ -31,7 +31,6 @@ public class DependentSchemasKeyword extends Keyword {
         }
 
         boolean isValid = true;
-        Validator validator = new Validator(false);
 
         for (Map.Entry<String, Object> entry : keywordValue.entrySet()) {
             String dependentOn = entry.getKey();
@@ -40,7 +39,7 @@ public class DependentSchemasKeyword extends Keyword {
 
             BString dependentOnKey = StringUtils.fromString(dependentOn);
             if (bMap.containsKey(dependentOnKey)) {
-                if (!validator.validate(instance, subschema, subschemaContext)) {
+                if (!Validator.validate(instance, subschema, subschemaContext)) {
                     isValid = false;
                 } else {
                     SchemaValidatorUtils.createEvaluatedItemsAnnotation(subschemaContext);

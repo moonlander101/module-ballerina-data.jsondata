@@ -51,7 +51,6 @@ public class UnevaluatedPropertiesKeyword extends Keyword {
         Set<String> evaluatedProperties = collectEvaluatedProperties(context);
         mergeBranchEvaluatedProperties(context, evaluatedProperties);
 
-        Validator validator = new Validator(false);
         boolean isValid = true;
         for (BString key : ((BMap<BString, Object>) bMap).getKeys()) {
             String propertyName = key.getValue();
@@ -60,7 +59,7 @@ public class UnevaluatedPropertiesKeyword extends Keyword {
             }
 
             EvaluationContext propertyContext = context.createChildContext(propertyName, "unevaluatedProperties");
-            if (!validator.validate(bMap.get(key), keywordValue, propertyContext)) {
+            if (!Validator.validate(bMap.get(key), keywordValue, propertyContext)) {
                 context.addError("unevaluatedProperties", "At " + context.getInstanceLocation() + "/" + propertyName +
                         ": [unevaluatedProperties] property '" + propertyName +
                         "' is not valid against the unevaluatedProperties schema");
