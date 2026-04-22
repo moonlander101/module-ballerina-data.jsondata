@@ -1027,6 +1027,18 @@ public class SchemaTypeParser {
         if (referredType.getTag() == TypeTags.RECORD_TYPE_TAG) {
             extractKeywordsFromAnnotations(referredType, keywords);
             extractKeywordsFromFieldAnnotations(referredType, keywords);
+            
+            if (keywords.containsKey("additionalProperties") || keywords.containsKey("unevaluatedProperties")) {
+                RecordType recordType = (RecordType) referredType;
+                java.util.Map<String, Field> fields = recordType.getFields();
+                if (!fields.isEmpty()) {
+                    java.util.Map<String, Object> propertiesMap = new java.util.HashMap<>();
+                    for (String fieldName : fields.keySet()) {
+                        propertiesMap.put(fieldName, true);
+                    }
+                    keywords.put(PropertiesKeyword.keywordName, new PropertiesKeyword(propertiesMap));
+                }
+            }
         } else {
             extractKeywordsFromAnnotations(type, keywords);
         }

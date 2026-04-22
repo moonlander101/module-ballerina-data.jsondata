@@ -18,6 +18,11 @@
 
 package io.ballerina.lib.data.jsondata.json;
 
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
+import io.ballerina.lib.data.jsondata.json.schema.Schema;
+import io.ballerina.lib.data.jsondata.json.schema.SchemaTypeParser;
+import io.ballerina.lib.data.jsondata.json.schema.Validator;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DataUtils;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
@@ -44,12 +49,7 @@ import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 import io.ballerina.runtime.api.values.BTypedesc;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 
 import static io.ballerina.lib.data.jsondata.utils.Constants.ENABLE_CONSTRAINT_VALIDATION;
 
@@ -61,6 +61,7 @@ import static io.ballerina.lib.data.jsondata.utils.Constants.ENABLE_CONSTRAINT_V
 public class JsonTraverse {
 
     private static final ThreadLocal<JsonTree> tlJsonTree = ThreadLocal.withInitial(JsonTree::new);
+    private static final SchemaTypeParser schemaTypeParser = new SchemaTypeParser();
 
     public static Object traverse(Object json, BMap<BString, Object> options, Type type) {
         JsonTree jsonTree = tlJsonTree.get();
@@ -123,12 +124,17 @@ public class JsonTraverse {
                         throw DiagnosticLog.error(DiagnosticErrorCode.INCOMPATIBLE_TYPE, type, json);
                     }
                     RecordType recordType = (RecordType) referredType;
+
+                    if (validateJsonSchemaAnnotations(json, referredType) instanceof BError validationError) {
+                        throw validationError;
+                    }
+
                     fieldHierarchy.push(JsonCreator.getAllFieldsInRecord(recordType));
                     restType.push(recordType.getRestFieldType());
                     if (recordType.isReadOnly()) {
                         Object value = traverseMapJsonOrArrayJson(json,
-                                        ValueCreator.createMapValue(TypeCreator
-                                                .createMapType(PredefinedTypes.TYPE_ANYDATA)), referredType);
+                                ValueCreator.createMapValue(TypeCreator
+                                        .createMapType(PredefinedTypes.TYPE_ANYDATA)), referredType);
                         try {
                             return ValueUtils.convert(JsonCreator.constructReadOnlyValue(value), recordType);
                         } catch (BError e) {
@@ -139,6 +145,11 @@ public class JsonTraverse {
                             ValueCreator.createRecordValue(type.getPackage(), type.getName()), referredType);
                 }
                 case TypeTags.ARRAY_TAG -> {
+
+                    if (validateJsonSchemaAnnotations(json, type) instanceof BError validationError) {
+                        throw validationError;
+                    }
+
                     if (!(json instanceof BArray)) {
                         throw DiagnosticLog.error(DiagnosticErrorCode.INCOMPATIBLE_TYPE, type, json);
                     }
@@ -147,6 +158,11 @@ public class JsonTraverse {
                             referredType);
                 }
                 case TypeTags.TUPLE_TAG -> {
+
+                    if (validateJsonSchemaAnnotations(json, type) instanceof BError validationError) {
+                        throw validationError;
+                    }
+
                     if (!(json instanceof BArray)) {
                         throw DiagnosticLog.error(DiagnosticErrorCode.INCOMPATIBLE_TYPE, type, json);
                     }
@@ -155,10 +171,15 @@ public class JsonTraverse {
                             referredType);
                 }
                 case TypeTags.NULL_TAG, TypeTags.BOOLEAN_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG,
-                        TypeTags.DECIMAL_TAG, TypeTags.STRING_TAG, TypeTags.CHAR_STRING_TAG , TypeTags.BYTE_TAG,
-                        TypeTags.SIGNED8_INT_TAG, TypeTags.SIGNED16_INT_TAG, TypeTags.SIGNED32_INT_TAG,
-                        TypeTags.UNSIGNED8_INT_TAG, TypeTags.UNSIGNED16_INT_TAG, TypeTags.UNSIGNED32_INT_TAG,
-                        TypeTags.FINITE_TYPE_TAG -> {
+                     TypeTags.DECIMAL_TAG, TypeTags.STRING_TAG, TypeTags.CHAR_STRING_TAG , TypeTags.BYTE_TAG,
+                     TypeTags.SIGNED8_INT_TAG, TypeTags.SIGNED16_INT_TAG, TypeTags.SIGNED32_INT_TAG,
+                     TypeTags.UNSIGNED8_INT_TAG, TypeTags.UNSIGNED16_INT_TAG, TypeTags.UNSIGNED32_INT_TAG,
+                     TypeTags.FINITE_TYPE_TAG -> {
+
+                    if (validateJsonSchemaAnnotations(json, type) instanceof BError validationError) {
+                        throw validationError;
+                    }
+
                     return convertToBasicType(json, referredType);
                 }
                 case TypeTags.UNION_TAG -> {
@@ -167,14 +188,42 @@ public class JsonTraverse {
                         return null;
                     }
 
+                    LinkedHashMap<String, Keyword> keywords =
+                            schemaTypeParser.extractAnnotationKeywords(type);
+
+                    Keyword notKeyword = keywords.get("not");
+                    if (notKeyword != null) {
+                        Object notSchemaValue = notKeyword.getKeywordValue();
+                        if (notSchemaValue instanceof Schema notSchema) {
+                            EvaluationContext notCtx = new EvaluationContext();
+                            if (notKeyword.evaluate(json, notCtx)) {
+                                throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, String.join("\n", notCtx.getErrors()));
+                            }
+                        }
+                    }
+
+                    boolean hasAllOf = keywords.containsKey("allOf");
+                    boolean hasOneOf = keywords.containsKey("oneOf");
+
+                    int matchCount = 0;
+                    Object parsed = null;
+
                     for (Type memberType : unionType.getMemberTypes()) {
                         int fieldHierarchySize = fieldHierarchy.size();
                         int restTypeSize = restType.size();
                         int fieldNamesSize = fieldNames.size();
                         try {
-                            return traverseJson(json, memberType);
+                            parsed = traverseJson(json, memberType);
+                            matchCount++;
+                            if (hasOneOf && matchCount > 1) {
+                                throw DiagnosticLog.error(
+                                        DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, "oneOf matched more than one member type");
+                            }
+
+                            if (!hasOneOf && !hasAllOf) {
+                                return parsed; // first parsed value is returned if no schema annotations.
+                            }
                         } catch (Exception e) {
-                            // Restore stack state after failed union member attempt
                             while (fieldHierarchy.size() > fieldHierarchySize) {
                                 fieldHierarchy.pop();
                             }
@@ -184,7 +233,14 @@ public class JsonTraverse {
                             while (fieldNames.size() > fieldNamesSize) {
                                 fieldNames.pollLast();
                             }
+                            if (hasAllOf) {
+                                throw DiagnosticLog.error(
+                                        DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, "allOf member type failed: " + e.getMessage());
+                            }
                         }
+                    }
+                    if (parsed != null && !(parsed instanceof BError)) {
+                        return parsed;
                     }
                     throw DiagnosticLog.error(DiagnosticErrorCode.INCOMPATIBLE_TYPE, type, json);
                 }
@@ -240,8 +296,7 @@ public class JsonTraverse {
                 if (currentField == null) {
                     // Add to the rest field
                     if (restType.peek() != null) {
-                        Type restFieldType = TypeUtils.getReferredType(restType.peek());
-                        addRestField(restFieldType, key, map.get(key), currentJsonNode);
+                        addRestField(restType.peek(), key, map.get(key), currentJsonNode);
                         continue;
                     }
                     if (allowDataProjection) {
@@ -254,24 +309,28 @@ public class JsonTraverse {
 
                 String fieldName = currentField.getFieldName();
                 fieldNames.push(fieldName);
-                Type currentFieldType = TypeUtils.getReferredType(currentField.getFieldType());
-                int currentFieldTypeTag = currentFieldType.getTag();
+                Type currentFieldType = currentField.getFieldType();
+                int currentFieldTypeTag = TypeUtils.getReferredType(currentFieldType).getTag();
                 Object mapValue = map.get(key);
 
-                if (nilAsOptionalField && !currentFieldType.isNilable() && mapValue == null
+                if (nilAsOptionalField && !TypeUtils.getReferredType(currentFieldType).isNilable() && mapValue == null
                         && SymbolFlags.isFlagOn(currentField.getFlags(), SymbolFlags.OPTIONAL)) {
                     continue;
                 }
 
                 switch (currentFieldTypeTag) {
                     case TypeTags.NULL_TAG, TypeTags.BOOLEAN_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG,
-                            TypeTags.DECIMAL_TAG, TypeTags.STRING_TAG -> {
-                        Object value = convertToBasicType(mapValue, currentFieldType);
+                         TypeTags.DECIMAL_TAG, TypeTags.STRING_TAG -> {
+                        if (validateJsonSchemaAnnotations(mapValue, currentFieldType) instanceof BError validationError) {
+                            throw validationError;
+                        }
+                        Type resolvedType = TypeUtils.getReferredType(currentFieldType);
+                        Object value = convertToBasicType(mapValue, resolvedType);
                         ((BMap<BString, Object>) currentJsonNode).put(StringUtils.fromString(fieldNames.pop()), value);
                     }
                     default ->
-                        ((BMap<BString, Object>) currentJsonNode).put(StringUtils.fromString(fieldName),
-                                traverseJson(mapValue, currentFieldType));
+                            ((BMap<BString, Object>) currentJsonNode).put(StringUtils.fromString(fieldName),
+                                    traverseJson(mapValue, currentFieldType));
                 }
             }
             Map<String, Field> currentField = fieldHierarchy.pop();
@@ -329,12 +388,17 @@ public class JsonTraverse {
 
         private void addRestField(Type restFieldType, BString key, Object jsonMember, Object currentJsonNode) {
             Object nextJsonValue;
-            switch (restFieldType.getTag()) {
+            Type resolvedType = TypeUtils.getReferredType(restFieldType);
+            switch (resolvedType.getTag()) {
                 case TypeTags.ANYDATA_TAG, TypeTags.JSON_TAG ->
                         ((BMap<BString, Object>) currentJsonNode).put(key, jsonMember);
                 case TypeTags.BOOLEAN_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG,
-                        TypeTags.STRING_TAG -> {
-                    ((BMap<BString, Object>) currentJsonNode).put(key, convertToBasicType(jsonMember, restFieldType));
+                     TypeTags.STRING_TAG -> {
+                    if (validateJsonSchemaAnnotations(jsonMember, restFieldType)
+                            instanceof BError validationError) {
+                        throw validationError;
+                    }
+                    ((BMap<BString, Object>) currentJsonNode).put(key, convertToBasicType(jsonMember, resolvedType));
                 }
                 default -> {
                     nextJsonValue = traverseJson(jsonMember, restFieldType);
@@ -374,5 +438,19 @@ public class JsonTraverse {
             }
             return sb.toString();
         }
+
+        private Object validateJsonSchemaAnnotations(Object json, Type referredType) {
+            EvaluationContext ctx = new EvaluationContext();
+            LinkedHashMap<String ,Keyword> keywords = schemaTypeParser.extractAnnotationKeywords(referredType);
+            if (!keywords.isEmpty()) {
+                Schema schemaWithAnnotations = new Schema(keywords);
+                boolean validationResult = Validator.validate(json, schemaWithAnnotations, ctx);
+                if (!validationResult) {
+                    return DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, String.join("\n", ctx.getErrors()));
+                }
+            }
+            return null;
+        }
+
     }
 }

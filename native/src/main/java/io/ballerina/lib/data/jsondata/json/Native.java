@@ -61,9 +61,15 @@ import static io.ballerina.lib.data.jsondata.utils.DataReader.resolveNextMethod;
 public class Native {
 
     public static Object parseAsType(Object json, BMap<BString, Object> options, BTypedesc typed) {
+        long beforeConvert = System.nanoTime();
         try {
-            return JsonTraverse.traverse(json, options, typed);
+            Object res =  JsonTraverse.traverse(json, options, typed);
+            long afterConvert = System.nanoTime();
+            System.out.println("Time taken: " + (afterConvert - beforeConvert) + " nanoseconds");
+            return res;
         } catch (BError e) {
+            long afterConvert = System.nanoTime();
+            System.out.println("Time taken: " + (afterConvert - beforeConvert) + " nanoseconds");
             return e;
         }
     }
@@ -88,13 +94,14 @@ public class Native {
     public static Object validate(Object jsonValue, Object schema) {
         Object err = null;
         SchemaTypeParser typeParser = new SchemaTypeParser();
-        Validator schemaValidator = new Validator(false);
+        long start = System.nanoTime();
 
         try {
             if (schema instanceof BString) {
                 String schemaPath = ((BString) schema).getValue();
                 Object rootJson = SchemaParserUtils.readSchemaFile(schemaPath);
                 if (rootJson instanceof BError) {
+                    System.out.println("[filepath] error reading schema: " + (System.nanoTime() - start) / 1_000_000 + " ms");
                     return rootJson;
                 }
 
@@ -102,6 +109,7 @@ public class Native {
                 SchemaJsonParser rootParser = new SchemaJsonParser(currentCallUris);
                 Object rootSchema = rootParser.parse(rootJson);
                 if (rootSchema instanceof BError) {
+                    System.out.println("[filepath] error parsing schema: " + (System.nanoTime() - start) / 1_000_000 + " ms");
                     return rootSchema;
                 }
 
@@ -114,27 +122,28 @@ public class Native {
                 }
 
                 EvaluationContext context = new EvaluationContext(SchemaJsonParser.getRegistry());
-                Validator val = new Validator(false);
-                if (!val.validate(jsonValue, rootSchema, context)) {
+                if (!Validator.validate(jsonValue, rootSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());
+                    System.out.println("[filepath] " + (System.nanoTime() - start) / 1_000_000 + " ms");
                     return DiagnosticLog.createJsonError(errorMessage);
                 }
+                System.out.println("[filepath] " + (System.nanoTime() - start) / 1_000_000 + " ms");
 
             } else if (schema instanceof BMap || schema instanceof Boolean) {
                 Set<URI> currentCallUris = new HashSet<>();
                 SchemaJsonParser parser = new SchemaJsonParser(currentCallUris);
                 Object parsedSchema = parser.parse(schema);
                 if (parsedSchema instanceof BError) {
+                    System.out.println("[json] error parsing schema: " + (System.nanoTime() - start) / 1_000_000 + " ms");
                     return parsedSchema;
                 }
 
                 EvaluationContext context = new EvaluationContext(SchemaJsonParser.getRegistry());
-
-                boolean isValid = schemaValidator.validate(jsonValue, parsedSchema, context);
-                if (!isValid) {
+                if (!Validator.validate(jsonValue, parsedSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());
                     err = DiagnosticLog.createJsonError(errorMessage);
                 }
+                System.out.println("[json] " + (System.nanoTime() - start) / 1_000_000 + " ms");
 
             } else if (schema instanceof BArray schemaArray) {
                 Set<URI> currentCallUris = new HashSet<>();
@@ -152,13 +161,12 @@ public class Native {
                     return rootSchema;
                 }
 
-                Validator val = new Validator(false);
                 EvaluationContext context = new EvaluationContext(SchemaJsonParser.getRegistry());
-
-                if (!val.validate(jsonValue, rootSchema, context)) {
+                if (!Validator.validate(jsonValue, rootSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());
-                    return DiagnosticLog.createJsonError(errorMessage);
+                    err = DiagnosticLog.createJsonError(errorMessage);
                 }
+                System.out.println("[json[]] " + (System.nanoTime() - start) / 1_000_000 + " ms");
 
             } else if (schema instanceof BTypedesc) {
                 Type type = ((BTypedesc) schema).getDescribingType();
@@ -166,15 +174,16 @@ public class Native {
                 if (schemaObj instanceof BError) {
                     err = schemaObj;
                 } else {
-                    Validator validator = new Validator(false);
                     EvaluationContext context = new EvaluationContext();
-                    if (!validator.validate(jsonValue, schemaObj, context)) {
+                    if (!Validator.validate(jsonValue, schemaObj, context)) {
                         String errorMessage = String.join("\n- ", context.getErrors());
                         err = DiagnosticLog.error(
                             DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
                             "- " + errorMessage);
                     }
                 }
+                System.out.println("[typedesc] " + (System.nanoTime() - start) / 1_000_000 + " ms");
+
             } else {
                 err = DiagnosticLog.createJsonError("invalid schema type: expected string, json, or json[]: " +
                         TypeUtils.getType(schema).getName());
