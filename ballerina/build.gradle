@@ -71,12 +71,6 @@ dependencies {
     externalJars(group: 'io.ballerina.stdlib', name: 'constraint-native', version: "${stdlibConstraintVersion}") {
         transitive = false
     }
-    externalJars(group: 'com.networknt', name: 'json-schema-validator', version: "${networkntJsonSchemaValidatorVersion}") {
-        transitive = true
-    }
-    externalJars(group: 'org.jruby.joni', name: 'joni', version: "${joniVersion}") {
-        transitive = true
-    }
 }
 
 task updateTomlFiles {
