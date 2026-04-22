@@ -46,9 +46,20 @@ public class SchemaRegistry {
 
     private final Map<URI, Object> schemas = new HashMap<>();
     private final Set<URI> dynamicAnchorUris = new LinkedHashSet<>();
+    private int mockRootCount = 0;
+    private String currentMockRoot = "http://wso2.com/schema-root";
 
     public void put(URI uri, Object schema) {
         this.schemas.put(uri, schema);
+    }
+
+    public String getMockRootUri() {
+        return currentMockRoot;
+    }
+
+    public void advanceMockRootUri() {
+        mockRootCount++;
+        currentMockRoot = "http://wso2.com/schema-root" + mockRootCount;
     }
 
     public Object get(URI uri) {
@@ -130,7 +141,7 @@ public class SchemaRegistry {
             return false;
         }
 
-        SchemaJsonParser parser = new SchemaJsonParser(new HashSet<>());
+        SchemaJsonParser parser = new SchemaJsonParser(new HashSet<>(), this);
         parser.parse(raw);
         return true;
     }

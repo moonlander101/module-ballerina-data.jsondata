@@ -46,11 +46,22 @@ public class Validator {
             pushedScope = true;
         }
 
+        boolean prevTrackItems = context.isTrackEvaluatedItems();
+        boolean prevTrackProperties = context.isTrackEvaluatedProperties();
+        if (s.hasUnevaluatedItems()) {
+            context.setTrackEvaluatedItems(true);
+        }
+        if (s.hasUnevaluatedProperties()) {
+            context.setTrackEvaluatedProperties(true);
+        }
+
         for (String key : s.getOrderedKeys()) {
             Keyword keyword = s.getKeyword(key);
             if (keyword != null) {
                 isValid = isValid && keyword.evaluate(instance, context);
                 if (failFast) {
+                    context.setTrackEvaluatedItems(prevTrackItems);
+                    context.setTrackEvaluatedProperties(prevTrackProperties);
                     if (pushedScope) {
                         context.popDynamicScope();
                     }
@@ -58,6 +69,9 @@ public class Validator {
                 }
             }
         }
+
+        context.setTrackEvaluatedItems(prevTrackItems);
+        context.setTrackEvaluatedProperties(prevTrackProperties);
         if (pushedScope) {
             context.popDynamicScope();
         }
