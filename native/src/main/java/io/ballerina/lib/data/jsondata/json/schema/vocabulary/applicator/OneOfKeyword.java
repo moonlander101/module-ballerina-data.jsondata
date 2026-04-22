@@ -26,10 +26,14 @@ public class OneOfKeyword extends Keyword {
                     context.addError("oneOf", "At " + context.getInstanceLocation() + ": [oneOf] value matches more than one subschema");
                     return false;
                 }
-                SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
-                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(schemaContext);
-                schemaContext.moveToParentContext("evaluatedItems");
-                schemaContext.moveToParentContext("evaluatedProperties");
+                if (context.isTrackEvaluatedItems()) {
+                    SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
+                    schemaContext.moveToParentContext("evaluatedItems");
+                }
+                if (context.isTrackEvaluatedProperties()) {
+                    SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(schemaContext);
+                    schemaContext.moveToParentContext("evaluatedProperties");
+                }
             }
         }
         if (matchCount == 0) {

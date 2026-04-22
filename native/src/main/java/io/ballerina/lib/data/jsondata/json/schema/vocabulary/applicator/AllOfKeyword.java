@@ -38,10 +38,14 @@ public class AllOfKeyword extends Keyword {
             if (!Validator.validate(instance, keywordValue.get(i), schemaContext)) {
                 return false;
             }
-            SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
-            SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(schemaContext);
-            schemaContext.moveToParentContext("evaluatedItems");
-            schemaContext.moveToParentContext("evaluatedProperties");
+            if (context.isTrackEvaluatedItems()) {
+                SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
+                schemaContext.moveToParentContext("evaluatedItems");
+            }
+            if (context.isTrackEvaluatedProperties()) {
+                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(schemaContext);
+                schemaContext.moveToParentContext("evaluatedProperties");
+            }
         }
         return true;
     }

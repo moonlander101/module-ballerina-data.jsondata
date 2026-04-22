@@ -62,10 +62,14 @@ public class RefKeyword extends Keyword {
         EvaluationContext refContext = context.createChildContext("", keywordName);
         boolean isValid = Validator.validate(instance, target, refContext);
         if (isValid) {
-            SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
-            SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
-            refContext.moveToParentContext("evaluatedProperties");
-            refContext.moveToParentContext("evaluatedItems");
+            if (context.isTrackEvaluatedProperties()) {
+                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
+                refContext.moveToParentContext("evaluatedProperties");
+            }
+            if (context.isTrackEvaluatedItems()) {
+                SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
+                refContext.moveToParentContext("evaluatedItems");
+            }
         }
 
         context.popDynamicScope();

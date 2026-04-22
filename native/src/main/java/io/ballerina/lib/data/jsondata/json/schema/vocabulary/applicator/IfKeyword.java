@@ -37,10 +37,14 @@ public class IfKeyword extends Keyword {
         boolean ifValid = Validator.validate(instance, keywordValue, ifContext);
         context.setAnnotation(keywordName, ifValid);
         if (ifValid) {
-            SchemaValidatorUtils.createEvaluatedItemsAnnotation(ifContext);
-            SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(ifContext);
-            context.setAnnotation("ifEvaluatedItems", ifContext.getAnnotation("evaluatedItems"));
-            context.setAnnotation("ifEvaluatedProperties", ifContext.getAnnotation("evaluatedProperties"));
+            if (context.isTrackEvaluatedItems()) {
+                SchemaValidatorUtils.createEvaluatedItemsAnnotation(ifContext);
+                context.setAnnotation("ifEvaluatedItems", ifContext.getAnnotation("evaluatedItems"));
+            }
+            if (context.isTrackEvaluatedProperties()) {
+                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(ifContext);
+                context.setAnnotation("ifEvaluatedProperties", ifContext.getAnnotation("evaluatedProperties"));
+            }
         }
         return true;
     }

@@ -41,10 +41,14 @@ public class ElseKeyword extends Keyword {
                 EvaluationContext elseContext = context.createChildContext("", "else");
                 boolean elseValid = Validator.validate(instance, keywordValue, elseContext);
                 if (elseValid) {
-                    SchemaValidatorUtils.createEvaluatedItemsAnnotation(elseContext);
-                    context.setAnnotation("elseEvaluatedItems", elseContext.getAnnotation("evaluatedItems"));
-                    SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(elseContext);
-                    context.setAnnotation("elseEvaluatedProperties", elseContext.getAnnotation("evaluatedProperties"));
+                    if (context.isTrackEvaluatedItems()) {
+                        SchemaValidatorUtils.createEvaluatedItemsAnnotation(elseContext);
+                        context.setAnnotation("elseEvaluatedItems", elseContext.getAnnotation("evaluatedItems"));
+                    }
+                    if (context.isTrackEvaluatedProperties()) {
+                        SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(elseContext);
+                        context.setAnnotation("elseEvaluatedProperties", elseContext.getAnnotation("evaluatedProperties"));
+                    }
                 }
                 return elseValid;
             }

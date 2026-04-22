@@ -29,6 +29,8 @@ public class EvaluationContext {
     private HashMap<String, Object> annotations;
     private final SchemaRegistry schemaRegistry;
     private final LinkedHashSet<URI> dynamicScope;
+    private boolean trackEvaluatedItems;
+    private boolean trackEvaluatedProperties;
 
     public EvaluationContext() {
         this(null, "", "", null, new LinkedHashSet<>());
@@ -47,6 +49,8 @@ public class EvaluationContext {
         this.annotations = null;
         this.schemaRegistry = schemaRegistry;
         this.dynamicScope = dynamicScope;
+        this.trackEvaluatedItems = parent != null && parent.trackEvaluatedItems;
+        this.trackEvaluatedProperties = parent != null && parent.trackEvaluatedProperties;
     }
 
     public void pushDynamicScope(URI resourceUri) {
@@ -110,6 +114,22 @@ public class EvaluationContext {
 
     public SchemaRegistry getSchemaRegistry() {
         return schemaRegistry;
+    }
+
+    public boolean isTrackEvaluatedItems() {
+        return trackEvaluatedItems;
+    }
+
+    public void setTrackEvaluatedItems(boolean trackEvaluatedItems) {
+        this.trackEvaluatedItems = trackEvaluatedItems;
+    }
+
+    public boolean isTrackEvaluatedProperties() {
+        return trackEvaluatedProperties;
+    }
+
+    public void setTrackEvaluatedProperties(boolean trackEvaluatedProperties) {
+        this.trackEvaluatedProperties = trackEvaluatedProperties;
     }
 
     public void moveToParentContext(String annotationKey) {
