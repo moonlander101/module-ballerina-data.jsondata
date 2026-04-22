@@ -1,96 +1,13 @@
 package io.ballerina.lib.data.jsondata.utils;
 
-import com.networknt.schema.output.OutputUnit;
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
-import io.ballerina.lib.data.jsondata.json.schema.Schema;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ContainsKeyword;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
 public class SchemaValidatorUtils {
-    private static final String ABSOLUTE_URI_REGEX = "^[a-zA-Z][a-zA-Z0-9+.-]*://.*";
-
-    public static String extractRootIdFromJson(Path jsonFilePath) {
-        try {
-            String content = Files.readString(jsonFilePath);
-            return extractRootIdFromJson(content);
-        } catch (IOException e) {
-            throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_LOADING_FAILED, jsonFilePath.toString());
-        }
-    }
-
-    public static String extractRootIdFromJson(String content) {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode jsonSchema = mapper.readTree(content);
-
-        if (jsonSchema.has("$id")) {
-            return jsonSchema.get("$id").asString();
-        }
-        throw DiagnosticLog.error(DiagnosticErrorCode.MISSING_SCHEMA_ID);
-    }
-
-    public static boolean isAbsoluteUri(String id) {
-        return id != null && id.matches(ABSOLUTE_URI_REGEX);
-    }
-
-    public static void collectErrors(OutputUnit unit, List<String> errorList) {
-        if (unit.getErrors() != null && !unit.getErrors().isEmpty()) {
-            unit.getErrors().forEach((keyword, message) -> {
-                errorList.add(String.format("At %s: [%s] %s",
-                        unit.getInstanceLocation(), keyword, message));
-            });
-        }
-
-        if (unit.getDetails() != null) {
-            for (OutputUnit child : unit.getDetails()) {
-                collectErrors(child, errorList);
-            }
-        }
-    }
-
-    public static String createErrorMessage(OutputUnit unit) {
-        List<String> allErrors = new ArrayList<>();
-        SchemaValidatorUtils.collectErrors(unit, allErrors);
-
-        StringBuilder errorMessage = new StringBuilder();
-        for (int i = 0; i < allErrors.size(); i++) {
-            if (i > 0) {
-                errorMessage.append("\n");
-            }
-            errorMessage.append("- ").append(allErrors.get(i));
-        }
-        return errorMessage.toString();
-    }
-
-    public static URI getResourceUri(Object schema) {
-        if (!(schema instanceof Schema)) {
-            return null;
-        }
-        Keyword idKeyword = ((Schema) schema).getKeyword(IdKeyword.keywordName);
-        if (idKeyword == null) {
-            return null;
-        }
-        Object idValue = idKeyword.getKeywordValue();
-        if (!(idValue instanceof URI uri)) {
-            return null;
-        }
-        try {
-            return new URI(uri.getScheme(), uri.getSchemeSpecificPart(), null);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     public static void createEvaluatedItemsAnnotation(EvaluationContext context) {
         Object existingEvaluatedItems = context.getAnnotation("evaluatedItems");
         Object prefixItemsAnnotation = context.getAnnotation(PrefixItemsKeyword.keywordName);
