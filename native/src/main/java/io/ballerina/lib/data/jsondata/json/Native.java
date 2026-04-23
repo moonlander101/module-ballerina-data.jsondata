@@ -88,7 +88,7 @@ public class Native {
     public static Object validate(Object jsonValue, Object schema) {
         Object err = null;
         SchemaTypeParser typeParser = new SchemaTypeParser();
-        Validator schemaValidator = new Validator(false);
+        SchemaRegistry registry = new SchemaRegistry();
 
         try {
             if (schema instanceof BString) {
@@ -99,7 +99,7 @@ public class Native {
                 }
 
                 Set<URI> currentCallUris = new HashSet<>();
-                SchemaJsonParser rootParser = new SchemaJsonParser(currentCallUris);
+                SchemaJsonParser rootParser = new SchemaJsonParser(currentCallUris,registry);
                 Object rootSchema = rootParser.parse(rootJson);
                 if (rootSchema instanceof BError) {
                     return rootSchema;
@@ -107,30 +107,29 @@ public class Native {
 
                 ArrayList<Object> siblings = SchemaParserUtils.readSiblingSchemas(schemaPath);
                 for (Object s : siblings) {
-                    SchemaJsonParser parser = new SchemaJsonParser(currentCallUris);
+                    SchemaJsonParser parser = new SchemaJsonParser(currentCallUris, registry);
                     if (parser.parse(s) instanceof BError parseError) {
                         return parseError;
                     }
                 }
 
-                EvaluationContext context = new EvaluationContext(SchemaJsonParser.getRegistry());
-                Validator val = new Validator(false);
-                if (!val.validate(jsonValue, rootSchema, context)) {
+                EvaluationContext context = new EvaluationContext(registry);
+                if (!Validator.validate(jsonValue, rootSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());
                     return DiagnosticLog.createJsonError(errorMessage);
                 }
 
             } else if (schema instanceof BMap || schema instanceof Boolean) {
                 Set<URI> currentCallUris = new HashSet<>();
-                SchemaJsonParser parser = new SchemaJsonParser(currentCallUris);
+                SchemaJsonParser parser = new SchemaJsonParser(currentCallUris, registry);
                 Object parsedSchema = parser.parse(schema);
                 if (parsedSchema instanceof BError) {
                     return parsedSchema;
                 }
 
-                EvaluationContext context = new EvaluationContext(SchemaJsonParser.getRegistry());
+                EvaluationContext context = new EvaluationContext(registry);
 
-                boolean isValid = schemaValidator.validate(jsonValue, parsedSchema, context);
+                boolean isValid = Validator.validate(jsonValue, parsedSchema, context);
                 if (!isValid) {
                     String errorMessage = String.join("\n- ", context.getErrors());
                     err = DiagnosticLog.createJsonError(errorMessage);
@@ -141,21 +140,20 @@ public class Native {
                 int length = (int) schemaArray.getLength();
                 for (int i = 0; i < length; i++) {
                     Object s = schemaArray.get(i);
-                    SchemaJsonParser parser = new SchemaJsonParser(currentCallUris);
+                    SchemaJsonParser parser = new SchemaJsonParser(currentCallUris, registry);
                     if (parser.parse(s) instanceof BError parseError) {
                         return parseError;
                     }
                 }
-                Object rootSchema = SchemaJsonParser.getRegistry().findRootSchema(currentCallUris);
+                Object rootSchema = registry.findRootSchema(currentCallUris);
 
                 if (rootSchema instanceof BError) {
                     return rootSchema;
                 }
 
-                Validator val = new Validator(false);
-                EvaluationContext context = new EvaluationContext(SchemaJsonParser.getRegistry());
+                EvaluationContext context = new EvaluationContext(registry);
 
-                if (!val.validate(jsonValue, rootSchema, context)) {
+                if (!Validator.validate(jsonValue, rootSchema, context)) {
                     String errorMessage = String.join("\n- ", context.getErrors());
                     return DiagnosticLog.createJsonError(errorMessage);
                 }
@@ -166,9 +164,8 @@ public class Native {
                 if (schemaObj instanceof BError) {
                     err = schemaObj;
                 } else {
-                    Validator validator = new Validator(false);
                     EvaluationContext context = new EvaluationContext();
-                    if (!validator.validate(jsonValue, schemaObj, context)) {
+                    if (!Validator.validate(jsonValue, schemaObj, context)) {
                         String errorMessage = String.join("\n- ", context.getErrors());
                         err = DiagnosticLog.error(
                             DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
