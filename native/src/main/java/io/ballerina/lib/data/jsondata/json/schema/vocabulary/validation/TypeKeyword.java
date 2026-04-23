@@ -28,6 +28,9 @@ public class TypeKeyword extends Keyword {
             }
 
             if (Objects.equals(keyword, "integer")) {
+                if (instance instanceof Long) {
+                    return true;
+                }
                 Long intVal = SchemaParserUtils.toInteger(instance);
                 return intVal != null;
             }
