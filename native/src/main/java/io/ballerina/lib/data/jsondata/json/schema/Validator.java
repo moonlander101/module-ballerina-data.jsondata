@@ -59,7 +59,7 @@ public class Validator {
             Keyword keyword = s.getKeyword(key);
             if (keyword != null) {
                 isValid = isValid && keyword.evaluate(instance, context);
-                if (failFast) {
+                if (failFast && !isValid) {
                     context.setTrackEvaluatedItems(prevTrackItems);
                     context.setTrackEvaluatedProperties(prevTrackProperties);
                     if (pushedScope) {
