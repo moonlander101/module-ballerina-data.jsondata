@@ -23,10 +23,12 @@ import io.ballerina.lib.data.jsondata.json.schema.Schema;
 import io.ballerina.lib.data.jsondata.json.schema.SchemaTypeParser;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AdditionalPropertiesKeyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DataUtils;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.flags.SymbolFlags;
@@ -100,6 +102,7 @@ public class JsonTraverse {
         boolean allowDataProjection = false;
         boolean nilAsOptionalField = false;
         boolean absentAsNilableType = false;
+        Stack<EvaluationContext> allOfAccumulatorStack = new Stack<>();
 
         void reset() {
             currentField = null;
@@ -110,6 +113,7 @@ public class JsonTraverse {
             allowDataProjection = false;
             nilAsOptionalField = false;
             absentAsNilableType = false;
+            allOfAccumulatorStack.clear();
         }
 
         private Object traverseJson(Object json, Type type) {
@@ -205,6 +209,10 @@ public class JsonTraverse {
                     boolean hasAllOf = keywords.containsKey("allOf");
                     boolean hasOneOf = keywords.containsKey("oneOf");
 
+                    if (hasAllOf || hasOneOf) {
+                        allOfAccumulatorStack.push(new EvaluationContext());
+                    }
+
                     int matchCount = 0;
                     Object parsed = null;
 
@@ -221,7 +229,7 @@ public class JsonTraverse {
                             }
 
                             if (!hasOneOf && !hasAllOf) {
-                                return parsed; // first parsed value is returned if no schema annotations.
+                                return parsed;
                             }
                         } catch (Exception e) {
                             while (fieldHierarchy.size() > fieldHierarchySize) {
@@ -238,6 +246,9 @@ public class JsonTraverse {
                                         DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, "allOf member type failed: " + e.getMessage());
                             }
                         }
+                    }
+                    if (hasAllOf || hasOneOf) {
+                        allOfAccumulatorStack.pop();
                     }
                     if (parsed != null && !(parsed instanceof BError)) {
                         return parsed;
@@ -392,8 +403,7 @@ public class JsonTraverse {
             switch (resolvedType.getTag()) {
                 case TypeTags.ANYDATA_TAG, TypeTags.JSON_TAG ->
                         ((BMap<BString, Object>) currentJsonNode).put(key, jsonMember);
-                case TypeTags.BOOLEAN_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG,
-                     TypeTags.STRING_TAG -> {
+                case TypeTags.BOOLEAN_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG, TypeTags.STRING_TAG -> {
                     if (validateJsonSchemaAnnotations(jsonMember, restFieldType)
                             instanceof BError validationError) {
                         throw validationError;
@@ -441,15 +451,118 @@ public class JsonTraverse {
 
         private Object validateJsonSchemaAnnotations(Object json, Type referredType) {
             EvaluationContext ctx = new EvaluationContext();
-            LinkedHashMap<String ,Keyword> keywords = schemaTypeParser.extractAnnotationKeywords(referredType);
+            Type refType = TypeUtils.getReferredType(referredType);
+            LinkedHashMap<String, Keyword> keywords = schemaTypeParser.extractAnnotationKeywords(referredType);
+
+            if (!allOfAccumulatorStack.isEmpty()) {
+                EvaluationContext accumulator = allOfAccumulatorStack.peek();
+                copyAnnotation(accumulator, ctx, "evaluatedItems");
+                copyAnnotation(accumulator, ctx, "evaluatedProperties");
+            }
+
+            presetTypeTraversalAnnotations(ctx, refType, keywords);
+
             if (!keywords.isEmpty()) {
                 Schema schemaWithAnnotations = new Schema(keywords);
                 boolean validationResult = Validator.validate(json, schemaWithAnnotations, ctx);
+                if (!allOfAccumulatorStack.isEmpty()) {
+                    EvaluationContext accumulator = allOfAccumulatorStack.peek();
+                    SchemaValidatorUtils.createEvaluatedItemsAnnotation(ctx);
+                    SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(ctx);
+                    mergeAnnotation(accumulator, ctx, "evaluatedItems");
+                    mergeAnnotation(accumulator, ctx, "evaluatedProperties");
+                }
                 if (!validationResult) {
                     return DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, String.join("\n", ctx.getErrors()));
                 }
+            } else if (!allOfAccumulatorStack.isEmpty()) {
+                EvaluationContext accumulator = allOfAccumulatorStack.peek();
+                SchemaValidatorUtils.createEvaluatedItemsAnnotation(ctx);
+                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(ctx);
+                mergeAnnotation(accumulator, ctx, "evaluatedItems");
+                mergeAnnotation(accumulator, ctx, "evaluatedProperties");
             }
             return null;
+        }
+
+        private void presetTypeTraversalAnnotations(EvaluationContext ctx, Type refType,
+                                                    LinkedHashMap<String, Keyword> keywords) {
+            switch (refType.getTag()) {
+                case TypeTags.ARRAY_TAG -> {
+                    if (keywords.containsKey("unevaluatedItems")) {
+                        ArrayType arrayType = (ArrayType) refType;
+                        Type elementType = TypeUtils.getReferredType(arrayType.getElementType());
+                        if (elementType.getTag() != TypeTags.JSON_TAG && elementType.getTag() != TypeTags.ANYDATA_TAG) {
+                            ctx.setAnnotation("items", true);
+                        }
+                    }
+                }
+                case TypeTags.TUPLE_TAG -> {
+                    if (keywords.containsKey("unevaluatedItems")) {
+                        TupleType tupleType = (TupleType) refType;
+                        List<Type> tupleTypes = tupleType.getTupleTypes();
+                        if (!tupleTypes.isEmpty()) {
+                            ctx.setAnnotation("prefixItems", (long) (tupleTypes.size() - 1));
+                        }
+                        Type restType = tupleType.getRestType();
+                        if (restType != null) {
+                            Type resolvedRest = TypeUtils.getReferredType(restType);
+                            if (resolvedRest.getTag() != TypeTags.JSON_TAG
+                                    && resolvedRest.getTag() != TypeTags.ANYDATA_TAG) {
+                                ctx.setAnnotation("items", true);
+                            }
+                        }
+                    }
+                }
+                case TypeTags.RECORD_TYPE_TAG -> {
+                    if (keywords.containsKey("unevaluatedProperties")) {
+                        RecordType recordType = (RecordType) refType;
+                        Type restFieldType = recordType.getRestFieldType();
+                        if (restFieldType != null && !keywords.containsKey("additionalProperties")) {
+                            Object restSchema = schemaTypeParser.parse(restFieldType);
+                            if (!(restSchema instanceof BError)) {
+                                keywords.put(AdditionalPropertiesKeyword.keywordName,
+                                        new AdditionalPropertiesKeyword(restSchema));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static void copyAnnotation(EvaluationContext src, EvaluationContext dst, String key) {
+            Object val = src.getAnnotation(key);
+            if (val != null) {
+                dst.setAnnotation(key, val);
+            }
+        }
+
+        private static void mergeAnnotation(EvaluationContext target, EvaluationContext source, String key) {
+            Object sourceVal = source.getAnnotation(key);
+            if (sourceVal == null) {
+                return;
+            }
+            Object targetVal = target.getAnnotation(key);
+            if (targetVal == null) {
+                target.setAnnotation(key, sourceVal);
+                return;
+            }
+            if (sourceVal instanceof Boolean b && b) {
+                target.setAnnotation(key, true);
+                return;
+            }
+            if (targetVal instanceof Boolean b && b) {
+                return;
+            }
+            if (sourceVal instanceof List<?> srcList && targetVal instanceof List<?> tgtList) {
+                Set<Object> merged = new LinkedHashSet<>(tgtList);
+                merged.addAll(srcList);
+                target.setAnnotation(key, new ArrayList<>(merged));
+                return;
+            }
+            if (sourceVal instanceof Set && targetVal instanceof Set) {
+                ((Set<Object>) targetVal).addAll((Set<?>) sourceVal);
+            }
         }
 
     }
