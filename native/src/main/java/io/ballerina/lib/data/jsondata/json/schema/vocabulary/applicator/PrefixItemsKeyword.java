@@ -51,7 +51,7 @@ public class PrefixItemsKeyword extends Keyword {
     }
 
     @Override
-    public Object getKeywordValue() {
+    public List<Object> getKeywordValue() {
         return keywordValue;
     }
 }

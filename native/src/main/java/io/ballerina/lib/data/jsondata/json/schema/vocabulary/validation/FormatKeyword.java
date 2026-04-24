@@ -36,9 +36,6 @@ public class FormatKeyword extends Keyword {
     private static final int[] UUID_HYPHEN_POSITIONS = {8, 13, 18, 23};
 
     private static class DurationPatternHolder {
-        static {
-            System.out.println("Loading class DurationPatternHolder");
-        }
         static final Pattern INSTANCE = Pattern.compile(
                 "^P(?:(?:\\d+Y(?:\\d+M(?:\\d+D)?)?|\\d+M(?:\\d+D)?|\\d+D)" +
                         "(?:T(?=\\d)(?:\\d+H(?:\\d+M(?:\\d+S)?)?|\\d+M(?:\\d+S)?|\\d+S))?|T(?=\\d)(?:\\d+H(?:\\d+M(?:\\d+S)?)?|\\d+M(?:\\d+S)?|\\d+S)|\\d+W)$",
@@ -47,9 +44,6 @@ public class FormatKeyword extends Keyword {
     }
 
     private static class DotAtomLocalPatternHolder {
-        static {
-            System.out.println("Dot Atom Loaded");
-        }
         static final Pattern INSTANCE = Pattern.compile(
                 "^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*$",
                 Pattern.CASE_INSENSITIVE
