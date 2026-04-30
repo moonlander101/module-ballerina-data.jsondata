@@ -187,3 +187,12 @@ public type UnevaluatedPropertiesConfig record {|
 
 # The annotation is used to specify the type of unevaluated properties.
 public annotation UnevaluatedPropertiesConfig UnevaluatedProperties on type;
+
+# The configuration for unevaluated items.
+public type UnevaluatedItemsConfig record {|
+    # The schema that unevaluated field types must match
+    typedesc<json> value;
+|};
+
+# The annotation is used to specify the type of unevaluated items.
+public annotation UnevaluatedPropertiesConfig UnevaluatedItems on type;
