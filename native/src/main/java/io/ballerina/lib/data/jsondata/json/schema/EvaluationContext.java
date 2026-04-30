@@ -22,13 +22,17 @@ import java.net.URI;
 import java.util.*;
 
 public class EvaluationContext {
-    private final String instanceLocation;
-    private final String schemaLocation;
+    private final String instanceLocationSegment;
+    private final String schemaLocationSegment;
     private final EvaluationContext parent;
     private final List<String> errors;
+    private String instanceLocation;
+    private String schemaLocation;
     private HashMap<String, Object> annotations;
     private final SchemaRegistry schemaRegistry;
     private final LinkedHashSet<URI> dynamicScope;
+    private boolean trackEvaluatedItems;
+    private boolean trackEvaluatedProperties;
 
     public EvaluationContext() {
         this(null, "", "", null, new LinkedHashSet<>());
@@ -38,15 +42,19 @@ public class EvaluationContext {
         this(null, "", "", schemaRegistry, new LinkedHashSet<>());
     }
 
-    private EvaluationContext(EvaluationContext parent, String instanceLocation, String schemaLocation,
+    private EvaluationContext(EvaluationContext parent, String instanceLocationSegment, String schemaLocationSegment,
                               SchemaRegistry schemaRegistry, LinkedHashSet<URI> dynamicScope) {
         this.parent = parent;
-        this.instanceLocation = instanceLocation;
-        this.schemaLocation = schemaLocation;
+        this.instanceLocationSegment = instanceLocationSegment == null ? "" : instanceLocationSegment;
+        this.schemaLocationSegment = schemaLocationSegment == null ? "" : schemaLocationSegment;
+        this.instanceLocation = null;
+        this.schemaLocation = null;
         this.errors = parent != null ? parent.errors : new ArrayList<>();
         this.annotations = null;
         this.schemaRegistry = schemaRegistry;
         this.dynamicScope = dynamicScope;
+        this.trackEvaluatedItems = parent != null && parent.trackEvaluatedItems;
+        this.trackEvaluatedProperties = parent != null && parent.trackEvaluatedProperties;
     }
 
     public void pushDynamicScope(URI resourceUri) {
@@ -64,25 +72,7 @@ public class EvaluationContext {
     }
 
     public EvaluationContext createChildContext(String instancePathSegment, String schemaPathSegment) {
-        String childInstanceLocation;
-        if (instancePathSegment.isEmpty()) {
-            childInstanceLocation = instanceLocation;
-        } else if (instanceLocation.isEmpty()) {
-            childInstanceLocation = instancePathSegment;
-        } else {
-            childInstanceLocation = instanceLocation + "/" + instancePathSegment;
-        }
-
-        String childSchemaLocation;
-        if (schemaPathSegment.isEmpty()) {
-            childSchemaLocation = schemaLocation;
-        } else if (schemaLocation.isEmpty()) {
-            childSchemaLocation = schemaPathSegment;
-        } else {
-            childSchemaLocation = schemaLocation + "/" + schemaPathSegment;
-        }
-
-        return new EvaluationContext(this, childInstanceLocation, childSchemaLocation, schemaRegistry, this.dynamicScope);
+        return new EvaluationContext(this, instancePathSegment, schemaPathSegment, schemaRegistry, this.dynamicScope);
     }
 
     public void addError(String keywordName, String message) {
@@ -105,11 +95,52 @@ public class EvaluationContext {
     }
 
     public String getInstanceLocation() {
+        if (instanceLocation == null) {
+            instanceLocation = resolveLocation(instanceLocationSegment, true);
+        }
         return instanceLocation;
+    }
+
+    public String getSchemaLocation() {
+        if (schemaLocation == null) {
+            schemaLocation = resolveLocation(schemaLocationSegment, false);
+        }
+        return schemaLocation;
+    }
+
+    private String resolveLocation(String segment, boolean instancePath) {
+        if (parent == null) {
+            return segment;
+        }
+
+        String parentLocation = instancePath ? parent.getInstanceLocation() : parent.getSchemaLocation();
+        if (segment.isEmpty()) {
+            return parentLocation;
+        }
+        if (parentLocation.isEmpty()) {
+            return segment;
+        }
+        return parentLocation + "/" + segment;
     }
 
     public SchemaRegistry getSchemaRegistry() {
         return schemaRegistry;
+    }
+
+    public boolean isTrackEvaluatedItems() {
+        return trackEvaluatedItems;
+    }
+
+    public void setTrackEvaluatedItems(boolean trackEvaluatedItems) {
+        this.trackEvaluatedItems = trackEvaluatedItems;
+    }
+
+    public boolean isTrackEvaluatedProperties() {
+        return trackEvaluatedProperties;
+    }
+
+    public void setTrackEvaluatedProperties(boolean trackEvaluatedProperties) {
+        this.trackEvaluatedProperties = trackEvaluatedProperties;
     }
 
     public void moveToParentContext(String annotationKey) {

@@ -10,10 +10,15 @@ import java.util.ArrayList;
 
 public class RequiredKeyword extends Keyword {
     public static final String keywordName = "required";
-    public final ArrayList<String> keywordValue;
+    public final ArrayList<BString> keywordValue;
 
     public RequiredKeyword(ArrayList<String> keywordValue) {
-        this.keywordValue = keywordValue;
+        ArrayList<BString> bStringList = new ArrayList<>(keywordValue.size());
+        for (String requiredProperty : keywordValue) {
+            BString propertyKey = StringUtils.fromString(requiredProperty);
+            bStringList.add(propertyKey);
+        }
+        this.keywordValue = bStringList;
     }
 
     @Override
@@ -30,10 +35,9 @@ public class RequiredKeyword extends Keyword {
         boolean isValid = true;
         ArrayList<String> missingProperties = new ArrayList<>();
 
-        for (String requiredProperty : keywordValue) {
-            BString propertyKey = StringUtils.fromString(requiredProperty);
-            if (!bMap.containsKey(propertyKey)) {
-                missingProperties.add(requiredProperty);
+        for (BString requiredProperty : keywordValue) {
+            if (!bMap.containsKey(requiredProperty)) {
+                missingProperties.add(requiredProperty.getValue());
                 isValid = false;
             }
         }

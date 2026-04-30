@@ -49,6 +49,8 @@ public class Schema {
     private LinkedHashMap<String, Keyword> keywords;
     private List<String> orderedKeys;
     private URI resourceUri;
+    private boolean hasUnevaluatedItems;
+    private boolean hasUnevaluatedProperties;
 
     public Schema() {}
 
@@ -56,6 +58,8 @@ public class Schema {
         this.keywords = keywords;
         this.orderedKeys = computeOrderedKeys(keywords);
         this.resourceUri = computeResourceUri(keywords);
+        this.hasUnevaluatedItems = keywords.containsKey("unevaluatedItems");
+        this.hasUnevaluatedProperties = keywords.containsKey("unevaluatedProperties");
     }
 
 
@@ -63,6 +67,8 @@ public class Schema {
         this.keywords = keywords;
         this.orderedKeys = computeOrderedKeys(keywords);
         this.resourceUri = computeResourceUri(keywords);
+        this.hasUnevaluatedItems = keywords.containsKey("unevaluatedItems");
+        this.hasUnevaluatedProperties = keywords.containsKey("unevaluatedProperties");
     }
 
     public LinkedHashMap<String, Keyword> getKeywords() {
@@ -81,28 +87,12 @@ public class Schema {
         return resourceUri;
     }
 
-    public boolean hasAdditionalProperties() {
-        return keywords.containsKey("additionalProperties");
-    }
-
-    public boolean hasPatternProperties() {
-        return keywords.containsKey("patternProperties");
+    public boolean hasUnevaluatedItems() {
+        return hasUnevaluatedItems;
     }
 
     public boolean hasUnevaluatedProperties() {
-        return keywords.containsKey("unevaluatedProperties");
-    }
-
-    public boolean hasUnevaluatedItems() {
-        return keywords.containsKey("unevaluatedItems");
-    }
-
-    boolean needsPropertyAnnotations() {
-        return hasAdditionalProperties() || hasPatternProperties() || hasUnevaluatedProperties();
-    }
-
-    boolean needsItemAnnotations() {
-        return hasUnevaluatedItems();
+        return hasUnevaluatedProperties;
     }
 
     private static List<String> computeOrderedKeys(LinkedHashMap<String, Keyword> keywords) {

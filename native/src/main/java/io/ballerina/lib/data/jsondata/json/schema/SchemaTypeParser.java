@@ -82,7 +82,7 @@ import org.ballerinalang.langlib.regexp.*;
 
 
 public class SchemaTypeParser {
-    private static final HashMap<String, Object> typeAliasToSchema = new HashMap<>();
+    private final HashMap<String, Object> typeAliasToSchema = new HashMap<>();
 
     public Object parse(Type type) {
         if (typeAliasToSchema.containsKey(type.getName())) {
@@ -635,6 +635,11 @@ public class SchemaTypeParser {
                     if (err instanceof BError) return err;
                     break;
                 }
+                case "UnevaluatedItems": {
+                    Object err = extractedUnevaluatedItems((BMap<BString, Object>) annotation, keywords);
+                    if (err instanceof BError) return err;
+                    break;
+                }
                 default:
                     break;
             }
@@ -949,14 +954,26 @@ public class SchemaTypeParser {
 
     private Object extractUnevaluatedProperties(BMap<BString, Object> annotation,
                                               LinkedHashMap<String, Keyword> keywords) {
-        final LinkedHashMap<String, Keyword> finalKeywords = keywords;
         Object unevaluatedPropertiesSchema = parseSchemaFromTypeDesc(annotation, Constants.VALUE);
         if (unevaluatedPropertiesSchema instanceof BError) {
             return unevaluatedPropertiesSchema;
         }
         if (unevaluatedPropertiesSchema instanceof Schema || unevaluatedPropertiesSchema instanceof Boolean) {
-            finalKeywords.put(UnevaluatedPropertiesKeyword.keywordName,
+            keywords.put(UnevaluatedPropertiesKeyword.keywordName,
                        new UnevaluatedPropertiesKeyword(unevaluatedPropertiesSchema));
+        }
+        return null;
+    }
+
+    private Object extractedUnevaluatedItems(BMap<BString, Object> annotation,
+                                                LinkedHashMap<String, Keyword> keywords) {
+        Object unevaluatedItemsSchema = parseSchemaFromTypeDesc(annotation, Constants.VALUE);
+        if (unevaluatedItemsSchema instanceof BError) {
+            return unevaluatedItemsSchema;
+        }
+        if (unevaluatedItemsSchema instanceof Schema || unevaluatedItemsSchema instanceof Boolean) {
+            keywords.put(UnevaluatedItemsKeyword.keywordName,
+                    new UnevaluatedPropertiesKeyword(unevaluatedItemsSchema));
         }
         return null;
     }

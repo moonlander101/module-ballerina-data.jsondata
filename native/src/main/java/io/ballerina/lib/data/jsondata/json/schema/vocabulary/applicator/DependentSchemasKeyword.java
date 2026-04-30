@@ -42,10 +42,14 @@ public class DependentSchemasKeyword extends Keyword {
                 if (!Validator.validate(instance, subschema, subschemaContext)) {
                     isValid = false;
                 } else {
-                    SchemaValidatorUtils.createEvaluatedItemsAnnotation(subschemaContext);
-                    SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(subschemaContext);
-                    subschemaContext.moveToParentContext("evaluatedItems");
-                    subschemaContext.moveToParentContext("evaluatedProperties");
+                    if (context.isTrackEvaluatedItems()) {
+                        SchemaValidatorUtils.createEvaluatedItemsAnnotation(subschemaContext);
+                        subschemaContext.moveToParentContext("evaluatedItems");
+                    }
+                    if (context.isTrackEvaluatedProperties()) {
+                        SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(subschemaContext);
+                        subschemaContext.moveToParentContext("evaluatedProperties");
+                    }
                 }
             }
         }

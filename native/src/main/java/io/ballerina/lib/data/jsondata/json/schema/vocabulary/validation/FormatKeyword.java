@@ -33,123 +33,133 @@ public class FormatKeyword extends Keyword {
     public static final String keywordName = "format";
     private final String keywordValue;
 
-    private static final Pattern DURATION_PATTERN = Pattern.compile(
-            "^P(?:(?:\\d+Y(?:\\d+M(?:\\d+D)?)?|\\d+M(?:\\d+D)?|\\d+D)" +
-                    "(?:T(?=\\d)(?:\\d+H(?:\\d+M(?:\\d+S)?)?|\\d+M(?:\\d+S)?|\\d+S))?|T(?=\\d)(?:\\d+H(?:\\d+M(?:\\d+S)?)?|\\d+M(?:\\d+S)?|\\d+S)|\\d+W)$",
-            Pattern.CASE_INSENSITIVE
-    );
+    private static final int[] UUID_HYPHEN_POSITIONS = {8, 13, 18, 23};
 
-    private static final Pattern DOT_ATOM_LOCAL_PATTERN = Pattern.compile(
-            "^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*$",
-            Pattern.CASE_INSENSITIVE
-    );
+    private static class DurationPatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^P(?:(?:\\d+Y(?:\\d+M(?:\\d+D)?)?|\\d+M(?:\\d+D)?|\\d+D)" +
+                        "(?:T(?=\\d)(?:\\d+H(?:\\d+M(?:\\d+S)?)?|\\d+M(?:\\d+S)?|\\d+S))?|T(?=\\d)(?:\\d+H(?:\\d+M(?:\\d+S)?)?|\\d+M(?:\\d+S)?|\\d+S)|\\d+W)$",
+                Pattern.CASE_INSENSITIVE
+        );
+    }
 
-    private static final Pattern QUOTED_LOCAL_PATTERN = Pattern.compile(
-            "^\"(?:[^\"\\\\]|\\\\.)*\"$"
-    );
+    private static class DotAtomLocalPatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*$",
+                Pattern.CASE_INSENSITIVE
+        );
+    }
 
-    private static final Pattern HOSTNAME_DOMAIN_PATTERN = Pattern.compile(
-            "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$",
-            Pattern.CASE_INSENSITIVE
-    );
+    private static class QuotedLocalPatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^\"(?:[^\"\\\\]|\\\\.)*\"$"
+        );
+    }
 
-    private static final Pattern IDN_EMAIL_PATTERN = Pattern.compile(
-            "^[\\p{L}0-9_+&*-]+(?:\\.[\\p{L}0-9_+&*-]+)*@(?:[\\p{L}0-9-]+\\.)+[\\p{L}]{2,7}$"
-    );
+    private static class HostnameDomainPatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$",
+                Pattern.CASE_INSENSITIVE
+        );
+    }
 
+    private static class IdnEmailPatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^[\\p{L}0-9_+&*-]+(?:\\.[\\p{L}0-9_+&*-]+)*@(?:[\\p{L}0-9-]+\\.)+[\\p{L}]{2,7}$"
+        );
+    }
 
-    private static final Pattern IPV4_PATTERN = Pattern.compile(
-            "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-    );
+    private static class IPv6PatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "(?i)^((([0-9a-f]{1,4}:){7}([0-9a-f]{1,4}|:))|(([0-9a-f]{1,4}:){6}(:[0-9a-f]{1,4}|((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3})|:))|(([0-9a-f]{1,4}:){5}(((:[0-9a-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3})|:))|(([0-9a-f]{1,4}:){4}(((:[0-9a-f]{1,4}){1,3})|((:[0-9a-f]{1,4})?:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(([0-9a-f]{1,4}:){3}(((:[0-9a-f]{1,4}){1,4})|((:[0-9a-f]{1,4}){0,2}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(([0-9a-f]{1,4}:){2}(((:[0-9a-f]{1,4}){1,5})|((:[0-9a-f]{1,4}){0,3}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(([0-9a-f]{1,4}:){1}(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:)))$"
+        );
+    }
 
-    private static final Pattern IPV6_PATTERN = Pattern.compile(
-            "(?i)^((([0-9a-f]{1,4}:){7}([0-9a-f]{1,4}|:))|(([0-9a-f]{1,4}:){6}(:[0-9a-f]{1,4}|((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3})|:))|(([0-9a-f]{1,4}:){5}(((:[0-9a-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3})|:))|(([0-9a-f]{1,4}:){4}(((:[0-9a-f]{1,4}){1,3})|((:[0-9a-f]{1,4})?:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(([0-9a-f]{1,4}:){3}(((:[0-9a-f]{1,4}){1,4})|((:[0-9a-f]{1,4}){0,2}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(([0-9a-f]{1,4}:){2}(((:[0-9a-f]{1,4}){1,5})|((:[0-9a-f]{1,4}){0,3}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(([0-9a-f]{1,4}:){1}(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:)))$"
-    );
+    private static class HostnamePatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "(?i)^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[-0-9a-z]{0,61}[0-9a-z])?)*$"
+        );
+    }
 
-    private static final Pattern HOSTNAME_PATTERN = Pattern.compile(
-            "(?i)^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[-0-9a-z]{0,61}[0-9a-z])?)*$"
-    );
+    private static class IdnHostnamePatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^[\\p{L}0-9](?:[\\p{L}0-9-]{0,61}[\\p{L}0-9])?(?:\\.[\\p{L}0-9](?:[\\p{L}0-9-]{0,61}[\\p{L}0-9])?)*$"
+        );
+    }
 
-    private static final Pattern IDN_HOSTNAME_PATTERN = Pattern.compile(
-            "^[\\p{L}0-9](?:[\\p{L}0-9-]{0,61}[\\p{L}0-9])?(?:\\.[\\p{L}0-9](?:[\\p{L}0-9-]{0,61}[\\p{L}0-9])?)*$"
-    );
+    private static class UriTemplatePatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^(?:(?:[^\\x00-\\x20\"'<>%\\\\^`{|}]|%[0-9a-f]{2})|\\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\\*)?)*\\})*$",
+                Pattern.CASE_INSENSITIVE
+        );
+    }
 
-    private static final Pattern JSON_POINTER_PATTERN = Pattern.compile(
-            "^(?:/(?:[^~/]|~0|~1)*)*$"
-    );
+    private static class TimePatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^([0-2]\\d):([0-5]\\d):([0-5]\\d|60)(?:\\.\\d+)?([zZ]|[+-]\\d\\d:\\d\\d)$"
+        );
+    }
 
-    private static final Pattern RELATIVE_JSON_POINTER_PATTERN = Pattern.compile(
-            "^(?:0|[1-9][0-9]*)(?:#|(?:/(?:[^~/]|~0|~1)*)*)$"
-    );
+    private static class DatetimePatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^(\\d{4})-([0-1]\\d)-([0-3]\\d)[tT]([0-2]\\d):([0-5]\\d):([0-5]\\d|60)" +
+                        "(?:\\.\\d+)?([zZ]|[+-]\\d\\d(?::?\\d\\d)?)$"
+        );
+    }
 
-    private static final Pattern URI_TEMPLATE_PATTERN = Pattern.compile(
-            "^(?:(?:[^\\x00-\\x20\"'<>%\\\\^`{|}]|%[0-9a-f]{2})|\\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\\*)?)*\\})*$",
-            Pattern.CASE_INSENSITIVE
-    );
+    private static class UriPatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^[a-z][a-z0-9+\\-.]*:(?://(?:(?:[a-z0-9\\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?" +
+                        "(?:\\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|" +
+                        "(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)" +
+                        "(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}" +
+                        "(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?))|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|" +
+                        "[Vv][0-9a-f]+\\.[a-z0-9\\-._~!$&'()*+,;=:]+)\\]|" +
+                        "(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)|" +
+                        "(?:[a-z0-9\\-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::\\d+)?" +
+                        "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|" +
+                        "/(?:(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+" +
+                        "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|" +
+                        "(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+" +
+                        "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)" +
+                        "(?:\\?(?:[a-z0-9\\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?" +
+                        "(?:#(?:[a-z0-9\\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$",
+                Pattern.CASE_INSENSITIVE
+        );
+    }
 
-    private static final Pattern TIME_PATTERN = Pattern.compile(
-            "^([0-2]\\d):([0-5]\\d):([0-5]\\d|60)(?:\\.\\d+)?([zZ]|[+-]\\d\\d:\\d\\d)$"
-    );
-
-    private static final Pattern DATETIME_PATTERN = Pattern.compile(
-            "^(\\d{4})-([0-1]\\d)-([0-3]\\d)[tT]([0-2]\\d):([0-5]\\d):([0-5]\\d|60)" +
-            "(?:\\.\\d+)?([zZ]|[+-]\\d\\d(?::?\\d\\d)?)$"
-    );
-
-    private static final Pattern UUID_PATTERN = Pattern.compile(
-            "^(?:urn:uuid:)?[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$",
-            Pattern.CASE_INSENSITIVE
-    );
-
-    private static final Pattern URI_PATTERN = Pattern.compile(
-        "^[a-z][a-z0-9+\\-.]*:(?://(?:(?:[a-z0-9\\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?" +
-            "(?:\\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|" +
-            "(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)" +
-            "(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}" +
-            "(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?))|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|" +
-            "[Vv][0-9a-f]+\\.[a-z0-9\\-._~!$&'()*+,;=:]+)\\]|" +
-            "(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)|" +
-            "(?:[a-z0-9\\-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::\\d+)?" +
-            "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|" +
-            "/(?:(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+" +
-            "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|" +
-            "(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+" +
-            "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)" +
-            "(?:\\?(?:[a-z0-9\\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?" +
-            "(?:#(?:[a-z0-9\\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$",
-            Pattern.CASE_INSENSITIVE
-    );
-
-    private static final Pattern URI_REFERENCE_PATTERN = Pattern.compile(
-            "^(?:[a-z][a-z0-9+\\-.]*:)?(?:/?/(?:(?:[a-z0-9\\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?" +
-            "(?:\\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|" +
-            "(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)" +
-            "(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}" +
-            "(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?))|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|" +
-            "(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|" +
-            "[Vv][0-9a-f]+\\.[a-z0-9\\-._~!$&'()*+,;=:]+)\\]|" +
-            "(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)|" +
-            "(?:[a-z0-9\\-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::\\d+)?" +
-            "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|" +
-            "/(?:(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+" +
-            "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|" +
-            "(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+" +
-            "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?" +
-            "(?:\\?(?:[a-z0-9\\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?" +
-            "(?:#(?:[a-z0-9\\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$",
-            Pattern.CASE_INSENSITIVE
-    );
+    private static class UriReferencePatternHolder {
+        static final Pattern INSTANCE = Pattern.compile(
+                "^(?:[a-z][a-z0-9+\\-.]*:)?(?:/?/(?:(?:[a-z0-9\\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?" +
+                        "(?:\\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|" +
+                        "(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)" +
+                        "(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}" +
+                        "(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?))|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|" +
+                        "(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|" +
+                        "[Vv][0-9a-f]+\\.[a-z0-9\\-._~!$&'()*+,;=:]+)\\]|" +
+                        "(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)|" +
+                        "(?:[a-z0-9\\-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::\\d+)?" +
+                        "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|" +
+                        "/(?:(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+" +
+                        "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|" +
+                        "(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+" +
+                        "(?:/(?:[a-z0-9\\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?" +
+                        "(?:\\?(?:[a-z0-9\\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?" +
+                        "(?:#(?:[a-z0-9\\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$",
+                Pattern.CASE_INSENSITIVE
+        );
+    }
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
@@ -259,50 +269,107 @@ public class FormatKeyword extends Keyword {
 
     private boolean isValidEmailLocalPart(String local) {
         if (local.startsWith("\"")) {
-            return QUOTED_LOCAL_PATTERN.matcher(local).matches();
+            return QuotedLocalPatternHolder.INSTANCE.matcher(local).matches();
         }
-        return DOT_ATOM_LOCAL_PATTERN.matcher(local).matches();
+        return DotAtomLocalPatternHolder.INSTANCE.matcher(local).matches();
     }
 
     private boolean isValidEmailDomain(String domain) {
         if (domain.startsWith("[") && domain.endsWith("]")) {
             String inner = domain.substring(1, domain.length() - 1);
             if (inner.startsWith("IPv6:")) {
-                return IPV6_PATTERN.matcher(inner.substring(5)).matches();
+                return IPv6PatternHolder.INSTANCE.matcher(inner.substring(5)).matches();
             }
-            return IPV4_PATTERN.matcher(inner).matches();
+            return validateIPv4(inner);
         }
-        return HOSTNAME_DOMAIN_PATTERN.matcher(domain).matches();
+        return HostnameDomainPatternHolder.INSTANCE.matcher(domain).matches();
     }
 
     private boolean validateIdnEmail(String value) {
-        Matcher matcher = IDN_EMAIL_PATTERN.matcher(value);
+        Matcher matcher = IdnEmailPatternHolder.INSTANCE.matcher(value);
         return matcher.matches();
     }
 
     private boolean validateIPv4(String value) {
-        Matcher matcher = IPV4_PATTERN.matcher(value);
-        return matcher.matches();
+        int len = value.length();
+        if (len < 7 || len > 15) {
+            return false;
+        }
+        int partStart = 0;
+        int octet = -1;
+        for (int i = 0; i < len; i++) {
+            char c = value.charAt(i);
+            if (c == '.') {
+                if (octet < 0) {
+                    return false;
+                }
+                partStart = i + 1;
+                octet = -1;
+            } else if (c >= '0' && c <= '9') {
+                if (octet == 0 && i == partStart + 1) {
+                    return false;
+                }
+                octet = octet < 0 ? (c - '0') : octet * 10 + (c - '0');
+                if (octet > 255) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        int dotCount = 0;
+        for (int i = 0; i < len; i++) {
+            if (value.charAt(i) == '.') {
+                dotCount++;
+            }
+        }
+        if (dotCount != 3 || octet < 0) {
+            return false;
+        }
+        return true;
     }
 
     private boolean validateIPv6(String value) {
-        Matcher matcher = IPV6_PATTERN.matcher(value);
+        Matcher matcher = IPv6PatternHolder.INSTANCE.matcher(value);
         return matcher.matches();
     }
 
     private boolean validateUUID(String value) {
-        return UUID_PATTERN.matcher(value).matches();
+        int offset = 0;
+        if (value.startsWith("urn:uuid:")) {
+            offset = 9;
+        }
+        int len = value.length() - offset;
+        if (len != 36) {
+            return false;
+        }
+        for (int pos : UUID_HYPHEN_POSITIONS) {
+            if (value.charAt(offset + pos) != '-') {
+                return false;
+            }
+        }
+        for (int i = 0; i < len; i++) {
+            char c = value.charAt(offset + i);
+            if (c == '-') {
+                continue;
+            }
+            if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+                continue;
+            }
+            return false;
+        }
+        return true;
     }
 
     private boolean validateURI(String value) {
         if (value.indexOf('/') == -1 && value.indexOf(':') == -1) {
             return false;
         }
-        return URI_PATTERN.matcher(value).matches();
+        return UriPatternHolder.INSTANCE.matcher(value).matches();
     }
 
     private boolean validateURIReference(String value) {
-        return URI_REFERENCE_PATTERN.matcher(value).matches();
+        return UriReferencePatternHolder.INSTANCE.matcher(value).matches();
     }
 
     private boolean validateIRI(String value) {
@@ -324,7 +391,7 @@ public class FormatKeyword extends Keyword {
     }
 
     private boolean validateDateTime(String value) {
-        Matcher m = DATETIME_PATTERN.matcher(value);
+        Matcher m = DatetimePatternHolder.INSTANCE.matcher(value);
         if (!m.matches()) {
             return false;
         }
@@ -373,7 +440,7 @@ public class FormatKeyword extends Keyword {
     }
 
     private boolean validateTime(String value) {
-        Matcher m = TIME_PATTERN.matcher(value);
+        Matcher m = TimePatternHolder.INSTANCE.matcher(value);
         if (!m.matches()) {
             return false;
         }
@@ -414,7 +481,7 @@ public class FormatKeyword extends Keyword {
     }
 
     private boolean validateDuration(String value) {
-        Matcher matcher = DURATION_PATTERN.matcher(value);
+        Matcher matcher = DurationPatternHolder.INSTANCE.matcher(value);
         return matcher.matches();
     }
 
@@ -428,27 +495,93 @@ public class FormatKeyword extends Keyword {
     }
 
     private boolean validateHostname(String value) {
-        Matcher matcher = HOSTNAME_PATTERN.matcher(value);
+        Matcher matcher = HostnamePatternHolder.INSTANCE.matcher(value);
         return matcher.matches();
     }
 
     private boolean validateIdnHostname(String value) {
-        Matcher matcher = IDN_HOSTNAME_PATTERN.matcher(value);
+        Matcher matcher = IdnHostnamePatternHolder.INSTANCE.matcher(value);
         return matcher.matches();
     }
 
     private boolean validateJsonPointer(String value) {
-        Matcher matcher = JSON_POINTER_PATTERN.matcher(value);
-        return matcher.matches();
+        if (value.isEmpty()) {
+            return true;
+        }
+        if (value.charAt(0) != '/') {
+            return false;
+        }
+        for (int i = 1; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '~') {
+                if (i + 1 >= value.length()) {
+                    return false;
+                }
+                char next = value.charAt(i + 1);
+                if (next != '0' && next != '1') {
+                    return false;
+                }
+                i++;
+            }
+        }
+        return true;
     }
 
     private boolean validateRelativeJsonPointer(String value) {
-        Matcher matcher = RELATIVE_JSON_POINTER_PATTERN.matcher(value);
-        return matcher.matches();
+        int len = value.length();
+        if (len == 0) {
+            return false;
+        }
+        int i = 0;
+        char first = value.charAt(0);
+        if (first == '0') {
+            i = 1;
+        } else if (first >= '1' && first <= '9') {
+            i = 1;
+            while (i < len && value.charAt(i) >= '0' && value.charAt(i) <= '9') {
+                i++;
+            }
+        } else {
+            return false;
+        }
+        if (i == len) {
+            return true;
+        }
+        char next = value.charAt(i);
+        if (next == '#') {
+            return i + 1 == len;
+        }
+        if (next == '/') {
+            return isValidJsonPointerSuffix(value, i);
+        }
+        return false;
+    }
+
+    private boolean isValidJsonPointerSuffix(String value, int start) {
+        if (start >= value.length()) {
+            return false;
+        }
+        if (value.charAt(start) != '/') {
+            return false;
+        }
+        for (int i = start + 1; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '~') {
+                if (i + 1 >= value.length()) {
+                    return false;
+                }
+                char next = value.charAt(i + 1);
+                if (next != '0' && next != '1') {
+                    return false;
+                }
+                i++;
+            }
+        }
+        return true;
     }
 
     private boolean validateUriTemplate(String value) {
-        Matcher matcher = URI_TEMPLATE_PATTERN.matcher(value);
+        Matcher matcher = UriTemplatePatternHolder.INSTANCE.matcher(value);
         return matcher.matches();
     }
 
