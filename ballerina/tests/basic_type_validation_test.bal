@@ -81,6 +81,27 @@ public type NullableString string|();
 public type NullableInt int|();
 public type NumberUnion int|float|decimal;
 
+@NumberConstraints {
+    minimum: 2.0
+}
+public type ReferencedNumberUnion int|float|decimal;
+
+public type ReferencedMixedUnion ReferencedNumberUnion|boolean|string|[json...]|record {|
+    json...;
+|}|();
+
+public type ReferencedMixedUnionSubTypes int|ReferencedMixedUnion;
+
+@AllOf
+public type ReferencedMixedUnionSchema json|ReferencedMixedUnionSubTypes;
+
+public type ReferencedAnyOfNumber int|float|decimal;
+
+public type ReferencedAnyOfSubTypes ReferencedAnyOfNumber|json;
+
+@AllOf
+public type ReferencedAnyOfSchema json|ReferencedAnyOfSubTypes;
+
 // Singleton types (const equivalent)
 public type SingleInt 1;
 public type SingleString "hello";
@@ -174,6 +195,12 @@ function validBasicTypeSchemasForValidate() returns [json, typedesc<json>][] {
         [42, NumberUnion],
         [3.14, NumberUnion],
         [100.5d, NumberUnion],
+
+        // ReferencedMixedUnionSchema validates nested referenced union members
+        [2.5, ReferencedMixedUnionSchema],
+
+        // ReferencedAnyOfSchema preserves json in nested referenced unions
+        ["foo", ReferencedAnyOfSchema],
 
         // Singleton types
         [1, SingleInt],
@@ -285,6 +312,9 @@ function invalidBasicTypeSchemasForValidate() returns [json, typedesc<json>][] {
         ["hello", NumberUnion],
         [true, NumberUnion],
         [null, NumberUnion],
+
+        // ReferencedMixedUnionSchema enforces nested numeric constraints
+        [1.5, ReferencedMixedUnionSchema],
 
         // Singleton types - wrong values
         [2, SingleInt],

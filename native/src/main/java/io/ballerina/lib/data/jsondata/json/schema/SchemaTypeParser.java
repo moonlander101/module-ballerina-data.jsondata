@@ -364,6 +364,10 @@ public class SchemaTypeParser {
                 }
                 keywords.put(AdditionalPropertiesKeyword.keywordName, new AdditionalPropertiesKeyword(restSchema));
             }
+        } else {
+            if (!keywords.containsKey(AdditionalPropertiesKeyword.keywordName)) {
+                keywords.put(AdditionalPropertiesKeyword.keywordName, new AdditionalPropertiesKeyword(false));
+            }
         }
 
         return new Schema(keywords);
@@ -476,6 +480,14 @@ public class SchemaTypeParser {
         for (Type memberType : types) {
             Type referredType = TypeUtils.getReferredType(memberType);
             switch (referredType.getTag()) {
+                case TypeTags.JSON_TAG -> {
+                    typeNames.add("string");
+                    typeNames.add("number");
+                    typeNames.add("boolean");
+                    typeNames.add("object");
+                    typeNames.add("array");
+                    typeNames.add("null");
+                }
                 case TypeTags.STRING_TAG -> typeNames.add("string");
                 case TypeTags.INT_TAG -> {
                     if (!typeNames.contains("number")) {
@@ -489,8 +501,13 @@ public class SchemaTypeParser {
                 case TypeTags.BOOLEAN_TAG -> typeNames.add("boolean");
                 case TypeTags.RECORD_TYPE_TAG, TypeTags.MAP_TAG -> typeNames.add("object");
                 case TypeTags.ARRAY_TAG, TypeTags.TUPLE_TAG -> typeNames.add("array");
-                case TypeTags.UNION_TAG -> addNumericTypeFromUnion((UnionType) referredType, typeNames);
-                case TypeTags.NEVER_TAG -> typeNames.add("never");
+                case TypeTags.UNION_TAG -> {
+                    TypeKeyword nestedTypeKeyword = extractTypeKeyword(
+                            new ArrayList<>(((UnionType) referredType).getOriginalMemberTypes()));
+                    if (nestedTypeKeyword != null) {
+                        typeNames.addAll(nestedTypeKeyword.keywordValue);
+                    }
+                }
                 case TypeTags.NULL_TAG -> typeNames.add("null");
                 default -> {}
             }
@@ -504,39 +521,6 @@ public class SchemaTypeParser {
             typeNames.remove("integer");
         }
         return typeKeyword;
-    }
-
-    private void addNumericTypeFromUnion(UnionType unionType, Set<String> typeNames) {
-        boolean hasNumber = false;
-        boolean hasNumericType = false;
-
-        for (Type unionMemberType : unionType.getOriginalMemberTypes()) {
-            Type referredUnionMemberType = TypeUtils.getReferredType(unionMemberType);
-            switch (referredUnionMemberType.getTag()) {
-                case TypeTags.INT_TAG -> hasNumericType = true;
-                case TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG -> {
-                    hasNumericType = true;
-                    hasNumber = true;
-                }
-                default -> {
-                    return;
-                }
-            }
-        }
-
-        if (!hasNumericType) {
-            return;
-        }
-
-        if (hasNumber) {
-            typeNames.remove("integer");
-            typeNames.add("number");
-            return;
-        }
-
-        if (!typeNames.contains("number")) {
-            typeNames.add("integer");
-        }
     }
 
     public void extractConstOrEnumKeyword(ArrayList<Type> referredTypes, LinkedHashMap<String, Keyword> keywords) {
@@ -909,7 +893,7 @@ public class SchemaTypeParser {
                 BMap<BString, Object> containsTypeDescMap = (BMap<BString, Object>) containsConfig;
                 Long minContains = SchemaParserUtils.extractLong(containsTypeDescMap, "minContains").orElse(null);
                 Long maxContains = SchemaParserUtils.extractLong(containsTypeDescMap, "maxContains").orElse(null);
-                Object containsSchema = parseSchemaFromTypeDesc(containsTypeDescMap, Constants.VALUE);
+                Object containsSchema = parseSchemaFromTypeDescOrConst(containsTypeDescMap, Constants.VALUE);
                 if (containsSchema instanceof BError) {
                     return containsSchema;
                 }
@@ -1098,6 +1082,17 @@ public class SchemaTypeParser {
             return null;
         }
         return parse(typeDesc.getDescribingType());
+    }
+
+    private Object parseSchemaFromTypeDescOrConst(BMap<BString, Object> annotation, BString keyName) {
+        Object value = annotation.get(keyName);
+        if (value instanceof BTypedesc typeDesc) {
+            return parse(typeDesc.getDescribingType());
+        }
+
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
+        keywords.put(ConstKeyword.keywordName, new ConstKeyword(value));
+        return new Schema(keywords);
     }
 
     public LinkedHashMap<String, Keyword> extractAnnotationKeywords(Type type) {
