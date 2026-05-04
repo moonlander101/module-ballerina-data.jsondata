@@ -63,7 +63,7 @@ public type ArrayConstraintsConfig record {|
         # The maximum number of items allowed in the array that satisfies the schema
         int:Unsigned32 maxContains?;
         # The schema that items in the array must match
-        typedesc<json> value;
+        typedesc<json>|json value;
     |} contains?;
     # Specifies a schema for items that are not evaluated by contains
     typedesc<json> unevaluatedItems?;

@@ -133,6 +133,11 @@ public type SchemaRestItem_61 string;
 }
 public type Schema62 [json...];
 
+@ArrayConstraints {
+    contains: {value: 5}
+}
+public type SchemaContainsConst [json...];
+
 @MetaData {
     title: "Array Missing Keywords"
 }
@@ -170,6 +175,8 @@ public type MissingArrayKeywordsContains int;
           [["alice", 30, true, false, true], Schema59],
           [["admin", "user"], Schema61],
           [["s", 2, 3], Schema62],
+          [[5], SchemaContainsConst],
+          [[1, 5, "x"], SchemaContainsConst],
           // missing array keywords tests (minContains/maxContains/unevaluatedItems)
           [[5, 6], MissingArrayKeywordsSchema],
           [[5, 7, true, false], MissingArrayKeywordsSchema],
@@ -209,14 +216,16 @@ public type MissingArrayKeywordsContains int;
          [["apple", "banana", "apple"], Schema31],
          [["apple", 3, "banana"], Schema32],
           [["wrong type"], Schema44],
-          [[123, ["array"]], Schema54],
-          [["alice", -5], Schema59],
-          [["admin"], Schema61],
-          [[1, 2, 3], Schema62],
-          // missing array keywords tests (minContains/maxContains/unevaluatedItems)
-          [[5], MissingArrayKeywordsSchema],
-          [[5, 6, 7, 8], MissingArrayKeywordsSchema],
-          [[4, 6], MissingArrayKeywordsSchema],
+           [[123, ["array"]], Schema54],
+           [["alice", -5], Schema59],
+           [["admin"], Schema61],
+           [[1, 2, 3], Schema62],
+           [[], SchemaContainsConst],
+           [[6], SchemaContainsConst],
+           // missing array keywords tests (minContains/maxContains/unevaluatedItems)
+           [[5], MissingArrayKeywordsSchema],
+           [[5, 6, 7, 8], MissingArrayKeywordsSchema],
+           [[4, 6], MissingArrayKeywordsSchema],
           [[true, false], MissingArrayKeywordsSchema]
       ];
 }
