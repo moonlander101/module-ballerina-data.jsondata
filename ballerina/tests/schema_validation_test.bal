@@ -33,6 +33,7 @@ type JsonSchemaTestItem record {|
 |};
 
 const testFiles = [
+    "additionalProperties.json",
     "anchor.json",
     "allOf.json",
     "anyOf.json",

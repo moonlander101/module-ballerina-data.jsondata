@@ -54,6 +54,7 @@ import io.ballerina.runtime.api.types.FiniteType;
 import io.ballerina.runtime.api.types.IntersectionType;
 import io.ballerina.runtime.api.types.PredefinedTypes;
 import io.ballerina.runtime.api.types.RecordType;
+import io.ballerina.runtime.api.types.ReferenceType;
 import io.ballerina.runtime.api.types.TupleType;
 import io.ballerina.runtime.api.types.Type;
 import io.ballerina.runtime.api.types.TypeTags;
@@ -93,6 +94,15 @@ public class SchemaTypeParser {
             typeAliasToSchema.put(type.getName(), new Schema());
         }
 
+        if (type.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG) {
+            Type immediateReferred = ((ReferenceType) type).getReferredType();
+            int immediateTag = immediateReferred.getTag();
+
+            if (immediateTag == TypeTags.TYPE_REFERENCED_TYPE_TAG) {
+                return parseTypeReference(type, immediateReferred);
+            }
+        }
+
         Type referredType = TypeUtils.getReferredType(type);
 
         Object schema = switch (referredType.getTag()) {
@@ -116,6 +126,51 @@ public class SchemaTypeParser {
         }
 
         return schema;
+    }
+
+    private Object parseTypeReference(Type type, Type immediateReferred) {
+        Object innerSchema = parse(immediateReferred);
+        if (innerSchema instanceof BError) return innerSchema;
+
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
+        Object err = extractKeywordsFromAnnotations(type, keywords);
+        if (err instanceof BError) return err;
+
+        Schema cachedSchema = (Schema) typeAliasToSchema.get(type.getName());
+
+        if (keywords.isEmpty()) {
+            if (innerSchema instanceof Schema inner) {
+                cachedSchema.setKeywords(inner.getKeywords());
+                return cachedSchema;
+            }
+            return innerSchema;
+        }
+
+        boolean isAllOf = keywords.containsKey(AllOfKeyword.keywordName);
+        boolean isOneOf = keywords.containsKey(OneOfKeyword.keywordName);
+
+        if (isAllOf || isOneOf) {
+            List<Object> subschemas = new ArrayList<>();
+            subschemas.add(innerSchema);
+
+            if (isAllOf) {
+                keywords.put(AllOfKeyword.keywordName, new AllOfKeyword(subschemas));
+            } else {
+                keywords.put(OneOfKeyword.keywordName, new OneOfKeyword(subschemas));
+            }
+
+            cachedSchema.setKeywords(keywords);
+            return cachedSchema;
+        }
+
+        if (innerSchema instanceof Schema inner) {
+            LinkedHashMap<String, Keyword> merged = new LinkedHashMap<>(inner.getKeywords());
+            merged.putAll(keywords);
+            cachedSchema.setKeywords(merged);
+        } else {
+            cachedSchema.setKeywords(keywords);
+        }
+        return cachedSchema;
     }
 
     public Object parseBasicType(Type type) {
@@ -196,6 +251,13 @@ public class SchemaTypeParser {
                 memberType.getTag() == TypeTags.FINITE_TYPE_TAG
             ) {
                 constValues.add(memberType);
+            } else {
+                Object parsedMember = parse(memberType);
+                if (parsedMember instanceof Schema || parsedMember instanceof Boolean) {
+                    memberSchemas.add(parsedMember);
+                } else {
+                    return parsedMember;
+                }
             }
         }
 
@@ -973,7 +1035,7 @@ public class SchemaTypeParser {
         }
         if (unevaluatedItemsSchema instanceof Schema || unevaluatedItemsSchema instanceof Boolean) {
             keywords.put(UnevaluatedItemsKeyword.keywordName,
-                    new UnevaluatedPropertiesKeyword(unevaluatedItemsSchema));
+                    new UnevaluatedItemsKeyword(unevaluatedItemsSchema));
         }
         return null;
     }
