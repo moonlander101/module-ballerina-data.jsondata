@@ -240,6 +240,32 @@ public type ParseTest_UnevalItemsString [string...];
 }
 public type ParseTest_UnevalItemsTuple [string, int, boolean...];
 
+// --- Category: unevaluatedItems with allOf ---
+
+public type ParseTest_Allof_UnevalItems_A [string, json...];
+
+public type ParseTest_Allof_UnevalItems_B [json, int, json...];
+
+@UnevaluatedItems {
+	value:  int
+}
+@AllOf
+public type ParseTest_UnevalItemsAllofTest ParseTest_Allof_UnevalItems_A|
+    ParseTest_Allof_UnevalItems_B;
+
+// --- Category: unevaluatedItems with oneOf ---
+
+public type ParseTest_Oneof_UnevalItems_A [json, "bar", json...];
+
+public type ParseTest_Oneof_UnevalItems_B [json, "baz", json...];
+
+@UnevaluatedItems {
+	value:  int
+}
+@OneOf
+public type ParseTest_UnevalItemsOneofTest ParseTest_Oneof_UnevalItems_A|
+    ParseTest_Oneof_UnevalItems_B;
+
 // ============================================================
 // Valid parseAsType cases (should succeed)
 // ============================================================
@@ -716,6 +742,36 @@ function validParseAsTypeSchemaValidation() returns [json, typedesc<anydata>, an
             <json>["hello", 42, true, false],
             ParseTest_UnevalItemsTuple,
             ["hello", 42, true, false]
+        ],
+
+        // --- Category: unevaluatedItems with allOf ---
+
+        // 67. AllOf evaluates prefixItems from both members, no unevaluated items
+        [
+            <json>["foo", 42],
+            ParseTest_UnevalItemsAllofTest,
+            ["foo", 42]
+        ],
+        // 68. Extra item is int, matches unevaluatedItems: int
+        [
+            <json>["foo", 42, 99],
+            ParseTest_UnevalItemsAllofTest,
+            ["foo", 42, 99]
+        ],
+
+        // --- Category: unevaluatedItems with oneOf ---
+
+        // 69. OneOf branch 1 matches prefixItems, no unevaluated items
+        [
+            <json>["foo", "bar"],
+            ParseTest_UnevalItemsOneofTest,
+            ["foo", "bar"]
+        ],
+        // 70. Extra item is int, matches unevaluatedItems: int
+        [
+            <json>["foo", "bar", 99],
+            ParseTest_UnevalItemsOneofTest,
+            ["foo", "bar", 99]
         ]
     ];
 }
@@ -929,7 +985,17 @@ function invalidParseAsTypeSchemaValidation() returns [json, typedesc<anydata>][
         // 71. Rest element is string, unevaluatedItems expects boolean
         [<json>["hello", 42, "bad"], ParseTest_UnevalItemsTuple],
         // 72. Rest element is int, unevaluatedItems expects boolean
-        [<json>["hello", 42, 99], ParseTest_UnevalItemsTuple]
+        [<json>["hello", 42, 99], ParseTest_UnevalItemsTuple],
+
+        // --- Category: unevaluatedItems with allOf ---
+
+        // 75. Extra item is string, unevaluatedItems expects int
+        [<json>["foo", 42, "hello"], ParseTest_UnevalItemsAllofTest],
+
+        // --- Category: unevaluatedItems with oneOf ---
+
+        // 76. Extra item is string, unevaluatedItems expects int
+        [<json>["foo", "bar", "hello"], ParseTest_UnevalItemsOneofTest]
     ];
 }
 

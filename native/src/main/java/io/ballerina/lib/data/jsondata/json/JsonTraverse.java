@@ -201,13 +201,17 @@ public class JsonTraverse {
                         if (notSchemaValue instanceof Schema notSchema) {
                             EvaluationContext notCtx = new EvaluationContext();
                             if (notKeyword.evaluate(json, notCtx)) {
-                                throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, String.join("\n", notCtx.getErrors()));
+                                throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
+                                        String.join("\n", notCtx.getErrors()));
                             }
                         }
                     }
 
                     boolean hasAllOf = keywords.containsKey("allOf");
                     boolean hasOneOf = keywords.containsKey("oneOf");
+                    boolean needsEvaluationTracking = hasAllOf || hasOneOf ||
+                            keywords.containsKey("unevaluatedItems") ||
+                            keywords.containsKey("unevaluatedProperties");
 
                     if (hasAllOf || hasOneOf) {
                         allOfAccumulatorStack.push(new EvaluationContext());
@@ -215,23 +219,37 @@ public class JsonTraverse {
 
                     int matchCount = 0;
                     Object parsed = null;
+                    boolean regularUnionMatched = false;
 
                     for (Type memberType : unionType.getMemberTypes()) {
                         int fieldHierarchySize = fieldHierarchy.size();
                         int restTypeSize = restType.size();
                         int fieldNamesSize = fieldNames.size();
+
+                        if (needsEvaluationTracking && !hasAllOf && !hasOneOf) {
+                            allOfAccumulatorStack.push(new EvaluationContext());
+                        }
+
                         try {
                             parsed = traverseJson(json, memberType);
                             matchCount++;
                             if (hasOneOf && matchCount > 1) {
                                 throw DiagnosticLog.error(
-                                        DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, "oneOf matched more than one member type");
+                                        DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
+                                        "oneOf matched more than one member type");
                             }
 
                             if (!hasOneOf && !hasAllOf) {
+                                if (needsEvaluationTracking) {
+                                    regularUnionMatched = true;
+                                    break;
+                                }
                                 return parsed;
                             }
                         } catch (Exception e) {
+                            if (needsEvaluationTracking && !hasAllOf && !hasOneOf) {
+                                allOfAccumulatorStack.pop();
+                            }
                             while (fieldHierarchy.size() > fieldHierarchySize) {
                                 fieldHierarchy.pop();
                             }
@@ -243,13 +261,32 @@ public class JsonTraverse {
                             }
                             if (hasAllOf) {
                                 throw DiagnosticLog.error(
-                                        DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED, "allOf member type failed: " + e.getMessage());
+                                        DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
+                                        "allOf member type failed: " + e.getMessage());
                             }
                         }
                     }
+
+                    keywords.remove("allOf");
+                    keywords.remove("oneOf");
+                    keywords.remove("not");
+
                     if (hasAllOf || hasOneOf) {
+                        EvaluationContext accumulator = allOfAccumulatorStack.peek();
+                        validateRemainingKeywords(json, referredType, keywords, accumulator);
+
+                        EvaluationContext completedAccumulator = allOfAccumulatorStack.pop();
+                        if (!allOfAccumulatorStack.isEmpty()) {
+                            EvaluationContext parentAccumulator = allOfAccumulatorStack.peek();
+                            mergeAnnotation(parentAccumulator, completedAccumulator, "evaluatedItems");
+                            mergeAnnotation(parentAccumulator, completedAccumulator, "evaluatedProperties");
+                        }
+                    } else if (regularUnionMatched) {
+                        EvaluationContext accumulator = allOfAccumulatorStack.peek();
+                        validateRemainingKeywords(json, referredType, keywords, accumulator);
                         allOfAccumulatorStack.pop();
                     }
+
                     if (parsed != null && !(parsed instanceof BError)) {
                         return parsed;
                     }
@@ -487,9 +524,11 @@ public class JsonTraverse {
 
         private void presetTypeTraversalAnnotations(EvaluationContext ctx, Type refType,
                                                     LinkedHashMap<String, Keyword> keywords) {
+            boolean trackItems = keywords.containsKey("unevaluatedItems") || !allOfAccumulatorStack.isEmpty();
+            boolean trackProperties = keywords.containsKey("unevaluatedProperties") || !allOfAccumulatorStack.isEmpty();
             switch (refType.getTag()) {
                 case TypeTags.ARRAY_TAG -> {
-                    if (keywords.containsKey("unevaluatedItems")) {
+                    if (trackItems) {
                         ArrayType arrayType = (ArrayType) refType;
                         Type elementType = TypeUtils.getReferredType(arrayType.getElementType());
                         if (elementType.getTag() != TypeTags.JSON_TAG && elementType.getTag() != TypeTags.ANYDATA_TAG) {
@@ -498,7 +537,7 @@ public class JsonTraverse {
                     }
                 }
                 case TypeTags.TUPLE_TAG -> {
-                    if (keywords.containsKey("unevaluatedItems")) {
+                    if (trackItems) {
                         TupleType tupleType = (TupleType) refType;
                         List<Type> tupleTypes = tupleType.getTupleTypes();
                         if (!tupleTypes.isEmpty()) {
@@ -515,7 +554,7 @@ public class JsonTraverse {
                     }
                 }
                 case TypeTags.RECORD_TYPE_TAG -> {
-                    if (keywords.containsKey("unevaluatedProperties")) {
+                    if (trackProperties) {
                         RecordType recordType = (RecordType) refType;
                         Type restFieldType = recordType.getRestFieldType();
                         if (restFieldType != null && !keywords.containsKey("additionalProperties")) {
@@ -528,6 +567,31 @@ public class JsonTraverse {
                     }
                 }
             }
+        }
+
+        private void validateRemainingKeywords(Object json, Type referredType,
+                                               LinkedHashMap<String, Keyword> keywords,
+                                               EvaluationContext accumulator) {
+            if (keywords.isEmpty()) {
+                return;
+            }
+
+            EvaluationContext ctx = new EvaluationContext();
+            copyAnnotation(accumulator, ctx, "evaluatedItems");
+            copyAnnotation(accumulator, ctx, "evaluatedProperties");
+
+            presetTypeTraversalAnnotations(ctx, referredType, keywords);
+
+            Schema schema = new Schema(keywords);
+            if (!Validator.validate(json, schema, ctx)) {
+                throw DiagnosticLog.error(DiagnosticErrorCode.SCHEMA_VALIDATION_FAILED,
+                        String.join("\n", ctx.getErrors()));
+            }
+
+            SchemaValidatorUtils.createEvaluatedItemsAnnotation(ctx);
+            SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(ctx);
+            mergeAnnotation(accumulator, ctx, "evaluatedItems");
+            mergeAnnotation(accumulator, ctx, "evaluatedProperties");
         }
 
         private static void copyAnnotation(EvaluationContext src, EvaluationContext dst, String key) {
