@@ -74,6 +74,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
@@ -86,6 +87,7 @@ public class SchemaTypeParser {
     private final HashMap<String, Object> typeAliasToSchema = new HashMap<>();
 
     public Object parse(Type type) {
+        System.out.println("Parsing type: " + type + " with tag: " + type.getTag());
         if (typeAliasToSchema.containsKey(type.getName())) {
             return typeAliasToSchema.get(type.getName());
         }
@@ -119,9 +121,25 @@ public class SchemaTypeParser {
             return schema;
         }
 
+        if (schema instanceof Schema parsedSchema) {
+            LinkedHashMap<String, Keyword> keywords = parsedSchema.getKeywords();
+            if (keywords.size() == 1 && keywords.containsKey(TypeKeyword.keywordName)) {
+                Object typeKeywordValue = keywords.get(TypeKeyword.keywordName).getKeywordValue();
+                if (typeKeywordValue instanceof Set<?> typeNames && typeNames.equals(
+                        Set.of("string", "number", "boolean", "object", "array", "null"))) {
+                    schema = true;
+                }
+            }
+        }
+
         if (type.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG || type.getTag() == TypeTags.RECORD_TYPE_TAG) {
             Schema cachedSchema = (Schema) typeAliasToSchema.get(type.getName());
-            cachedSchema.setKeywords(((Schema) schema).getKeywords());
+            if (schema instanceof Schema) {
+                cachedSchema.setKeywords(((Schema) schema).getKeywords());
+            } else {
+                typeAliasToSchema.put(type.getName(), schema);
+                return schema;
+            }
             return cachedSchema;
         }
 
@@ -420,57 +438,178 @@ public class SchemaTypeParser {
             if (restType == null) {
                 return DiagnosticLog.createJsonError("cannot create schema for empty tuple");
             }
-            return parseTupleWithRest(type, tupleTypes, restType, keywords);
+        }
+
+        return parseTuple(type, tupleTypes, restType, keywords);
+    }
+
+    private Object parseTuple(Type type, List<Type> tupleTypes, Type restType, LinkedHashMap<String, Keyword> keywords) {
+        List<Type> annotatedPrefixItemTypes = extractAnnotatedPrefixItemTypes(type);
+        Keyword prefixItemsKeyword = keywords.get(PrefixItemsKeyword.keywordName);
+
+        if (prefixItemsKeyword == null) {
+            List<Object> prefixSchemas = new ArrayList<>();
+            for (Type memberType : tupleTypes) {
+                Object memberSchema = parse(memberType);
+                if (memberSchema instanceof BError) {
+                    return memberSchema;
+                }
+                prefixSchemas.add(memberSchema);
+            }
+
+            if (!prefixSchemas.isEmpty()) {
+                keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
+            }
         }
 
         if (restType != null) {
-            return parseTupleWithRest(type, tupleTypes, restType, keywords);
-        } else {
-            return parseTupleFixedLength(type, tupleTypes, keywords);
-        }
-    }
-
-    private Object parseTupleWithRest(Type type, List<Type> tupleTypes, Type restType, LinkedHashMap<String, Keyword> keywords) {
-        List<Object> prefixSchemas = new ArrayList<>();
-        for (Type memberType : tupleTypes) {
-            Object memberSchema = parse(memberType);
-            if (memberSchema instanceof BError) {
-                return memberSchema;
+            Object restSchema = createItemsSchemaForTupleRest(restType, annotatedPrefixItemTypes);
+            if (restSchema instanceof BError) {
+                return restSchema;
             }
-            prefixSchemas.add(memberSchema);
+            keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(restSchema));
         }
-
-        if (!prefixSchemas.isEmpty()) {
-            keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
-        }
-
-        Object restSchema = parse(restType);
-        if (restSchema instanceof BError) {
-            return restSchema;
-        }
-        keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(restSchema));
-
-        setArraySizeConstraints(keywords, (long) tupleTypes.size(), null);
 
         return new Schema(keywords);
     }
 
-    private Object parseTupleFixedLength(Type type, List<Type> tupleTypes, LinkedHashMap<String, Keyword> keywords) {
-        List<Object> prefixSchemas = new ArrayList<>();
-        for (Type memberType : tupleTypes) {
-            Object memberSchema = parse(memberType);
-            if (memberSchema instanceof BError) {
-                return memberSchema;
-            }
-            prefixSchemas.add(memberSchema);
+    private Object createItemsSchemaForTupleRest(Type restType, List<Type> annotatedPrefixItemTypes) {
+        if (annotatedPrefixItemTypes == null || annotatedPrefixItemTypes.isEmpty()) {
+            return parse(restType);
         }
 
-        keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
+        if (isDeclaredJsonType(restType)) {
+            if (annotatedPrefixItemTypes.size() == 1 &&
+                    isSameDeclaredType(restType, annotatedPrefixItemTypes.getFirst())) {
+                return false;
+            }
+            return parse(restType);
+        }
 
-        long tupleSize = tupleTypes.size();
-        setArraySizeConstraints(keywords, tupleSize, tupleSize);
+        Type referredRestType = TypeUtils.getReferredType(restType);
+        if (!(referredRestType instanceof UnionType unionType)) {
+            if (annotatedPrefixItemTypes.size() == 1 &&
+                    isSameDeclaredType(restType, annotatedPrefixItemTypes.getFirst())) {
+                return false;
+            }
+            return parse(restType);
+        }
+
+        List<Type> remainingMembers = new ArrayList<>(unionType.getMemberTypes());
+
+        System.out.println("Original rest type members: " + remainingMembers);
+        System.out.println("Annotated prefix Items : " + annotatedPrefixItemTypes);
+        for (Type prefixItemType : annotatedPrefixItemTypes) {
+            for (int i = 0; i < remainingMembers.size(); i++) {
+                if (isSameDeclaredType(remainingMembers.get(i), prefixItemType)) {
+                    remainingMembers.remove(i);
+                    break;
+                }
+            }
+        }
+
+        if (remainingMembers.isEmpty()) {
+            return false;
+        }
+
+        LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
+        ArrayList<Type> constValues = new ArrayList<>();
+        List<Object> memberSchemas = new ArrayList<>();
+
+        TypeKeyword typeKeyword = extractTypeKeyword(new ArrayList<>(remainingMembers));
+        if (typeKeyword != null && typeKeyword.keywordValue.containsAll(
+                Set.of("string", "number", "boolean", "object", "array", "null"))) {
+            typeKeyword = null;
+        }
+
+        for (Type memberType : remainingMembers) {
+            if (memberType.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG || memberType.getTag() == TypeTags.ARRAY_TAG) {
+                Object parsedMember = parse(memberType);
+                if (parsedMember instanceof Schema || parsedMember instanceof Boolean) {
+                    memberSchemas.add(parsedMember);
+                } else {
+                    return (BError) parsedMember;
+                }
+            } else if (memberType.getTag() == TypeTags.TUPLE_TAG) {
+                TupleType tupleType = (TupleType) memberType;
+                ArrayList<Type> tupleMembers = new ArrayList<>(tupleType.getTupleTypes());
+                boolean allConstOrEnum = true;
+
+                for (Type tupleMember : tupleMembers) {
+                    Type referredTupleMember = TypeUtils.getReferredType(tupleMember);
+                    if (!(referredTupleMember.getTag() == TypeTags.FINITE_TYPE_TAG) &&
+                            !(referredTupleMember.getTag() == TypeTags.INTERSECTION_TAG)) {
+                        allConstOrEnum = false;
+                        break;
+                    }
+                }
+
+                if (allConstOrEnum && tupleType.getRestType() == null) {
+                    constValues.add(memberType);
+                } else {
+                    Object parsedMember = parse(memberType);
+                    if (parsedMember instanceof Schema || parsedMember instanceof Boolean) {
+                        memberSchemas.add(parsedMember);
+                    } else {
+                        return (BError) parsedMember;
+                    }
+                }
+            } else if (memberType.getTag() == TypeTags.INTERSECTION_TAG ||
+                    memberType.getTag() == TypeTags.FINITE_TYPE_TAG) {
+                constValues.add(memberType);
+            } else {
+                Object parsedMember = parse(memberType);
+                if (parsedMember instanceof Schema || parsedMember instanceof Boolean) {
+                    memberSchemas.add(parsedMember);
+                } else {
+                    return parsedMember;
+                }
+            }
+        }
+
+        if (typeKeyword != null) {
+            keywords.put(TypeKeyword.keywordName, typeKeyword);
+        }
+
+        if (!constValues.isEmpty()) {
+            extractConstOrEnumKeyword(constValues, keywords);
+        }
+
+        if (!memberSchemas.isEmpty()) {
+            keywords.put(AnyOfKeyword.keywordName, new AnyOfKeyword(memberSchemas));
+        }
 
         return new Schema(keywords);
+    }
+
+    private boolean isDeclaredJsonType(Type type) {
+        if (type.getTag() == TypeTags.JSON_TAG) {
+            return true;
+        }
+
+        if (type.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG) {
+            return isDeclaredJsonType(((ReferenceType) type).getReferredType());
+        }
+
+        return false;
+    }
+
+    private boolean isSameDeclaredType(Type left, Type right) {
+        if (left == right) {
+            return true;
+        }
+
+        String leftName = left.getName();
+        String rightName = right.getName();
+        if (leftName != null || rightName != null) {
+            return Objects.equals(leftName, rightName);
+        }
+
+        if (left.getTag() != right.getTag()) {
+            return false;
+        }
+
+        return Objects.equals(left.toString(), right.toString());
     }
 
     public TypeKeyword extractTypeKeyword(ArrayList<Type> types) {
@@ -877,6 +1016,27 @@ public class SchemaTypeParser {
     }
 
     private Object extractArrayValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
+        BString prefixItemsKey = StringUtils.fromString("prefixItems");
+        if (annotation.containsKey(prefixItemsKey)) {
+            Object prefixItemsObj = annotation.get(prefixItemsKey);
+            if (prefixItemsObj instanceof BArray prefixItemsArray) {
+                List<Object> prefixSchemas = new ArrayList<>();
+                for (long i = 0; i < prefixItemsArray.getLength(); i++) {
+                    Object prefixItem = prefixItemsArray.get(i);
+                    if (prefixItem instanceof BTypedesc typeDesc) {
+                        Object prefixSchema = parse(typeDesc.getDescribingType());
+                        if (prefixSchema instanceof BError) {
+                            return prefixSchema;
+                        }
+                        if (prefixSchema instanceof Schema || prefixSchema instanceof Boolean) {
+                            prefixSchemas.add(prefixSchema);
+                        }
+                    }
+                }
+                keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
+            }
+        }
+
         SchemaParserUtils.extractLong(annotation, "minItems").ifPresent(value ->
                 keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(value))
         );
@@ -1093,6 +1253,49 @@ public class SchemaTypeParser {
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         keywords.put(ConstKeyword.keywordName, new ConstKeyword(value));
         return new Schema(keywords);
+    }
+
+    private List<Type> extractAnnotatedPrefixItemTypes(Type type) {
+        if (!(type instanceof AnnotatableType annotatableType)) {
+            return null;
+        }
+
+        BMap<BString, Object> annotations = annotatableType.getAnnotations();
+        if (annotations.isEmpty()) {
+            return null;
+        }
+
+        Pattern annotationNamePattern = Pattern.compile("([^:]+)$");
+        BString prefixItemsKey = StringUtils.fromString("prefixItems");
+        for (BString key : annotations.getKeys()) {
+            String annotationIdentifier = key.getValue();
+            Matcher matcher = annotationNamePattern.matcher(annotationIdentifier);
+            String annotationName = matcher.find() ? matcher.group(1) : annotationIdentifier;
+            if (!"ArrayConstraints".equals(annotationName)) {
+                continue;
+            }
+
+            Object annotation = annotations.get(key);
+            if (!(annotation instanceof BMap<?, ?> annotationMap) || !annotationMap.containsKey(prefixItemsKey)) {
+                return null;
+            }
+
+            Object prefixItems = annotationMap.get(prefixItemsKey);
+            if (!(prefixItems instanceof BArray prefixItemsArray)) {
+                return null;
+            }
+
+            List<Type> prefixItemTypes = new ArrayList<>();
+            for (long i = 0; i < prefixItemsArray.getLength(); i++) {
+                Object prefixItem = prefixItemsArray.get(i);
+                if (prefixItem instanceof BTypedesc typeDesc) {
+                    prefixItemTypes.add(typeDesc.getDescribingType());
+                }
+            }
+            return prefixItemTypes;
+        }
+
+        return null;
     }
 
     public LinkedHashMap<String, Keyword> extractAnnotationKeywords(Type type) {
