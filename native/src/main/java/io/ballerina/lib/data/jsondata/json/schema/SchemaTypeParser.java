@@ -87,7 +87,6 @@ public class SchemaTypeParser {
     private final HashMap<String, Object> typeAliasToSchema = new HashMap<>();
 
     public Object parse(Type type) {
-        System.out.println("Parsing type: " + type + " with tag: " + type.getTag());
         if (typeAliasToSchema.containsKey(type.getName())) {
             return typeAliasToSchema.get(type.getName());
         }
@@ -285,12 +284,6 @@ public class SchemaTypeParser {
         if (isAllOf || isOneOf) {
             List<Object> wrapperList = new ArrayList<>(memberSchemas);
 
-            if (typeKeyword != null) {
-                LinkedHashMap<String, Keyword> typeKeywords = new LinkedHashMap<>();
-                typeKeywords.put(TypeKeyword.keywordName, typeKeyword);
-                wrapperList.add(new Schema(typeKeywords));
-            }
-
             if (!constValues.isEmpty()) {
                 LinkedHashMap<String, Keyword> constKeywords = new LinkedHashMap<>();
                 extractConstOrEnumKeyword(constValues, constKeywords);
@@ -375,7 +368,8 @@ public class SchemaTypeParser {
 
         if (restType != null) {
             // TODO: Unevaluated properties have a rest type of json as well, check that too
-            if (!keywords.containsKey(AdditionalPropertiesKeyword.keywordName)) {
+            if (!keywords.containsKey(AdditionalPropertiesKeyword.keywordName)
+                    && restType.getTag() != TypeTags.JSON_TAG) {
                 Object restSchema = parse(restType);
                 if (restSchema instanceof BError) {
                     return restSchema;
@@ -434,6 +428,22 @@ public class SchemaTypeParser {
         List<Type> tupleTypes = tupleType.getTupleTypes();
         Type restType = tupleType.getRestType();
 
+        if (restType == null && !tupleTypes.isEmpty()) {
+            boolean allConstTupleMembers = true;
+            for (Type memberType : tupleTypes) {
+                Object constValue = extractConstValues(memberType);
+                if (constValue == null || constValue instanceof Set) {
+                    allConstTupleMembers = false;
+                    break;
+                }
+            }
+
+            if (allConstTupleMembers) {
+                extractConstOrEnumKeyword(new ArrayList<>(List.of(tupleType)), keywords);
+                return new Schema(keywords);
+            }
+        }
+
         if (tupleTypes.isEmpty()) {
             if (restType == null) {
                 return DiagnosticLog.createJsonError("cannot create schema for empty tuple");
@@ -450,9 +460,23 @@ public class SchemaTypeParser {
         if (prefixItemsKeyword == null) {
             List<Object> prefixSchemas = new ArrayList<>();
             for (Type memberType : tupleTypes) {
-                Object memberSchema = parse(memberType);
-                if (memberSchema instanceof BError) {
-                    return memberSchema;
+                Object memberSchema;
+                if (memberType.getTag() == TypeTags.INTERSECTION_TAG || memberType.getTag() == TypeTags.FINITE_TYPE_TAG) {
+                    LinkedHashMap<String, Keyword> memberKeywords = new LinkedHashMap<>();
+                    extractConstOrEnumKeyword(new ArrayList<>(List.of(memberType)), memberKeywords);
+                    if (memberKeywords.isEmpty()) {
+                        memberSchema = parse(memberType);
+                        if (memberSchema instanceof BError) {
+                            return memberSchema;
+                        }
+                    } else {
+                        memberSchema = new Schema(memberKeywords);
+                    }
+                } else {
+                    memberSchema = parse(memberType);
+                    if (memberSchema instanceof BError) {
+                        return memberSchema;
+                    }
                 }
                 prefixSchemas.add(memberSchema);
             }

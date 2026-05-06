@@ -102,6 +102,22 @@ public type ReferencedAnyOfSubTypes ReferencedAnyOfNumber|json;
 @AllOf
 public type ReferencedAnyOfSchema json|ReferencedAnyOfSubTypes;
 
+@StringConstraints {
+    minLength: 2
+}
+public type OneOfStringMin string;
+
+@StringConstraints {
+    maxLength: 4
+}
+public type OneOfStringMax string;
+
+@OneOf
+public type OneOfStringSubTypes OneOfStringMin|OneOfStringMax;
+
+@AllOf
+public type OneOfStringSchema string|OneOfStringSubTypes;
+
 // Singleton types (const equivalent)
 public type SingleInt 1;
 public type SingleString "hello";
@@ -201,6 +217,10 @@ function validBasicTypeSchemasForValidate() returns [json, typedesc<json>][] {
 
         // ReferencedAnyOfSchema preserves json in nested referenced unions
         ["foo", ReferencedAnyOfSchema],
+
+        // OneOfStringSchema allows values matching exactly one string branch
+        ["a", OneOfStringSchema],
+        ["abcde", OneOfStringSchema],
 
         // Singleton types
         [1, SingleInt],
@@ -315,6 +335,10 @@ function invalidBasicTypeSchemasForValidate() returns [json, typedesc<json>][] {
 
         // ReferencedMixedUnionSchema enforces nested numeric constraints
         [1.5, ReferencedMixedUnionSchema],
+
+        // OneOfStringSchema rejects values matching both string branches
+        ["ab", OneOfStringSchema],
+        ["abcd", OneOfStringSchema],
 
         // Singleton types - wrong values
         [2, SingleInt],
