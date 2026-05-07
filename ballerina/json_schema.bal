@@ -49,7 +49,7 @@ public annotation NumberConstraintsConfig NumberConstraints on type;
 # The configuration for JSON array type constraints
 public type ArrayConstraintsConfig record {|
     # Items that should be in the beginning of the array
-    typedesc<json>[] prefixItems?;
+    (typedesc<json>|json)[] prefixItems?;
     # The minimum number of items required in the array
     int:Unsigned32 minItems = 0;
     # The maximum number of items allowed in the array
@@ -65,8 +65,10 @@ public type ArrayConstraintsConfig record {|
         # The schema that items in the array must match
         typedesc<json>|json value;
     |} contains?;
+    # Specifies a schema for items in the array after prefixItems and items that are not evaluated by contains
+    typedesc<json>|json items?;
     # Specifies a schema for items that are not evaluated by contains
-    typedesc<json> unevaluatedItems?;
+    typedesc<json>|json unevaluatedItems?;
 |};
 
 # Annotation used to define validation constraints for JSON array type
@@ -79,7 +81,7 @@ public type ObjectConstraintsConfig record {|
     # The minimum number of properties required in the object
     int:Unsigned32 minProperties?;
     # The schema to validate the names of properties in the object
-    typedesc<json> propertyNames?;
+    (typedesc<json>|json) propertyNames?;
 |};
 
 # Annotation used to define validation constraints for JSON object type
@@ -88,7 +90,7 @@ public annotation ObjectConstraintsConfig ObjectConstraints on type;
 # The configuration for dependent schema in JSON object fields
 public type DependentSchemaConfig record {|
     # The dependent sub schema
-    typedesc<json> value;
+    typedesc<json>|json value;
 |};
 
 # Annotation used to define a dependent schema in JSON object fields
@@ -108,7 +110,7 @@ public type PatternPropertiesElement record {|
     # A regular expression that the property name must match
     string:RegExp pattern;
     # The type that properties matching the pattern must conform to
-    typedesc<json> value;
+    typedesc<json>|json value;
 |};
 
 # The configuration for multiple pattern property rules
@@ -123,7 +125,7 @@ public annotation PatternPropertiesElements PatternProperties on type;
 # The configuration for additional properties
 public type AdditionalPropertiesConfig record {|
     # Data type of the respective field
-    typedesc<json> value;
+    typedesc<json>|json value;
 |};
 
 # Annotation used to define additional properties in a JSON object type
@@ -155,7 +157,7 @@ public type StringEncodedDataConfig record {|
     # The encoding of the string encoded data
     string contentEncoding?;
     # The schema of the decoded content
-    typedesc<json> contentSchema?;
+    typedesc<json>|json contentSchema?;
 |};
 
 # The annotation is used to specify string encoded data.
@@ -173,7 +175,7 @@ public annotation AnyOf on type;
 # The configuration for not.
 public type NotConfig record {|
     # The schema that items in the array must not match
-    typedesc<json> value;
+    typedesc<json>|json value;
 |};
 
 # The annotation is used to specify not.
@@ -182,7 +184,7 @@ public annotation NotConfig Not on type;
 # The configuration for unevaluated properties.
 public type UnevaluatedPropertiesConfig record {|
     # The schema that unevaluated field types must match
-    typedesc<json> value;
+    typedesc<json>|json value;
 |};
 
 # The annotation is used to specify the type of unevaluated properties.
@@ -191,7 +193,7 @@ public annotation UnevaluatedPropertiesConfig UnevaluatedProperties on type;
 # The configuration for unevaluated items.
 public type UnevaluatedItemsConfig record {|
     # The schema that unevaluated field types must match
-    typedesc<json> value;
+    typedesc<json>|json value;
 |};
 
 # The annotation is used to specify the type of unevaluated items.

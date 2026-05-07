@@ -43,6 +43,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentMedi
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentSchemaKeyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.utils.JsonEqualityUtils;
 import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
@@ -454,7 +455,7 @@ public class SchemaTypeParser {
     }
 
     private Object parseTuple(Type type, List<Type> tupleTypes, Type restType, LinkedHashMap<String, Keyword> keywords) {
-        List<Type> annotatedPrefixItemTypes = extractAnnotatedPrefixItemTypes(type);
+        List<Object> annotatedPrefixItemTypes = extractAnnotatedPrefixItemTypes(type);
         Keyword prefixItemsKeyword = keywords.get(PrefixItemsKeyword.keywordName);
 
         if (prefixItemsKeyword == null) {
@@ -486,25 +487,27 @@ public class SchemaTypeParser {
             }
         }
 
-        if (restType != null) {
+        if (restType != null && !keywords.containsKey(ItemsKeyword.keywordName) && !isDeclaredJsonType(restType)) {
             Object restSchema = createItemsSchemaForTupleRest(restType, annotatedPrefixItemTypes);
             if (restSchema instanceof BError) {
                 return restSchema;
             }
-            keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(restSchema));
+            if (!(restSchema instanceof Boolean boolSchema) || !boolSchema) {
+                keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(restSchema));
+            }
         }
 
         return new Schema(keywords);
     }
 
-    private Object createItemsSchemaForTupleRest(Type restType, List<Type> annotatedPrefixItemTypes) {
+    private Object createItemsSchemaForTupleRest(Type restType, List<Object> annotatedPrefixItemTypes) {
         if (annotatedPrefixItemTypes == null || annotatedPrefixItemTypes.isEmpty()) {
             return parse(restType);
         }
 
         if (isDeclaredJsonType(restType)) {
             if (annotatedPrefixItemTypes.size() == 1 &&
-                    isSameDeclaredType(restType, annotatedPrefixItemTypes.getFirst())) {
+                    matchesAnnotatedPrefixItem(restType, annotatedPrefixItemTypes.getFirst())) {
                 return false;
             }
             return parse(restType);
@@ -513,19 +516,19 @@ public class SchemaTypeParser {
         Type referredRestType = TypeUtils.getReferredType(restType);
         if (!(referredRestType instanceof UnionType unionType)) {
             if (annotatedPrefixItemTypes.size() == 1 &&
-                    isSameDeclaredType(restType, annotatedPrefixItemTypes.getFirst())) {
+                    matchesAnnotatedPrefixItem(restType, annotatedPrefixItemTypes.getFirst())) {
                 return false;
             }
             return parse(restType);
         }
 
-        List<Type> remainingMembers = new ArrayList<>(unionType.getMemberTypes());
+        List<Type> remainingMembers = new ArrayList<>(unionType.getOriginalMemberTypes());
 
         System.out.println("Original rest type members: " + remainingMembers);
         System.out.println("Annotated prefix Items : " + annotatedPrefixItemTypes);
-        for (Type prefixItemType : annotatedPrefixItemTypes) {
+        for (Object prefixItemType : annotatedPrefixItemTypes) {
             for (int i = 0; i < remainingMembers.size(); i++) {
-                if (isSameDeclaredType(remainingMembers.get(i), prefixItemType)) {
+                if (matchesAnnotatedPrefixItem(remainingMembers.get(i), prefixItemType)) {
                     remainingMembers.remove(i);
                     break;
                 }
@@ -534,6 +537,10 @@ public class SchemaTypeParser {
 
         if (remainingMembers.isEmpty()) {
             return false;
+        }
+
+        if (remainingMembers.size() == 1) {
+            return parse(remainingMembers.getFirst());
         }
 
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
@@ -616,6 +623,23 @@ public class SchemaTypeParser {
         }
 
         return false;
+    }
+
+    private boolean matchesAnnotatedPrefixItem(Type memberType, Object prefixItem) {
+        if (prefixItem instanceof Type prefixItemType) {
+            return isSameDeclaredType(memberType, prefixItemType);
+        }
+
+        if (prefixItem == null && TypeUtils.getReferredType(memberType).getTag() == TypeTags.NULL_TAG) {
+            return true;
+        }
+
+        Object constValue = extractConstValues(memberType);
+        if (constValue == null || constValue instanceof Set) {
+            return false;
+        }
+
+        return JsonEqualityUtils.deepEquals(constValue, prefixItem);
     }
 
     private boolean isSameDeclaredType(Type left, Type right) {
@@ -831,7 +855,8 @@ public class SchemaTypeParser {
                     if (!(annotation instanceof BMap<?, ?> notAnnotation)) {
                         break;
                     }
-                    Object notSchema = parseSchemaFromTypeDesc((BMap<BString, Object>) notAnnotation, Constants.VALUE);
+                    Object notSchema = parseSchemaFromTypeDescOrConst((BMap<BString, Object>) notAnnotation,
+                            Constants.VALUE);
                     if (notSchema instanceof BError) {
                         return notSchema;
                     }
@@ -954,12 +979,12 @@ public class SchemaTypeParser {
     }
 
     private void extractDependentSchemaAnnotation(String fieldName, Object annotation,
-                                                Map<String, Object> dependentSchemasMap) {
+                                                 Map<String, Object> dependentSchemasMap) {
         if (!(annotation instanceof BMap<?, ?>)) {
             return;
         }
 
-        Object schema = parseSchemaFromTypeDesc((BMap<BString, Object>) annotation, Constants.VALUE);
+        Object schema = parseSchemaFromTypeDescOrConst((BMap<BString, Object>) annotation, Constants.VALUE);
         if (schema instanceof Schema || schema instanceof Boolean) {
             dependentSchemasMap.put(fieldName, schema);
         }
@@ -1047,14 +1072,23 @@ public class SchemaTypeParser {
                 List<Object> prefixSchemas = new ArrayList<>();
                 for (long i = 0; i < prefixItemsArray.getLength(); i++) {
                     Object prefixItem = prefixItemsArray.get(i);
+                    Object prefixSchema;
                     if (prefixItem instanceof BTypedesc typeDesc) {
-                        Object prefixSchema = parse(typeDesc.getDescribingType());
-                        if (prefixSchema instanceof BError) {
-                            return prefixSchema;
-                        }
-                        if (prefixSchema instanceof Schema || prefixSchema instanceof Boolean) {
-                            prefixSchemas.add(prefixSchema);
-                        }
+                        prefixSchema = parse(typeDesc.getDescribingType());
+                    } else if (prefixItem == null) {
+                        LinkedHashMap<String, Keyword> prefixKeywords = new LinkedHashMap<>();
+                        prefixKeywords.put(TypeKeyword.keywordName, new TypeKeyword(new HashSet<>(Set.of("null"))));
+                        prefixSchema = new Schema(prefixKeywords);
+                    } else {
+                        LinkedHashMap<String, Keyword> prefixKeywords = new LinkedHashMap<>();
+                        prefixKeywords.put(ConstKeyword.keywordName, new ConstKeyword(prefixItem));
+                        prefixSchema = new Schema(prefixKeywords);
+                    }
+                    if (prefixSchema instanceof BError) {
+                        return prefixSchema;
+                    }
+                    if (prefixSchema instanceof Schema || prefixSchema instanceof Boolean) {
+                        prefixSchemas.add(prefixSchema);
                     }
                 }
                 keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
@@ -1070,6 +1104,16 @@ public class SchemaTypeParser {
         SchemaParserUtils.extractBoolean(annotation, "uniqueItems").ifPresent(value ->
                 keywords.put(UniqueItemsKeyword.keywordName, new UniqueItemsKeyword(value))
         );
+        BString itemsKey = StringUtils.fromString("items");
+        if (annotation.containsKey(itemsKey)) {
+            Object schema = parseSchemaFromTypeDescOrConst(annotation, itemsKey);
+            if (schema instanceof BError) {
+                return schema;
+            }
+            if (schema instanceof Schema || schema instanceof Boolean) {
+                keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(schema));
+            }
+        }
         BString containsKey = StringUtils.fromString("contains");
         if (annotation.containsKey(containsKey)) {
             Object containsObj = annotation.get(containsKey);
@@ -1088,7 +1132,7 @@ public class SchemaTypeParser {
         }
         BString unevaluatedItems = StringUtils.fromString("unevaluatedItems");
         if (annotation.containsKey(unevaluatedItems)) {
-            Object schema = parseSchemaFromTypeDesc(annotation, unevaluatedItems);
+            Object schema = parseSchemaFromTypeDescOrConst(annotation, unevaluatedItems);
             if (schema instanceof BError) {
                 return schema;
             }
@@ -1105,7 +1149,7 @@ public class SchemaTypeParser {
 
         BString propertyNamesKey = StringUtils.fromString("propertyNames");
         if (keys.contains(propertyNamesKey)) {
-            Object propertyNamesSchema = parseSchemaFromTypeDesc(annotation, propertyNamesKey);
+            Object propertyNamesSchema = parseSchemaFromTypeDescOrConst(annotation, propertyNamesKey);
             if (propertyNamesSchema instanceof BError) {
                 return propertyNamesSchema;
             }
@@ -1150,7 +1194,7 @@ public class SchemaTypeParser {
 
             if (element.containsKey(patternKey) && element.containsKey(Constants.VALUE)) {
                 String pattern = element.get(patternKey).toString();
-                Object schema = parseSchemaFromTypeDesc(element, Constants.VALUE);
+                Object schema = parseSchemaFromTypeDescOrConst(element, Constants.VALUE);
                 if (schema instanceof BError) {
                     return schema;
                 }
@@ -1168,9 +1212,9 @@ public class SchemaTypeParser {
     }
 
     private Object extractAdditionalProperties(BMap<BString, Object> annotation,
-                                           LinkedHashMap<String, Keyword> keywords) {
+                                            LinkedHashMap<String, Keyword> keywords) {
         if (annotation.containsKey(Constants.VALUE)) {
-            Object additionalPropertiesSchema = parseSchemaFromTypeDesc(annotation, Constants.VALUE);
+            Object additionalPropertiesSchema = parseSchemaFromTypeDescOrConst(annotation, Constants.VALUE);
             if (additionalPropertiesSchema instanceof BError) {
                 return additionalPropertiesSchema;
             }
@@ -1183,8 +1227,8 @@ public class SchemaTypeParser {
     }
 
     private Object extractUnevaluatedProperties(BMap<BString, Object> annotation,
-                                              LinkedHashMap<String, Keyword> keywords) {
-        Object unevaluatedPropertiesSchema = parseSchemaFromTypeDesc(annotation, Constants.VALUE);
+                                               LinkedHashMap<String, Keyword> keywords) {
+        Object unevaluatedPropertiesSchema = parseSchemaFromTypeDescOrConst(annotation, Constants.VALUE);
         if (unevaluatedPropertiesSchema instanceof BError) {
             return unevaluatedPropertiesSchema;
         }
@@ -1196,8 +1240,8 @@ public class SchemaTypeParser {
     }
 
     private Object extractedUnevaluatedItems(BMap<BString, Object> annotation,
-                                                LinkedHashMap<String, Keyword> keywords) {
-        Object unevaluatedItemsSchema = parseSchemaFromTypeDesc(annotation, Constants.VALUE);
+                                                 LinkedHashMap<String, Keyword> keywords) {
+        Object unevaluatedItemsSchema = parseSchemaFromTypeDescOrConst(annotation, Constants.VALUE);
         if (unevaluatedItemsSchema instanceof BError) {
             return unevaluatedItemsSchema;
         }
@@ -1225,7 +1269,7 @@ public class SchemaTypeParser {
         }
         BString contentSchemaKey = StringUtils.fromString("contentSchema");
         if (annotation.containsKey(contentSchemaKey)) {
-            Object contentSchema = parseSchemaFromTypeDesc(annotation, contentSchemaKey);
+            Object contentSchema = parseSchemaFromTypeDescOrConst(annotation, contentSchemaKey);
             if (contentSchema instanceof BError) {
                 return contentSchema;
             }
@@ -1279,7 +1323,7 @@ public class SchemaTypeParser {
         return new Schema(keywords);
     }
 
-    private List<Type> extractAnnotatedPrefixItemTypes(Type type) {
+    private List<Object> extractAnnotatedPrefixItemTypes(Type type) {
         if (!(type instanceof AnnotatableType annotatableType)) {
             return null;
         }
@@ -1309,11 +1353,13 @@ public class SchemaTypeParser {
                 return null;
             }
 
-            List<Type> prefixItemTypes = new ArrayList<>();
+            List<Object> prefixItemTypes = new ArrayList<>();
             for (long i = 0; i < prefixItemsArray.getLength(); i++) {
                 Object prefixItem = prefixItemsArray.get(i);
                 if (prefixItem instanceof BTypedesc typeDesc) {
                     prefixItemTypes.add(typeDesc.getDescribingType());
+                } else {
+                    prefixItemTypes.add(prefixItem);
                 }
             }
             return prefixItemTypes;
