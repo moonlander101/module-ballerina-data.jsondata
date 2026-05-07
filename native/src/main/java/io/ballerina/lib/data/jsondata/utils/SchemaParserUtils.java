@@ -217,6 +217,10 @@ public class SchemaParserUtils {
         return sb.toString();
     }
 
+    public static Object normalizeConstValue(Object constValue, Object nullConstSentinel) {
+        return constValue == nullConstSentinel ? null : constValue;
+    }
+
     private static boolean isFragmentAllowed(int c) {
         if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) {
             return true;
