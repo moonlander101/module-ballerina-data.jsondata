@@ -166,6 +166,9 @@ public class FormatKeyword extends Keyword {
         if (!(instance instanceof BString str)) {
             return true;
         }
+        if (context.isFormatAnnotation()) {
+            return true;
+        }
         boolean valid;
         switch (keywordValue) {
             case "email":

@@ -77,22 +77,23 @@ const testFiles = [
     "type.json",
     "unevaluatedItems.json",
     "unevaluatedProperties.json",
-    "uniqueItems.json",
+    "uniqueItems.json"
+//    ,
 //    "vocabulary.json"
-    "optional/format/date-time.json",
-    "optional/format/date.json",
-    "optional/format/duration.json",
-    "optional/format/time.json",
-    "optional/format/email.json",
-    "optional/format/hostname.json",
-    "optional/format/ipv4.json",
-    "optional/format/ipv6.json",
-    "optional/format/json-pointer.json",
-    "optional/format/relative-json-pointer.json",
-    "optional/format/uri-reference.json",
-    "optional/format/uri.json",
-    "optional/format/uri-template.json",
-    "optional/format/uuid.json"
+//    "optional/format/date-time.json",
+//    "optional/format/date.json",
+//    "optional/format/duration.json",
+//    "optional/format/time.json",
+//    "optional/format/email.json",
+//    "optional/format/hostname.json",
+//    "optional/format/ipv4.json",
+//    "optional/format/ipv6.json",
+//    "optional/format/json-pointer.json",
+//    "optional/format/relative-json-pointer.json",
+//    "optional/format/uri-reference.json",
+//    "optional/format/uri.json",
+//    "optional/format/uri-template.json",
+//    "optional/format/uuid.json"
 ];
 
 // Format: [groupIdx, testIdx]

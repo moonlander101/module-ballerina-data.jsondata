@@ -33,6 +33,7 @@ public class EvaluationContext {
     private final LinkedHashSet<URI> dynamicScope;
     private boolean trackEvaluatedItems;
     private boolean trackEvaluatedProperties;
+    private boolean formatAnnotation;
 
     public EvaluationContext() {
         this(null, "", "", null, new LinkedHashSet<>());
@@ -55,6 +56,7 @@ public class EvaluationContext {
         this.dynamicScope = dynamicScope;
         this.trackEvaluatedItems = parent != null && parent.trackEvaluatedItems;
         this.trackEvaluatedProperties = parent != null && parent.trackEvaluatedProperties;
+        this.formatAnnotation = parent == null || parent.formatAnnotation;
     }
 
     public void pushDynamicScope(URI resourceUri) {
@@ -141,6 +143,14 @@ public class EvaluationContext {
 
     public void setTrackEvaluatedProperties(boolean trackEvaluatedProperties) {
         this.trackEvaluatedProperties = trackEvaluatedProperties;
+    }
+
+    public boolean isFormatAnnotation() {
+        return formatAnnotation;
+    }
+
+    public void setFormatAnnotation(boolean formatAnnotation) {
+        this.formatAnnotation = formatAnnotation;
     }
 
     public void moveToParentContext(String annotationKey) {
