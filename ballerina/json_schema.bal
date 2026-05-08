@@ -74,6 +74,14 @@ public type ArrayConstraintsConfig record {|
 # Annotation used to define validation constraints for JSON array type
 public annotation ArrayConstraintsConfig ArrayConstraints on type;
 
+# Represents a single dependent schema rule
+public type DependentSchemaElement record {|
+    # Name of the dependent field
+    string property;
+    # The schema that the dependent field must match
+    typedesc<json>|json schema;
+|};
+
 # The configuration for JSON object type constraints
 public type ObjectConstraintsConfig record {|
     # The maximum number of properties allowed in the object
@@ -82,6 +90,8 @@ public type ObjectConstraintsConfig record {|
     int:Unsigned32 minProperties?;
     # The schema to validate the names of properties in the object
     (typedesc<json>|json) propertyNames?;
+    # Used to declare dependent schemas not defined in the properties keyword
+    DependentSchemaElement|DependentSchemaElement[] dependentSchemas?;
 |};
 
 # Annotation used to define validation constraints for JSON object type

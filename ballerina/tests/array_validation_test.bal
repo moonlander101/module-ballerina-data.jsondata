@@ -38,15 +38,25 @@ public type Schema21 [(SchemaRestItemString|SchemaRestItemNumber)...];
 
 public type Schema22 [string...];
 
-public type Schema23 json[0]|[int]|[int, boolean, string...];
+@ArrayConstraints {
+    prefixItems: [int, boolean]
+}
+public type Schema23 [(int|boolean|string)...];
 
 @NumberConstraints {
- minimum: 4.0
+    minimum: 4.0
 }
 public type SchemaItem0_24 int;
 
-public type Schema24 json[0]|[SchemaItem0_24, string...];
+@ArrayConstraints {
+    prefixItems: [SchemaItem0_24]
+}
+public type Schema24 [(SchemaItem0_24|string)...];
 
+@ArrayConstraints {
+    prefixItems: [int],
+    minItems: 3
+}
 public type Schema25 [int, string, string, string...];
 
 @ArrayConstraints {
@@ -60,14 +70,26 @@ public const SCHEMA_CONST_MAP = {"foo": "bar"};
 
 public type SchemaConstTuple [SCHEMA_CONST_MAP];
 
-public type Schema28_noRecord json[0]|[int, (string|int)...];
+public type SchemaItem0_28 int|float|decimal;
 
-public type Schema29 json[0]|[int]|[int,string]|[int,string,string]|[int,string,string,string];
+public type SchemaRestItem_28 string|int;
 
 @ArrayConstraints {
- maxItems: 100
+    prefixItems: [SchemaItem0_28]
 }
-public type Schema30 json[0]|[int,string...];
+public type Schema28 [(SchemaItem0_28|SchemaRestItem_28)...];
+
+@ArrayConstraints {
+    prefixItems: [int],
+    maxItems: 4
+}
+public type Schema29 [(int|string)...];
+
+@ArrayConstraints {
+    prefixItems: [int],
+    maxItems: 100
+}
+public type Schema30 [(int|string)...];
 
 @ArrayConstraints {
  uniqueItems: true
@@ -96,18 +118,24 @@ public type SchemaContains44 SchemaContains44Number|boolean|string|[json...]|rec
 
 public type SchemaUnevaluatedItems int|float|decimal;
 
-public type Schema54 json[0]|[string, Schema54...];
+@ArrayConstraints {
+    prefixItems: [string]
+}
+public type Schema54 [(string|Schema54)...];
+
+@ArrayConstraints {
+    prefixItems: [SchemaItem0_59, SchemaItem1_59]
+}
+public type Schema59 [(SchemaItem0_59|SchemaItem1_59|SchemaRestItem_59)...];
 
 public type SchemaItem0_59 string;
 
 @NumberConstraints {
- minimum: 0.0
+    minimum: 0.0
 }
 public type SchemaItem1_59 int;
 
 public type SchemaRestItem_59 boolean;
-
-public type Schema59 json[0]|[SchemaItem0_59]|[SchemaItem0_59, SchemaItem1_59, SchemaRestItem_59...];
 
 @MetaData {
  title: "User Roles List"
@@ -188,88 +216,88 @@ public type MissingArrayKeywordsSchema [json...];
 public type MissingArrayKeywordsContains int;
 
 
- // ============================================================
- // Test Functions
- // ============================================================
+// ============================================================
+// Test Functions
+// ============================================================
 
- function validArraySchemasForValidate() returns [json, typedesc<json>][] {
-     return [
-         [[1, "string", true, null, {"key": "value"}, [1, 2, 3]], Schema19],
-         [["hello", "world", "ballerina"], Schema21],
-         [["apple", "banana", "cherry", "date"], Schema22],
-         [[1, true, "hello", "world", "test"], Schema23],
-         [[5, "hello"], Schema24],
-         [[42, "hello", "world"], Schema25],
-         [[1, "a", "b", "c", "d", "e", "f", "g", "h", "i"], Schema26],
-         [[42, "hello", "world"], Schema29],
-          [[100, "a", "b", "c"], Schema30],
-          [["apple", "banana", "cherry", "date"], Schema31],
-          [["apple", "banana", "cherry"], Schema32],
-          [[{"foo": "bar"}], SchemaConstTuple],
-           [[2, 4, 6, 8, 10], Schema44],
-           [["outer", ["inner1"]], Schema54],
-           [["alice", 30, true, false, true], Schema59],
-          [["admin", "user"], Schema61],
-          [["s", 2, 3], Schema62],
-          [[5], SchemaContainsConst],
-          [[1, 5, "x"], SchemaContainsConst],
-          [[1, 1], SchemaPrefixAliasOnly],
-          [["tag", true], SchemaPrefixRemaining],
-          [[[{"foo": null}, {"foo": null}], [{"foo": null}, {"foo": null}], [{"foo": null}, {"foo": null}]], SchemaNestedPrefix],
-          // missing array keywords tests (minContains/maxContains/unevaluatedItems)
-          [[5, 6], MissingArrayKeywordsSchema],
-          [[5, 7, true, false], MissingArrayKeywordsSchema],
-          [[5, 6, 8, false], MissingArrayKeywordsSchema]
-      ];
+function validArraySchemasForValidate() returns [json, typedesc<json>][] {
+    return [
+        [[1, "string", true, null, {"key": "value"}, [1, 2, 3]], Schema19],
+        [["hello", "world", "ballerina"], Schema21],
+        [["apple", "banana", "cherry", "date"], Schema22],
+        [[1, true, "hello", "world", "test"], Schema23],
+        [[5, "hello"], Schema24],
+        [[42, "hello", "world"], Schema25],
+        [[1, "a", "b", "c", "d", "e", "f", "g", "h", "i"], Schema26],
+        [[42, "hello", "world"], Schema29],
+        [[100, "a", "b", "c"], Schema30],
+        [["apple", "banana", "cherry", "date"], Schema31],
+        [["apple", "banana", "cherry"], Schema32],
+        [[{"foo": "bar"}], SchemaConstTuple],
+        [[2, 4, 6, 8, 10], Schema44],
+        [["outer", ["inner1"]], Schema54],
+        [["alice", 30, true, false, true], Schema59],
+        [["admin", "user"], Schema61],
+        [["s", 2, 3], Schema62],
+        [[5], SchemaContainsConst],
+        [[1, 5, "x"], SchemaContainsConst],
+        [[1, 1], SchemaPrefixAliasOnly],
+        [["tag", true], SchemaPrefixRemaining],
+        [[[{"foo": null}, {"foo": null}], [{"foo": null}, {"foo": null}], [{"foo": null}, {"foo": null}]], SchemaNestedPrefix],
+        // missing array keywords tests (minContains/maxContains/unevaluatedItems)
+        [[5, 6], MissingArrayKeywordsSchema],
+        [[5, 7, true, false], MissingArrayKeywordsSchema],
+        [[5, 6, 8, false], MissingArrayKeywordsSchema]
+    ];
 }
 
- @test:Config {
-     groups: ["array-validation"],
-     dataProvider: validArraySchemasForValidate
- }
- function testValidArraySchemasForValidate(json sourceData, typedesc<json> expType) returns error? {
-     check validate(sourceData, expType);
- }
+@test:Config {
+    groups: ["array-validation"],
+    dataProvider: validArraySchemasForValidate
+}
+function testValidArraySchemasForValidate(json sourceData, typedesc<json> expType) returns error? {
+    check validate(sourceData, expType);
+}
 
- @test:Config {
-     groups: ["array-validation"],
-     dataProvider: invalidArraySchemasForValidate
- }
- function testInvalidArraySchemasForValidate(json sourceData, typedesc<json> expType) {
-     Error? err = validate(sourceData, expType);
-     test:assertTrue(err is Error, msg = "Expected validation to fail but it succeeded");
- }
+@test:Config {
+    groups: ["array-validation"],
+    dataProvider: invalidArraySchemasForValidate
+}
+function testInvalidArraySchemasForValidate(json sourceData, typedesc<json> expType) {
+    Error? err = validate(sourceData, expType);
+    test:assertTrue(err is Error, msg = "Expected validation to fail but it succeeded");
+}
 
- function invalidArraySchemasForValidate() returns [json, typedesc<json>][] {
-     return [
-         ["not an array", Schema19],
-         [["hi", "test", "valid"], Schema21],
-         [["string", 123, "another"], Schema22],
-         [[1, "not boolean", "string"], Schema23],
-         [[3, "hello"], Schema24],
-         [[42, "hello"], Schema25],
-         [[1, "a", "b", "c", "d", "e", "f", "g", "h"], Schema26],
-         [[], Schema27],
-         [[42, "a", "b", "c", "d"], Schema29],
-          [[42, 123], Schema30],
-          [["apple", "banana", "apple"], Schema31],
-          [["apple", 3, "banana"], Schema32],
-           [[{"foo": "baz"}], SchemaConstTuple],
-           [[{"foo": "bar"}, {"foo": "bar"}], SchemaConstTuple],
-           [["wrong type"], Schema44],
-            [[123, ["array"]], Schema54],
-            [["alice", -5], Schema59],
-           [["admin"], Schema61],
-           [[1, 2, 3], Schema62],
-           [[], SchemaContainsConst],
-           [[6], SchemaContainsConst],
-           [[1, 1, 1], SchemaPrefixAliasOnly],
-           [["tag", "extra"], SchemaPrefixRemaining],
-           [[[{"foo": null}, {"foo": null}, {"foo": null}], [{"foo": null}, {"foo": null}], [{"foo": null}, {"foo": null}]], SchemaNestedPrefix],
-           // missing array keywords tests (minContains/maxContains/unevaluatedItems)
-           [[5], MissingArrayKeywordsSchema],
-           [[5, 6, 7, 8], MissingArrayKeywordsSchema],
-           [[4, 6], MissingArrayKeywordsSchema],
-          [[true, false], MissingArrayKeywordsSchema]
-      ];
+function invalidArraySchemasForValidate() returns [json, typedesc<json>][] {
+    return [
+        ["not an array", Schema19],
+        [["hi", "test", "valid"], Schema21],
+        [["string", 123, "another"], Schema22],
+        [[1, "not boolean", "string"], Schema23],
+        [[3, "hello"], Schema24],
+        [[42, "hello"], Schema25],
+        [[1, "a", "b", "c", "d", "e", "f", "g", "h"], Schema26],
+        [[], Schema27],
+        [[42, "a", "b", "c", "d"], Schema29],
+        [[42, 123], Schema30],
+        [["apple", "banana", "apple"], Schema31],
+        [["apple", 3, "banana"], Schema32],
+        [[{"foo": "baz"}], SchemaConstTuple],
+        [[{"foo": "bar"}, {"foo": "bar"}], SchemaConstTuple],
+        [["wrong type"], Schema44],
+        [[123, ["array"]], Schema54],
+        [["alice", -5], Schema59],
+        [["admin"], Schema61],
+        [[1, 2, 3], Schema62],
+        [[], SchemaContainsConst],
+        [[6], SchemaContainsConst],
+        [[1, 1, 1], SchemaPrefixAliasOnly],
+        [["tag", "extra"], SchemaPrefixRemaining],
+        [[[{"foo": null}, {"foo": null}, {"foo": null}], [{"foo": null}, {"foo": null}], [{"foo": null}, {"foo": null}]], SchemaNestedPrefix],
+        // missing array keywords tests (minContains/maxContains/unevaluatedItems)
+        [[5], MissingArrayKeywordsSchema],
+        [[5, 6, 7, 8], MissingArrayKeywordsSchema],
+        [[4, 6], MissingArrayKeywordsSchema],
+        [[true, false], MissingArrayKeywordsSchema]
+    ];
 }
