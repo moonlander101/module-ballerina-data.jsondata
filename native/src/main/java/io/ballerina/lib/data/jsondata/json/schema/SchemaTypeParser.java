@@ -923,7 +923,15 @@ public class SchemaTypeParser {
                     return schema;
                 }
             }
-            keywords.put(DependentSchemasKeyword.keywordName, new DependentSchemasKeyword(dependentSchemasMap));
+
+            Map<String, Object> mergedDependentSchemas = new LinkedHashMap<>();
+            Keyword existingDepSchemas = keywords.get(DependentSchemasKeyword.keywordName);
+            if (existingDepSchemas instanceof DependentSchemasKeyword existing) {
+                mergedDependentSchemas.putAll((Map<String, Object>) existing.getKeywordValue());
+            }
+            mergedDependentSchemas.putAll(dependentSchemasMap);
+            keywords.put(DependentSchemasKeyword.keywordName,
+                    new DependentSchemasKeyword(mergedDependentSchemas));
         }
         return null;
     }
@@ -1145,6 +1153,58 @@ public class SchemaTypeParser {
         SchemaParserUtils.extractLong(annotation, "maxProperties").ifPresent(value ->
                 keywords.put(MaxPropertiesKeyword.keywordName, new MaxPropertiesKeyword(value))
         );
+
+        BString dependentSchemasKey = StringUtils.fromString("dependentSchemas");
+        if (keys.contains(dependentSchemasKey)) {
+            Object dependentSchemasValue = annotation.get(dependentSchemasKey);
+            List<BMap<BString, Object>> elements = new ArrayList<>();
+
+            if (dependentSchemasValue instanceof BMap<?, ?> elementMap) {
+                elements.add((BMap<BString, Object>) elementMap);
+            } else if (dependentSchemasValue instanceof BArray elementsArray) {
+                for (long i = 0; i < elementsArray.size(); i++) {
+                    Object element = elementsArray.get(i);
+                    if (element instanceof BMap<?, ?> elementMap) {
+                        elements.add((BMap<BString, Object>) elementMap);
+                    }
+                }
+            }
+
+            Map<String, Object> dependentSchemasMap = new LinkedHashMap<>();
+            BString propertyKey = StringUtils.fromString("property");
+            BString schemaKey = StringUtils.fromString("schema");
+
+            for (BMap<BString, Object> element : elements) {
+                Object propertyObj = element.get(propertyKey);
+                if (!(propertyObj instanceof BString propertyName)) {
+                    return DiagnosticLog.createJsonError(
+                            "dependentSchemas element missing 'property' field");
+                }
+
+                Object schemaValue = element.get(schemaKey);
+                Object parsedSchema;
+                if (schemaValue instanceof BTypedesc typeDesc) {
+                    parsedSchema = parse(typeDesc.getDescribingType());
+                } else {
+                    LinkedHashMap<String, Keyword> constKeywords = new LinkedHashMap<>();
+                    constKeywords.put(ConstKeyword.keywordName, new ConstKeyword(schemaValue));
+                    parsedSchema = new Schema(constKeywords);
+                }
+
+                if (parsedSchema instanceof BError) {
+                    return parsedSchema;
+                }
+                if (parsedSchema instanceof Schema || parsedSchema instanceof Boolean) {
+                    dependentSchemasMap.put(propertyName.getValue(), parsedSchema);
+                }
+            }
+
+            if (!dependentSchemasMap.isEmpty()) {
+                keywords.put(DependentSchemasKeyword.keywordName,
+                        new DependentSchemasKeyword(dependentSchemasMap));
+            }
+        }
+
         return null;
     }
 
