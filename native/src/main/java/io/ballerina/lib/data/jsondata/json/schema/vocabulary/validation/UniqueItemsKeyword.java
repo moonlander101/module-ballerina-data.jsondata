@@ -6,7 +6,7 @@ import io.ballerina.lib.data.jsondata.utils.JsonEqualityUtils;
 import io.ballerina.runtime.api.values.BArray;
 
 public class UniqueItemsKeyword extends Keyword {
-    public static final String keywordName = "uniqueItems";
+    public static final String KEYWORD_NAME = "uniqueItems";
     private final Boolean keywordValue;
 
     @Override
@@ -21,7 +21,11 @@ public class UniqueItemsKeyword extends Keyword {
         for (int i = 0; i < size; i++) {
             for (int j = i + 1; j < size; j++) {
                 if (JsonEqualityUtils.deepEquals(array.get(i), array.get(j))) {
-                    context.addError("uniqueItems", "At " + context.getInstanceLocation() + ": [uniqueItems] array contains duplicate items at indices " + i + " and " + j);
+                    context.addError(
+                            "uniqueItems",
+                            "At " + context.getInstanceLocation()
+                                    + ": [uniqueItems] array contains duplicate items at indices " + i
+                                    + " and " + j);
                     return false;
                 }
             }

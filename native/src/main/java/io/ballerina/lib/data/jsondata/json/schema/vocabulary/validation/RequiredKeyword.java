@@ -9,7 +9,7 @@ import io.ballerina.runtime.api.values.BString;
 import java.util.ArrayList;
 
 public class RequiredKeyword extends Keyword {
-    public static final String keywordName = "required";
+    public static final String KEYWORD_NAME = "required";
     public final ArrayList<BString> keywordValue;
 
     public RequiredKeyword(ArrayList<String> keywordValue) {

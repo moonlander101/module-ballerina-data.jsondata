@@ -26,7 +26,7 @@ import java.net.URI;
 
 public class RefKeyword extends Keyword {
 
-    public static final String keywordName = "$ref";
+    public static final String KEYWORD_NAME = "$ref";
 
     private final URI refUri;
 
@@ -43,7 +43,7 @@ public class RefKeyword extends Keyword {
     public boolean evaluate(Object instance, EvaluationContext context) {
         SchemaRegistry registry = context.getSchemaRegistry();
         if (registry == null) {
-            context.addError(keywordName,
+            context.addError(KEYWORD_NAME,
                     "At " + context.getInstanceLocation()
                             + ": schema registry is required for $ref resolution");
             return false;
@@ -51,7 +51,7 @@ public class RefKeyword extends Keyword {
 
         Object target = registry.resolveReference(refUri);
         if (target == null) {
-            context.addError(keywordName,
+            context.addError(KEYWORD_NAME,
                     "At " + context.getInstanceLocation()
                             + ": unresolved $ref '" + refUri + "'");
             return false;
@@ -59,7 +59,7 @@ public class RefKeyword extends Keyword {
 
         context.pushDynamicScope(refUri);
 
-        EvaluationContext refContext = context.createChildContext("", keywordName);
+        EvaluationContext refContext = context.createChildContext("", KEYWORD_NAME);
         boolean isValid = Validator.validate(instance, target, refContext);
         if (isValid) {
             if (context.isTrackEvaluatedProperties()) {

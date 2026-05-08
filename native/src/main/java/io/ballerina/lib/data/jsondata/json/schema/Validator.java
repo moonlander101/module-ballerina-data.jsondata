@@ -28,7 +28,9 @@ public class Validator {
     public static boolean validate(Object instance, Object schema, EvaluationContext context, boolean failFast) {
         if (schema instanceof Boolean boolSchema) {
             if (!boolSchema) {
-                context.addError("schema", "At " + context.getInstanceLocation() + ": value is not allowed (false schema)");
+                context.addError(
+                        "schema",
+                        "At " + context.getInstanceLocation() + ": value is not allowed (false schema)");
             }
             return boolSchema;
         }

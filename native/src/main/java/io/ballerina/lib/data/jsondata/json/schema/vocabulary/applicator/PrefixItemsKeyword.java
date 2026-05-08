@@ -24,7 +24,7 @@ import io.ballerina.runtime.api.values.BArray;
 import java.util.List;
 
 public class PrefixItemsKeyword extends Keyword {
-    public static final String keywordName = "prefixItems";
+    public static final String KEYWORD_NAME = "prefixItems";
     private final List<Object> keywordValue;
 
     public PrefixItemsKeyword(List<Object> keywordValue) {

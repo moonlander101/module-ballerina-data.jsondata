@@ -21,10 +21,9 @@ import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
-import java.util.ArrayList;
 
 public class ThenKeyword extends Keyword {
-    public static final String keywordName = "then";
+    public static final String KEYWORD_NAME = "then";
     private final Object keywordValue;
 
     public ThenKeyword(Object keywordValue) {
@@ -48,7 +47,9 @@ public class ThenKeyword extends Keyword {
                     }
                     if (context.isTrackEvaluatedProperties()) {
                         SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(thenContext);
-                        context.setAnnotation("thenEvaluatedProperties", thenContext.getAnnotation("evaluatedProperties"));
+                        context.setAnnotation(
+                                "thenEvaluatedProperties",
+                                thenContext.getAnnotation("evaluatedProperties"));
                     }
                 }
                 return thenValid;

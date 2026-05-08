@@ -5,7 +5,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BString;
 
 public class MinLengthKeyword extends Keyword {
-    public static final String keywordName = "minLength";
+    public static final String KEYWORD_NAME = "minLength";
     private final Long keywordValue;
 
     @Override
@@ -15,7 +15,10 @@ public class MinLengthKeyword extends Keyword {
         }
         boolean valid = str.length() >= keywordValue;
         if (!valid) {
-            context.addError("minLength", "At " + context.getInstanceLocation() + ": [minLength] string length " + str.length() + " is less than minimum " + keywordValue);
+            context.addError(
+                    "minLength",
+                    "At " + context.getInstanceLocation() + ": [minLength] string length " + str.length()
+                            + " is less than minimum " + keywordValue);
         }
         return valid;
     }

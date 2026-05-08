@@ -24,7 +24,7 @@ import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 import java.util.List;
 
 public class AnyOfKeyword extends Keyword {
-    public static final String keywordName = "anyOf";
+    public static final String KEYWORD_NAME = "anyOf";
     private final List<Object> keywordValue;
 
     public AnyOfKeyword(List<Object> keywordValue) {
@@ -52,7 +52,9 @@ public class AnyOfKeyword extends Keyword {
                 }
             }
         }
-        context.addError("anyOf", "At " + context.getInstanceLocation() + ": [anyOf] value does not match any of the subschemas");
+        context.addError(
+                "anyOf",
+                "At " + context.getInstanceLocation() + ": [anyOf] value does not match any of the subschemas");
         return isValid;
     }
 

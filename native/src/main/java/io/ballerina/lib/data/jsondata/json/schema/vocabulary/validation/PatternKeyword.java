@@ -4,12 +4,11 @@ import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BRegexpValue;
 import io.ballerina.runtime.api.values.BString;
-
 import org.ballerinalang.langlib.regexp.Find;
 import org.ballerinalang.langlib.regexp.FromString;
 
 public class PatternKeyword extends Keyword {
-    public static final String keywordName = "pattern";
+    public static final String KEYWORD_NAME = "pattern";
     private final BRegexpValue keywordValue;
 
     @Override
@@ -19,7 +18,10 @@ public class PatternKeyword extends Keyword {
         }
         boolean valid = Find.find(keywordValue, str, 0) != null;
         if (!valid) {
-            context.addError("pattern", "At " + context.getInstanceLocation() + ": [pattern] value does not match pattern " + keywordValue);
+            context.addError(
+                    "pattern",
+                    "At " + context.getInstanceLocation() + ": [pattern] value does not match pattern "
+                            + keywordValue);
         }
         return valid;
     }

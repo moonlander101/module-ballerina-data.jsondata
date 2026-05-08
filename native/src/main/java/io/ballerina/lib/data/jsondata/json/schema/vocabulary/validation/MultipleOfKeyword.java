@@ -7,7 +7,7 @@ import io.ballerina.runtime.api.values.BDecimal;
 import java.math.BigDecimal;
 
 public class MultipleOfKeyword extends Keyword {
-    public static final String keywordName = "multipleOf";
+    public static final String KEYWORD_NAME = "multipleOf";
     private final Double keywordValue;
 
     public MultipleOfKeyword(Double keywordValue) {

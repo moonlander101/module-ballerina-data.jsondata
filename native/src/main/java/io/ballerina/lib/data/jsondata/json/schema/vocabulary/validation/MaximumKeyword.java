@@ -7,7 +7,7 @@ import io.ballerina.runtime.api.values.BDecimal;
 import java.math.BigDecimal;
 
 public class MaximumKeyword extends Keyword {
-    public static final String keywordName = "maximum";
+    public static final String KEYWORD_NAME = "maximum";
     private final Double keywordValue;
 
     @Override
@@ -22,7 +22,10 @@ public class MaximumKeyword extends Keyword {
         }
 
         if (!valid) {
-            context.addError("maximum", "At " + context.getInstanceLocation() + ": [maximum] value " + instance + " exceeds maximum " + keywordValue);
+            context.addError(
+                    "maximum",
+                    "At " + context.getInstanceLocation() + ": [maximum] value " + instance
+                            + " exceeds maximum " + keywordValue);
         }
         return valid;
     }

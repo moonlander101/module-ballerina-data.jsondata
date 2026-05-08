@@ -22,7 +22,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BArray;
 
 public class ItemsKeyword extends Keyword {
-    public static final String keywordName = "items";
+    public static final String KEYWORD_NAME = "items";
     private final Object keywordValue;
 
     public ItemsKeyword(Object keywordValue) {

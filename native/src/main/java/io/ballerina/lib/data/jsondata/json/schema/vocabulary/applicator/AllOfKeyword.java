@@ -24,7 +24,7 @@ import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 import java.util.List;
 
 public class AllOfKeyword extends Keyword {
-    public static final String keywordName = "allOf";
+    public static final String KEYWORD_NAME = "allOf";
     private final List<Object> keywordValue;
 
     public AllOfKeyword(List<Object> keywordValue) {

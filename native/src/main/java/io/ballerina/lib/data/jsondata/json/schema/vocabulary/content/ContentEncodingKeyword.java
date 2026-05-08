@@ -20,7 +20,7 @@ import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 public class ContentEncodingKeyword extends Keyword {
-    public static final String keywordName = "contentEncoding";
+    public static final String KEYWORD_NAME = "contentEncoding";
     private final String keywordValue;
 
     public ContentEncodingKeyword(String keywordValue) {
@@ -29,10 +29,9 @@ public class ContentEncodingKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        if (context.getAnnotation(keywordName) != null) {
-            System.out.println("[contentEncoding] annotation already exists in context");
+        if (context.getAnnotation(KEYWORD_NAME) != null) {
         }
-        context.setAnnotation(keywordName, keywordValue);
+        context.setAnnotation(KEYWORD_NAME, keywordValue);
         return true;
     }
 

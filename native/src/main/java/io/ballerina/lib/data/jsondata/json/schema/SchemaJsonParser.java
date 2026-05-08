@@ -21,16 +21,19 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.Addition
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AllOfKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AnyOfKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.DependentSchemasKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ElseKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.IfKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ThenKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ElseKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.NotKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.OneOfKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PatternPropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ThenKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentEncodingKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentMediaTypeKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentSchemaKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.AnchorKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DefsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicAnchorKeyword;
@@ -52,6 +55,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.Dependen
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.EnumKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ExclusiveMaximumKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ExclusiveMinimumKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.FormatKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MaxItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MaxLengthKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MaxPropertiesKeyword;
@@ -64,15 +68,15 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.Multiple
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.PatternKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.RequiredKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.TypeKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.FormatKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.UniqueItemsKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentEncodingKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentMediaTypeKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentSchemaKeyword;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 import io.ballerina.runtime.api.utils.StringUtils;
-import io.ballerina.runtime.api.values.*;
+import io.ballerina.runtime.api.values.BArray;
+import io.ballerina.runtime.api.values.BError;
+import io.ballerina.runtime.api.values.BMap;
+import io.ballerina.runtime.api.values.BRegexpValue;
+import io.ballerina.runtime.api.values.BString;
 import org.ballerinalang.langlib.regexp.FromString;
 
 import java.net.URI;
@@ -83,7 +87,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
-
 
 public class SchemaJsonParser {
     private final SchemaRegistry registry;
@@ -106,7 +109,8 @@ public class SchemaJsonParser {
         } else if (json instanceof Boolean) {
             return json;
         } else {
-            return DiagnosticLog.createJsonError("Invalid JSON Schema: expected object or boolean, got " + json.getClass().getSimpleName());
+            return DiagnosticLog.createJsonError(
+                    "Invalid JSON Schema: expected object or boolean, got " + json.getClass().getSimpleName());
         }
     }
 
@@ -120,7 +124,7 @@ public class SchemaJsonParser {
         Long minContains = SchemaParserUtils.extractInteger(json, "minContains");
         Long maxContains = SchemaParserUtils.extractInteger(json, "maxContains");
 
-        BString idKey = StringUtils.fromString(IdKeyword.keywordName);
+        BString idKey = StringUtils.fromString(IdKeyword.KEYWORD_NAME);
         if (json.containsKey(idKey)) {
             Object idValue = json.get(idKey);
             if (!(idValue instanceof BString)) {
@@ -138,10 +142,10 @@ public class SchemaJsonParser {
 
             lexicalScopeStack.push(resolvedId);
             scopePushed = true;
-            keywords.put(IdKeyword.keywordName, new IdKeyword(resolvedIdUri));
+            keywords.put(IdKeyword.KEYWORD_NAME, new IdKeyword(resolvedIdUri));
         }
 
-        BString anchorKey = StringUtils.fromString(AnchorKeyword.keywordName);
+        BString anchorKey = StringUtils.fromString(AnchorKeyword.KEYWORD_NAME);
         if (json.containsKey(anchorKey)) {
             Object anchorValue = json.get(anchorKey);
             if (!(anchorValue instanceof BString)) {
@@ -149,12 +153,13 @@ public class SchemaJsonParser {
             }
             anchorName = ((BString) anchorValue).getValue();
                 if (!SchemaParserUtils.isValidAnchorName(anchorName)) {
-                    return DiagnosticLog.createJsonError("Invalid $anchor value: must match pattern " + SchemaParserUtils.VALID_ANCHOR_REGEX);
+                    return DiagnosticLog.createJsonError(
+                        "Invalid $anchor value: must match pattern " + SchemaParserUtils.VALID_ANCHOR_REGEX);
             }
-            keywords.put(AnchorKeyword.keywordName, new AnchorKeyword(anchorValue));
+            keywords.put(AnchorKeyword.KEYWORD_NAME, new AnchorKeyword(anchorValue));
         }
 
-        BString dynamicAnchorKey = StringUtils.fromString(DynamicAnchorKeyword.keywordName);
+        BString dynamicAnchorKey = StringUtils.fromString(DynamicAnchorKeyword.KEYWORD_NAME);
         if (json.containsKey(dynamicAnchorKey)) {
             Object dynamicAnchorValue = json.get(dynamicAnchorKey);
             if (!(dynamicAnchorValue instanceof BString)) {
@@ -165,7 +170,7 @@ public class SchemaJsonParser {
                     return DiagnosticLog.createJsonError(
                             "Invalid $dynamicAnchor value: must match pattern " + SchemaParserUtils.VALID_ANCHOR_REGEX);
             }
-            keywords.put(DynamicAnchorKeyword.keywordName, new DynamicAnchorKeyword(dynamicAnchorName));
+            keywords.put(DynamicAnchorKeyword.KEYWORD_NAME, new DynamicAnchorKeyword(dynamicAnchorName));
         }
 
         try {
@@ -243,11 +248,164 @@ public class SchemaJsonParser {
     private Object extractKeyword(String key, Object value,
                                   LinkedHashMap<String, Keyword> keywords,
                                   Long minContains, Long maxContains) {
+        Object result = extractApplicatorKeyword(key, value, keywords, minContains, maxContains);
+        if (result instanceof BError) {
+            return result;
+        }
+
+        result = extractValidationKeyword(key, value, keywords);
+        if (result instanceof BError) {
+            return result;
+        }
+
+        result = extractCoreKeyword(key, value, keywords);
+        if (result instanceof BError) {
+            return result;
+        }
+
+        result = extractUnevaluatedKeyword(key, value, keywords);
+        if (result instanceof BError) {
+            return result;
+        }
+
+        result = extractMetadataKeyword(key, value, keywords);
+        if (result instanceof BError) {
+            return result;
+        }
+
+        result = extractContentKeyword(key, value, keywords);
+        if (result instanceof BError) {
+            return result;
+        }
+
+        return null;
+    }
+
+    private Object extractApplicatorKeyword(String key, Object value, LinkedHashMap<String, Keyword> keywords,
+                                            Long minContains, Long maxContains) {
         switch (key) {
-            case TypeKeyword.keywordName -> {
+            case PropertiesKeyword.KEYWORD_NAME -> {
+                if (!(value instanceof BMap<?, ?>)) {
+                    return DiagnosticLog.createJsonError("Invalid value for 'properties' keyword");
+                }
+                Object parsed = parseSchemaMap((BMap<BString, Object>) value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(PropertiesKeyword.KEYWORD_NAME, new PropertiesKeyword((Map<String, Object>) parsed));
+                return null;
+            }
+            case PatternPropertiesKeyword.KEYWORD_NAME -> {
+                if (!(value instanceof BMap<?, ?>)) {
+                    return DiagnosticLog.createJsonError("Invalid value for 'patternProperties' keyword");
+                }
+                Object parsed = parseSchemaMap((BMap<BString, Object>) value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(PatternPropertiesKeyword.KEYWORD_NAME,
+                        new PatternPropertiesKeyword((Map<String, Object>) parsed));
+                return null;
+            }
+            case AdditionalPropertiesKeyword.KEYWORD_NAME -> {
+                if (value instanceof Boolean) {
+                    keywords.put(AdditionalPropertiesKeyword.KEYWORD_NAME,
+                            new AdditionalPropertiesKeyword(value));
+                    return null;
+                }
+                if (value instanceof BMap<?, ?>) {
+                    Object parsed = parse(value);
+                    if (parsed instanceof BError) {
+                        return parsed;
+                    }
+                    keywords.put(AdditionalPropertiesKeyword.KEYWORD_NAME,
+                            new AdditionalPropertiesKeyword(parsed));
+                    return null;
+                }
+                return DiagnosticLog.createJsonError("Invalid value for 'additionalProperties' keyword");
+            }
+            case PropertyNamesKeyword.KEYWORD_NAME -> {
+                Object parsed = parse(value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(PropertyNamesKeyword.KEYWORD_NAME, new PropertyNamesKeyword(parsed));
+                return null;
+            }
+            case ItemsKeyword.KEYWORD_NAME -> {
+                Object parsed = parse(value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(ItemsKeyword.KEYWORD_NAME, new ItemsKeyword(parsed));
+                return null;
+            }
+            case PrefixItemsKeyword.KEYWORD_NAME -> {
+                if (!(value instanceof BArray)) {
+                    return DiagnosticLog.createJsonError("Invalid value for 'prefixItems' keyword");
+                }
+                Object parsed = parseSchemaArray((BArray) value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(PrefixItemsKeyword.KEYWORD_NAME, new PrefixItemsKeyword((List<Object>) parsed));
+                return null;
+            }
+            case ContainsKeyword.KEYWORD_NAME -> {
+                Object parsed = parse(value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(ContainsKeyword.KEYWORD_NAME, new ContainsKeyword(minContains, maxContains, parsed));
+                return null;
+            }
+            case AllOfKeyword.KEYWORD_NAME -> {
+                return handleSchemaArrayKeyword(value, keywords, AllOfKeyword.KEYWORD_NAME, "allOf");
+            }
+            case AnyOfKeyword.KEYWORD_NAME -> {
+                return handleSchemaArrayKeyword(value, keywords, AnyOfKeyword.KEYWORD_NAME, "anyOf");
+            }
+            case OneOfKeyword.KEYWORD_NAME -> {
+                return handleSchemaArrayKeyword(value, keywords, OneOfKeyword.KEYWORD_NAME, "oneOf");
+            }
+            case NotKeyword.KEYWORD_NAME -> {
+                return handleSingleSchemaKeyword(value, keywords, NotKeyword.KEYWORD_NAME);
+            }
+            case IfKeyword.KEYWORD_NAME -> {
+                return handleSingleSchemaKeyword(value, keywords, IfKeyword.KEYWORD_NAME);
+            }
+            case ThenKeyword.KEYWORD_NAME -> {
+                return handleSingleSchemaKeyword(value, keywords, ThenKeyword.KEYWORD_NAME);
+            }
+            case ElseKeyword.KEYWORD_NAME -> {
+                return handleSingleSchemaKeyword(value, keywords, ElseKeyword.KEYWORD_NAME);
+            }
+            case DependentSchemasKeyword.KEYWORD_NAME -> {
+                if (!(value instanceof BMap<?, ?>)) {
+                    return DiagnosticLog.createJsonError("Invalid value for 'dependentSchemas' keyword");
+                }
+                Object parsed = parseSchemaMap((BMap<BString, Object>) value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                keywords.put(DependentSchemasKeyword.KEYWORD_NAME,
+                        new DependentSchemasKeyword((Map<String, Object>) parsed));
+                return null;
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
+    private Object extractValidationKeyword(String key, Object value, LinkedHashMap<String, Keyword> keywords) {
+        switch (key) {
+            case TypeKeyword.KEYWORD_NAME -> {
                 if (value instanceof BString typeName) {
-                    keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeName.getValue()));
-                } else if (value instanceof BArray typeArray) {
+                    keywords.put(TypeKeyword.KEYWORD_NAME, new TypeKeyword(typeName.getValue()));
+                    return null;
+                }
+                if (value instanceof BArray typeArray) {
                     Set<String> typeNames = new HashSet<>();
                     for (long i = 0; i < typeArray.size(); i++) {
                         Object el = typeArray.get(i);
@@ -258,161 +416,17 @@ public class SchemaJsonParser {
                         }
                     }
                     if (!typeNames.isEmpty()) {
-                        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
+                        keywords.put(TypeKeyword.KEYWORD_NAME, new TypeKeyword(typeNames));
                     }
-                } else {
-                    return DiagnosticLog.createJsonError("Invalid value for 'type' keyword");
+                    return null;
                 }
+                return DiagnosticLog.createJsonError("Invalid value for 'type' keyword");
             }
-
-            case PropertiesKeyword.keywordName -> {
-                if (!(value instanceof BMap<?, ?>)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'properties' keyword");
-                }
-                Object parsed = parseSchemaMap((BMap<BString, Object>) value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(PropertiesKeyword.keywordName,
-                        new PropertiesKeyword((Map<String, Object>) parsed));
-            }
-
-            case PatternPropertiesKeyword.keywordName -> {
-                if (!(value instanceof BMap<?, ?>)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'patternProperties' keyword");
-                }
-                Object parsed = parseSchemaMap((BMap<BString, Object>) value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(PatternPropertiesKeyword.keywordName,
-                        new PatternPropertiesKeyword((Map<String, Object>) parsed));
-            }
-
-            case AdditionalPropertiesKeyword.keywordName -> {
-                if (value instanceof Boolean) {
-                    keywords.put(AdditionalPropertiesKeyword.keywordName,
-                            new AdditionalPropertiesKeyword(value));
-                } else if (value instanceof BMap<?, ?>) {
-                    Object parsed = parse(value);
-                    if (parsed instanceof BError) {
-                        return parsed;
-                    }
-                    keywords.put(AdditionalPropertiesKeyword.keywordName,
-                            new AdditionalPropertiesKeyword(parsed));
-                } else {
-                    return DiagnosticLog.createJsonError("Invalid value for 'additionalProperties' keyword");
-                }
-            }
-
-            case PropertyNamesKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(PropertyNamesKeyword.keywordName, new PropertyNamesKeyword(parsed));
-            }
-
-            case ItemsKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(parsed));
-            }
-
-            case PrefixItemsKeyword.keywordName -> {
-                if (!(value instanceof BArray)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'prefixItems' keyword");
-                }
-                Object parsed = parseSchemaArray((BArray) value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(PrefixItemsKeyword.keywordName,
-                        new PrefixItemsKeyword((List<Object>) parsed));
-            }
-
-            case ContainsKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(ContainsKeyword.keywordName,
-                        new ContainsKeyword(minContains, maxContains, parsed));
-            }
-
-            case AllOfKeyword.keywordName -> {
-                if (!(value instanceof BArray)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'allOf' keyword");
-                }
-                Object parsed = parseSchemaArray((BArray) value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(AllOfKeyword.keywordName, new AllOfKeyword((List<Object>) parsed));
-            }
-
-            case AnyOfKeyword.keywordName -> {
-                if (!(value instanceof BArray)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'anyOf' keyword");
-                }
-                Object parsed = parseSchemaArray((BArray) value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(AnyOfKeyword.keywordName, new AnyOfKeyword((List<Object>) parsed));
-            }
-
-            case OneOfKeyword.keywordName -> {
-                if (!(value instanceof BArray)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'oneOf' keyword");
-                }
-                Object parsed = parseSchemaArray((BArray) value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(OneOfKeyword.keywordName, new OneOfKeyword((List<Object>) parsed));
-            }
-
-            case NotKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(NotKeyword.keywordName, new NotKeyword(parsed));
-            }
-
-            case IfKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(IfKeyword.keywordName, new IfKeyword(parsed));
-            }
-
-            case ThenKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(ThenKeyword.keywordName, new ThenKeyword(parsed));
-            }
-
-            case ElseKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(ElseKeyword.keywordName, new ElseKeyword(parsed));
-            }
-
-            case RequiredKeyword.keywordName -> {
-                if (!(value instanceof BArray)) {
+            case RequiredKeyword.KEYWORD_NAME -> {
+                if (!(value instanceof BArray arr)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'required' keyword");
                 }
                 ArrayList<String> required = new ArrayList<>();
-                BArray arr = (BArray) value;
                 for (long i = 0; i < arr.size(); i++) {
                     Object el = arr.get(i);
                     if (el instanceof BString s) {
@@ -421,207 +435,79 @@ public class SchemaJsonParser {
                         return DiagnosticLog.createJsonError("Invalid value for 'required' keyword");
                     }
                 }
-                keywords.put(RequiredKeyword.keywordName, new RequiredKeyword(required));
+                keywords.put(RequiredKeyword.KEYWORD_NAME, new RequiredKeyword(required));
+                return null;
             }
-
-            case DependentRequiredKeyword.keywordName -> {
-                if (!(value instanceof BMap<?, ?>)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'dependentRequired' keyword");
+            case DependentRequiredKeyword.KEYWORD_NAME -> {
+                Object depRequired = extractDependentRequired(value);
+                if (depRequired instanceof BError) {
+                    return depRequired;
                 }
-                BMap<BString, Object> depMap = (BMap<BString, Object>) value;
-                Map<String, List<String>> depRequired = new LinkedHashMap<>();
-                for (BString depKey : depMap.getKeys()) {
-                    Object depVal = depMap.get(depKey);
-                    List<String> fields = new ArrayList<>();
-                    if (depVal instanceof BString s) {
-                        fields.add(s.getValue());
-                    } else if (depVal instanceof BArray arr) {
-                        for (long i = 0; i < arr.size(); i++) {
-                            Object el = arr.get(i);
-                            if (el instanceof BString s) {
-                                fields.add(s.getValue());
-                            } else {
-                                return DiagnosticLog.createJsonError(
-                                        "Invalid value for 'dependentRequired' keyword");
-                            }
-                        }
-                    } else {
-                        return DiagnosticLog.createJsonError("Invalid value for 'dependentRequired' keyword");
-                    }
-                    depRequired.put(depKey.getValue(), fields);
-                }
-                keywords.put(DependentRequiredKeyword.keywordName,
-                        new DependentRequiredKeyword(depRequired));
+                keywords.put(DependentRequiredKeyword.KEYWORD_NAME,
+                        new DependentRequiredKeyword((Map<String, List<String>>) depRequired));
+                return null;
             }
-
-            case DependentSchemasKeyword.keywordName -> {
-                if (!(value instanceof BMap<?, ?>)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'dependentSchemas' keyword");
-                }
-                Object parsed = parseSchemaMap((BMap<BString, Object>) value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(DependentSchemasKeyword.keywordName,
-                        new DependentSchemasKeyword((Map<String, Object>) parsed));
-            }
-
-            case PatternKeyword.keywordName -> {
+            case PatternKeyword.KEYWORD_NAME -> {
                 if (!(value instanceof BString pv)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'pattern' keyword");
                 }
-
                 Object regex = FromString.fromString(pv);
                 if (regex instanceof BRegexpValue regexVal) {
-                    keywords.put(PatternKeyword.keywordName, new PatternKeyword(regexVal));
-                } else {
-                    return DiagnosticLog.createJsonError("Invalid regular expression in 'pattern' keyword: " + pv);
+                    keywords.put(PatternKeyword.KEYWORD_NAME, new PatternKeyword(regexVal));
+                    return null;
                 }
+                return DiagnosticLog.createJsonError("Invalid regular expression in 'pattern' keyword: " + pv);
             }
-
-            case MinLengthKeyword.keywordName -> {
-                Long v = SchemaParserUtils.toInteger(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'minLength' keyword");
-                }
-                keywords.put(MinLengthKeyword.keywordName, new MinLengthKeyword(v));
+            case MinLengthKeyword.KEYWORD_NAME -> {
+                return handleIntegerKeyword(value, keywords, MinLengthKeyword.KEYWORD_NAME, "minLength");
             }
-
-            case MaxLengthKeyword.keywordName -> {
-                Long v = SchemaParserUtils.toInteger(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'maxLength' keyword");
-                }
-                keywords.put(MaxLengthKeyword.keywordName, new MaxLengthKeyword(v));
+            case MaxLengthKeyword.KEYWORD_NAME -> {
+                return handleIntegerKeyword(value, keywords, MaxLengthKeyword.KEYWORD_NAME, "maxLength");
             }
-
-            case FormatKeyword.keywordName -> {
+            case FormatKeyword.KEYWORD_NAME -> {
                 if (!(value instanceof BString fv)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'format' keyword");
                 }
-                keywords.put(FormatKeyword.keywordName, new FormatKeyword(fv.getValue()));
+                keywords.put(FormatKeyword.KEYWORD_NAME, new FormatKeyword(fv.getValue()));
+                return null;
             }
-
-            case MinimumKeyword.keywordName -> {
-                Double v = SchemaParserUtils.toNumber(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'minimum' keyword");
-                }
-                keywords.put(MinimumKeyword.keywordName, new MinimumKeyword(v));
+            case MinimumKeyword.KEYWORD_NAME -> {
+                return handleNumberKeyword(value, keywords, MinimumKeyword.KEYWORD_NAME, "minimum");
             }
-
-            case MaximumKeyword.keywordName -> {
-                Double v = SchemaParserUtils.toNumber(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'maximum' keyword");
-                }
-                keywords.put(MaximumKeyword.keywordName, new MaximumKeyword(v));
+            case MaximumKeyword.KEYWORD_NAME -> {
+                return handleNumberKeyword(value, keywords, MaximumKeyword.KEYWORD_NAME, "maximum");
             }
-
-            case ExclusiveMinimumKeyword.keywordName -> {
-                Double v = SchemaParserUtils.toNumber(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'exclusiveMinimum' keyword");
-                }
-                keywords.put(ExclusiveMinimumKeyword.keywordName, new ExclusiveMinimumKeyword(v));
+            case ExclusiveMinimumKeyword.KEYWORD_NAME -> {
+                return handleNumberKeyword(value, keywords, ExclusiveMinimumKeyword.KEYWORD_NAME,
+                        "exclusiveMinimum");
             }
-
-            case ExclusiveMaximumKeyword.keywordName -> {
-                Double v = SchemaParserUtils.toNumber(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'exclusiveMaximum' keyword");
-                }
-                keywords.put(ExclusiveMaximumKeyword.keywordName, new ExclusiveMaximumKeyword(v));
+            case ExclusiveMaximumKeyword.KEYWORD_NAME -> {
+                return handleNumberKeyword(value, keywords, ExclusiveMaximumKeyword.KEYWORD_NAME,
+                        "exclusiveMaximum");
             }
-
-            case MultipleOfKeyword.keywordName -> {
-                Double v = SchemaParserUtils.toNumber(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'multipleOf' keyword");
-                }
-                keywords.put(MultipleOfKeyword.keywordName, new MultipleOfKeyword(v));
+            case MultipleOfKeyword.KEYWORD_NAME -> {
+                return handleNumberKeyword(value, keywords, MultipleOfKeyword.KEYWORD_NAME, "multipleOf");
             }
-
-            case MinItemsKeyword.keywordName -> {
-                Long v = SchemaParserUtils.toInteger(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'minItems' keyword");
-                }
-                keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(v));
+            case MinItemsKeyword.KEYWORD_NAME -> {
+                return handleIntegerKeyword(value, keywords, MinItemsKeyword.KEYWORD_NAME, "minItems");
             }
-
-            case MaxItemsKeyword.keywordName -> {
-                Long v = SchemaParserUtils.toInteger(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'maxItems' keyword");
-                }
-                keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(v));
+            case MaxItemsKeyword.KEYWORD_NAME -> {
+                return handleIntegerKeyword(value, keywords, MaxItemsKeyword.KEYWORD_NAME, "maxItems");
             }
-
-            case UniqueItemsKeyword.keywordName -> {
-                if (!(value instanceof Boolean)) {
+            case UniqueItemsKeyword.KEYWORD_NAME -> {
+                if (!(value instanceof Boolean boolValue)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'uniqueItems' keyword");
                 }
-                keywords.put(UniqueItemsKeyword.keywordName, new UniqueItemsKeyword((Boolean) value));
+                keywords.put(UniqueItemsKeyword.KEYWORD_NAME, new UniqueItemsKeyword(boolValue));
+                return null;
             }
-
-            case MinPropertiesKeyword.keywordName -> {
-                Long v = SchemaParserUtils.toInteger(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'minProperties' keyword");
-                }
-                keywords.put(MinPropertiesKeyword.keywordName, new MinPropertiesKeyword(v));
+            case MinPropertiesKeyword.KEYWORD_NAME -> {
+                return handleIntegerKeyword(value, keywords, MinPropertiesKeyword.KEYWORD_NAME, "minProperties");
             }
-
-            case MaxPropertiesKeyword.keywordName -> {
-                Long v = SchemaParserUtils.toInteger(value);
-                if (v == null) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'maxProperties' keyword");
-                }
-                keywords.put(MaxPropertiesKeyword.keywordName, new MaxPropertiesKeyword(v));
+            case MaxPropertiesKeyword.KEYWORD_NAME -> {
+                return handleIntegerKeyword(value, keywords, MaxPropertiesKeyword.KEYWORD_NAME, "maxProperties");
             }
-
-            case TitleKeyword.keywordName -> {
-                if (value instanceof BString title) {
-                    keywords.put(TitleKeyword.keywordName, new TitleKeyword(title.getValue()));
-                }
-            }
-
-            case DescriptionKeyword.keywordName -> {
-                if (value instanceof BString description) {
-                    keywords.put(DescriptionKeyword.keywordName, new DescriptionKeyword(description.getValue()));
-                }
-            }
-
-            case DefaultKeyword.keywordName -> {
-                keywords.put(DefaultKeyword.keywordName, new DefaultKeyword(value));
-            }
-
-            case ExamplesKeyword.keywordName -> {
-                if (value instanceof BArray) {
-                    keywords.put(ExamplesKeyword.keywordName, new ExamplesKeyword(value));
-                }
-            }
-
-            case ReadOnlyKeyword.keywordName -> {
-                if (value instanceof Boolean readOnly) {
-                    keywords.put(ReadOnlyKeyword.keywordName, new ReadOnlyKeyword(readOnly));
-                }
-            }
-
-            case WriteOnlyKeyword.keywordName -> {
-                if (value instanceof Boolean writeOnly) {
-                    keywords.put(WriteOnlyKeyword.keywordName, new WriteOnlyKeyword(writeOnly));
-                }
-            }
-
-            case DeprecatedKeyword.keywordName -> {
-                if (value instanceof Boolean deprecated) {
-                    keywords.put(DeprecatedKeyword.keywordName, new DeprecatedKeyword(deprecated));
-                }
-            }
-
-            case EnumKeyword.keywordName -> {
+            case EnumKeyword.KEYWORD_NAME -> {
                 if (!(value instanceof BArray arr)) {
                     return DiagnosticLog.createJsonError("Invalid value for 'enum' keyword");
                 }
@@ -629,110 +515,284 @@ public class SchemaJsonParser {
                 for (long i = 0; i < arr.size(); i++) {
                     enumValues.add(arr.get(i));
                 }
-                keywords.put(EnumKeyword.keywordName, new EnumKeyword(enumValues));
+                keywords.put(EnumKeyword.KEYWORD_NAME, new EnumKeyword(enumValues));
+                return null;
             }
-
-            case ConstKeyword.keywordName -> keywords.put(ConstKeyword.keywordName, new ConstKeyword(value));
-
-            case RefKeyword.keywordName -> {
-                if (!(value instanceof BString refVal)) {
-                    return DiagnosticLog.createJsonError("Invalid value for '$ref' keyword");
-                }
-                String refStr = refVal.getValue();
-                // Resolve against current scope — always yields an absolute URI
-                String base = lexicalScopeStack.isEmpty() ? registry.getMockRootUri() : lexicalScopeStack.peek();
-                String resolved = SchemaRegistry.resolveURI(base, refStr);
-                URI refUri;
-                try {
-                    refUri = URI.create(resolved);
-                } catch (IllegalArgumentException e) {
-                    return DiagnosticLog.createJsonError("Invalid URI in '$ref': " + resolved);
-                }
-                keywords.put(RefKeyword.keywordName, new RefKeyword(refUri));
+            case ConstKeyword.KEYWORD_NAME -> {
+                keywords.put(ConstKeyword.KEYWORD_NAME, new ConstKeyword(value));
+                return null;
             }
+            default -> {
+                return null;
+            }
+        }
+    }
 
-            case DynamicRefKeyword.keywordName -> {
-                if (!(value instanceof BString dynamicRefVal)) {
-                    return DiagnosticLog.createJsonError("Invalid value for '$dynamicRef' keyword");
+    private Object extractCoreKeyword(String key, Object value, LinkedHashMap<String, Keyword> keywords) {
+        switch (key) {
+            case RefKeyword.KEYWORD_NAME -> {
+                Object resolvedUri = resolveKeywordUri(value, "$ref");
+                if (resolvedUri instanceof BError) {
+                    return resolvedUri;
                 }
-                String dynamicRefStr = dynamicRefVal.getValue();
-                // Resolve against current scope — always yields an absolute URI
-                String base = lexicalScopeStack.isEmpty() ? registry.getMockRootUri() : lexicalScopeStack.peek();
-                String resolved = SchemaRegistry.resolveURI(base, dynamicRefStr);
-                URI dynamicRefUri;
-                try {
-                    dynamicRefUri = URI.create(resolved);
-                } catch (IllegalArgumentException e) {
-                    return DiagnosticLog.createJsonError("Invalid URI in '$dynamicRef': " + resolved);
+                keywords.put(RefKeyword.KEYWORD_NAME, new RefKeyword((URI) resolvedUri));
+                return null;
+            }
+            case DynamicRefKeyword.KEYWORD_NAME -> {
+                Object resolvedUri = resolveKeywordUri(value, "$dynamicRef");
+                if (resolvedUri instanceof BError) {
+                    return resolvedUri;
                 }
-
-                // A JSON Pointer fragment starts with "/"; plain anchor names do not.
+                URI dynamicRefUri = (URI) resolvedUri;
                 String fragment = dynamicRefUri.getFragment();
                 String anchorNameForRef = (fragment != null && !fragment.startsWith("/")) ? fragment : null;
-                keywords.put(DynamicRefKeyword.keywordName, new DynamicRefKeyword(dynamicRefUri, anchorNameForRef));
+                keywords.put(DynamicRefKeyword.KEYWORD_NAME,
+                        new DynamicRefKeyword(dynamicRefUri, anchorNameForRef));
+                return null;
             }
-
-            case UnevaluatedItemsKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(UnevaluatedItemsKeyword.keywordName, new UnevaluatedItemsKeyword(parsed));
-            }
-
-            case UnevaluatedPropertiesKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                keywords.put(UnevaluatedPropertiesKeyword.keywordName, new UnevaluatedPropertiesKeyword(parsed));
-            }
-
-            case ContentEncodingKeyword.keywordName -> {
-                if (!(value instanceof BString encoding)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'contentEncoding' keyword: expected string");
-                }
-                keywords.put(ContentEncodingKeyword.keywordName, new ContentEncodingKeyword(encoding.getValue()));
-            }
-
-            case ContentMediaTypeKeyword.keywordName -> {
-                if (!(value instanceof BString mediaType)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'contentMediaType' keyword: expected string");
-                }
-                keywords.put(ContentMediaTypeKeyword.keywordName, new ContentMediaTypeKeyword(mediaType.getValue()));
-            }
-
-            case ContentSchemaKeyword.keywordName -> {
-                Object parsed = parse(value);
-                if (parsed instanceof BError) {
-                    return parsed;
-                }
-                if (!(parsed instanceof Schema || parsed instanceof Boolean)) {
-                    return DiagnosticLog.createJsonError("Invalid value for 'contentSchema' keyword: expected valid schema");
-                }
-                keywords.put(ContentSchemaKeyword.keywordName, new ContentSchemaKeyword(parsed));
-            }
-
-            case DefsKeyword.keywordName -> {
+            case DefsKeyword.KEYWORD_NAME -> {
                 if (!(value instanceof BMap<?, ?>)) {
                     return DiagnosticLog.createJsonError("Invalid value for '$defs': expected object");
                 }
                 BMap<BString, Object> defs = (BMap<BString, Object>) value;
                 Map<String, Object> defsMap = new LinkedHashMap<>();
                 for (BString defName : defs.getKeys()) {
-                    String rawName = defName.getValue();
-                    Object defRaw = defs.get(defName);
-                    Object defParsed = parse(defRaw);
+                    Object defParsed = parse(defs.get(defName));
                     if (defParsed instanceof BError) {
                         return defParsed;
                     }
-                    defsMap.put(rawName, defParsed);
+                    defsMap.put(defName.getValue(), defParsed);
                 }
-                keywords.put(DefsKeyword.keywordName, new DefsKeyword(defsMap));
+                keywords.put(DefsKeyword.KEYWORD_NAME, new DefsKeyword(defsMap));
+                return null;
             }
+            default -> {
+                return null;
+            }
+        }
+    }
 
+    private Object extractUnevaluatedKeyword(String key, Object value, LinkedHashMap<String, Keyword> keywords) {
+        switch (key) {
+            case UnevaluatedItemsKeyword.KEYWORD_NAME -> {
+                return handleSingleSchemaKeyword(value, keywords, UnevaluatedItemsKeyword.KEYWORD_NAME);
+            }
+            case UnevaluatedPropertiesKeyword.KEYWORD_NAME -> {
+                return handleSingleSchemaKeyword(value, keywords, UnevaluatedPropertiesKeyword.KEYWORD_NAME);
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
+    private Object extractMetadataKeyword(String key, Object value, LinkedHashMap<String, Keyword> keywords) {
+        switch (key) {
+            case TitleKeyword.KEYWORD_NAME -> {
+                if (value instanceof BString title) {
+                    keywords.put(TitleKeyword.KEYWORD_NAME, new TitleKeyword(title.getValue()));
+                }
+                return null;
+            }
+            case DescriptionKeyword.KEYWORD_NAME -> {
+                if (value instanceof BString description) {
+                    keywords.put(DescriptionKeyword.KEYWORD_NAME,
+                            new DescriptionKeyword(description.getValue()));
+                }
+                return null;
+            }
+            case DefaultKeyword.KEYWORD_NAME -> {
+                keywords.put(DefaultKeyword.KEYWORD_NAME, new DefaultKeyword(value));
+                return null;
+            }
+            case ExamplesKeyword.KEYWORD_NAME -> {
+                if (value instanceof BArray) {
+                    keywords.put(ExamplesKeyword.KEYWORD_NAME, new ExamplesKeyword(value));
+                }
+                return null;
+            }
+            case ReadOnlyKeyword.KEYWORD_NAME -> {
+                if (value instanceof Boolean readOnly) {
+                    keywords.put(ReadOnlyKeyword.KEYWORD_NAME, new ReadOnlyKeyword(readOnly));
+                }
+                return null;
+            }
+            case WriteOnlyKeyword.KEYWORD_NAME -> {
+                if (value instanceof Boolean writeOnly) {
+                    keywords.put(WriteOnlyKeyword.KEYWORD_NAME, new WriteOnlyKeyword(writeOnly));
+                }
+                return null;
+            }
+            case DeprecatedKeyword.KEYWORD_NAME -> {
+                if (value instanceof Boolean deprecated) {
+                    keywords.put(DeprecatedKeyword.KEYWORD_NAME, new DeprecatedKeyword(deprecated));
+                }
+                return null;
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
+    private Object extractContentKeyword(String key, Object value, LinkedHashMap<String, Keyword> keywords) {
+        switch (key) {
+            case ContentEncodingKeyword.KEYWORD_NAME -> {
+                if (!(value instanceof BString encoding)) {
+                    return DiagnosticLog.createJsonError(
+                            "Invalid value for 'contentEncoding' keyword: expected string");
+                }
+                keywords.put(ContentEncodingKeyword.KEYWORD_NAME, new ContentEncodingKeyword(encoding.getValue()));
+                return null;
+            }
+            case ContentMediaTypeKeyword.KEYWORD_NAME -> {
+                if (!(value instanceof BString mediaType)) {
+                    return DiagnosticLog.createJsonError(
+                            "Invalid value for 'contentMediaType' keyword: expected string");
+                }
+                keywords.put(ContentMediaTypeKeyword.KEYWORD_NAME,
+                        new ContentMediaTypeKeyword(mediaType.getValue()));
+                return null;
+            }
+            case ContentSchemaKeyword.KEYWORD_NAME -> {
+                Object parsed = parse(value);
+                if (parsed instanceof BError) {
+                    return parsed;
+                }
+                if (!(parsed instanceof Schema || parsed instanceof Boolean)) {
+                    return DiagnosticLog.createJsonError(
+                            "Invalid value for 'contentSchema' keyword: expected valid schema");
+                }
+                keywords.put(ContentSchemaKeyword.KEYWORD_NAME, new ContentSchemaKeyword(parsed));
+                return null;
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
+    private Object handleSchemaArrayKeyword(Object value, LinkedHashMap<String, Keyword> keywords,
+                                            String keywordName, String displayName) {
+        if (!(value instanceof BArray)) {
+            return DiagnosticLog.createJsonError("Invalid value for '" + displayName + "' keyword");
+        }
+        Object parsed = parseSchemaArray((BArray) value);
+        if (parsed instanceof BError) {
+            return parsed;
+        }
+        List<Object> parsedList = (List<Object>) parsed;
+        switch (keywordName) {
+            case AllOfKeyword.KEYWORD_NAME -> keywords.put(keywordName, new AllOfKeyword(parsedList));
+            case AnyOfKeyword.KEYWORD_NAME -> keywords.put(keywordName, new AnyOfKeyword(parsedList));
+            case OneOfKeyword.KEYWORD_NAME -> keywords.put(keywordName, new OneOfKeyword(parsedList));
+            default -> {
+                return null;
+            }
         }
         return null;
+    }
+
+    private Object handleSingleSchemaKeyword(Object value, LinkedHashMap<String, Keyword> keywords,
+                                             String keywordName) {
+        Object parsed = parse(value);
+        if (parsed instanceof BError) {
+            return parsed;
+        }
+        switch (keywordName) {
+            case NotKeyword.KEYWORD_NAME -> keywords.put(keywordName, new NotKeyword(parsed));
+            case IfKeyword.KEYWORD_NAME -> keywords.put(keywordName, new IfKeyword(parsed));
+            case ThenKeyword.KEYWORD_NAME -> keywords.put(keywordName, new ThenKeyword(parsed));
+            case ElseKeyword.KEYWORD_NAME -> keywords.put(keywordName, new ElseKeyword(parsed));
+            case UnevaluatedItemsKeyword.KEYWORD_NAME -> keywords.put(keywordName, new UnevaluatedItemsKeyword(parsed));
+            case UnevaluatedPropertiesKeyword.KEYWORD_NAME ->
+                    keywords.put(keywordName, new UnevaluatedPropertiesKeyword(parsed));
+            default -> {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private Object handleIntegerKeyword(Object value, LinkedHashMap<String, Keyword> keywords,
+                                        String keywordName, String displayName) {
+        Long v = SchemaParserUtils.toInteger(value);
+        if (v == null) {
+            return DiagnosticLog.createJsonError("Invalid value for '" + displayName + "' keyword");
+        }
+        switch (keywordName) {
+            case MinLengthKeyword.KEYWORD_NAME -> keywords.put(keywordName, new MinLengthKeyword(v));
+            case MaxLengthKeyword.KEYWORD_NAME -> keywords.put(keywordName, new MaxLengthKeyword(v));
+            case MinItemsKeyword.KEYWORD_NAME -> keywords.put(keywordName, new MinItemsKeyword(v));
+            case MaxItemsKeyword.KEYWORD_NAME -> keywords.put(keywordName, new MaxItemsKeyword(v));
+            case MinPropertiesKeyword.KEYWORD_NAME -> keywords.put(keywordName, new MinPropertiesKeyword(v));
+            case MaxPropertiesKeyword.KEYWORD_NAME -> keywords.put(keywordName, new MaxPropertiesKeyword(v));
+            default -> {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private Object handleNumberKeyword(Object value, LinkedHashMap<String, Keyword> keywords,
+                                       String keywordName, String displayName) {
+        Double v = SchemaParserUtils.toNumber(value);
+        if (v == null) {
+            return DiagnosticLog.createJsonError("Invalid value for '" + displayName + "' keyword");
+        }
+        switch (keywordName) {
+            case MinimumKeyword.KEYWORD_NAME -> keywords.put(keywordName, new MinimumKeyword(v));
+            case MaximumKeyword.KEYWORD_NAME -> keywords.put(keywordName, new MaximumKeyword(v));
+            case ExclusiveMinimumKeyword.KEYWORD_NAME -> keywords.put(keywordName, new ExclusiveMinimumKeyword(v));
+            case ExclusiveMaximumKeyword.KEYWORD_NAME -> keywords.put(keywordName, new ExclusiveMaximumKeyword(v));
+            case MultipleOfKeyword.KEYWORD_NAME -> keywords.put(keywordName, new MultipleOfKeyword(v));
+            default -> {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private Object resolveKeywordUri(Object value, String keywordName) {
+        if (!(value instanceof BString refVal)) {
+            return DiagnosticLog.createJsonError("Invalid value for '" + keywordName + "' keyword");
+        }
+        String base = lexicalScopeStack.isEmpty() ? registry.getMockRootUri() : lexicalScopeStack.peek();
+        String resolved = SchemaRegistry.resolveURI(base, refVal.getValue());
+        try {
+            return URI.create(resolved);
+        } catch (IllegalArgumentException e) {
+            return DiagnosticLog.createJsonError("Invalid URI in '" + keywordName + "': " + resolved);
+        }
+    }
+
+    private Object extractDependentRequired(Object value) {
+        if (!(value instanceof BMap<?, ?>)) {
+            return DiagnosticLog.createJsonError("Invalid value for 'dependentRequired' keyword");
+        }
+        BMap<BString, Object> depMap = (BMap<BString, Object>) value;
+        Map<String, List<String>> depRequired = new LinkedHashMap<>();
+        for (BString depKey : depMap.getKeys()) {
+            Object depVal = depMap.get(depKey);
+            List<String> fields = new ArrayList<>();
+            if (depVal instanceof BString s) {
+                fields.add(s.getValue());
+            } else if (depVal instanceof BArray arr) {
+                for (long i = 0; i < arr.size(); i++) {
+                    Object el = arr.get(i);
+                    if (el instanceof BString s) {
+                        fields.add(s.getValue());
+                    } else {
+                        return DiagnosticLog.createJsonError(
+                                "Invalid value for 'dependentRequired' keyword");
+                    }
+                }
+            } else {
+                return DiagnosticLog.createJsonError("Invalid value for 'dependentRequired' keyword");
+            }
+            depRequired.put(depKey.getValue(), fields);
+        }
+        return depRequired;
     }
 
     private Object parseSchemaMap(BMap<BString, Object> schemaMap) {

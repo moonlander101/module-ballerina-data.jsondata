@@ -24,7 +24,6 @@ import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BRegexpValue;
 import io.ballerina.runtime.api.values.BString;
-
 import org.ballerinalang.langlib.regexp.Find;
 import org.ballerinalang.langlib.regexp.FromString;
 
@@ -35,10 +34,10 @@ import java.util.Map;
 import java.util.Set;
 
 public class PatternPropertiesKeyword extends Keyword {
-    public static final String keywordName = "patternProperties";
+    public static final String KEYWORD_NAME = "patternProperties";
     private final List<PatternEntry> entries;
 
-    private record PatternEntry(String patternStr, BRegexpValue regex, Object schema) {}
+    private record PatternEntry(String patternStr, BRegexpValue regex, Object schema) { }
 
     public PatternPropertiesKeyword(Map<String, Object> patternSchemaMap) {
         this.entries = new ArrayList<>();
@@ -86,7 +85,7 @@ public class PatternPropertiesKeyword extends Keyword {
         }
 
         if (matchedPropertyNames != null) {
-            context.setAnnotation(keywordName, matchedPropertyNames);
+            context.setAnnotation(KEYWORD_NAME, matchedPropertyNames);
         }
         return isValid;
     }

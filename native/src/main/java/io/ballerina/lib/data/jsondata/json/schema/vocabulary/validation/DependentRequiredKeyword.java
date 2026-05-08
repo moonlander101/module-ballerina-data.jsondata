@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 public class DependentRequiredKeyword extends Keyword {
-    public static final String keywordName = "dependentRequired";
+    public static final String KEYWORD_NAME = "dependentRequired";
     public final Map<String, List<String>> keywordValue;
 
     public DependentRequiredKeyword(Map<String, List<String>> keywordValue) {

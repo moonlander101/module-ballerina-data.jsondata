@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class PropertiesKeyword extends Keyword {
-    public static final String keywordName = "properties";
+    public static final String KEYWORD_NAME = "properties";
     private final Map<String, Object> propertiesMap;
 
     public PropertiesKeyword(Map<String, Object> propertiesMap) {
@@ -49,7 +49,8 @@ public class PropertiesKeyword extends Keyword {
 
             Object schema = propertiesMap.get(propertyName);
             if (schema != null) {
-                EvaluationContext propertyContext = context.createChildContext(propertyName, "properties/" + propertyName);
+                EvaluationContext propertyContext =
+                        context.createChildContext(propertyName, "properties/" + propertyName);
 
                 if (Validator.validate(bMap.get(propertyKey), schema, propertyContext)) {
                     if (matchedPropertyNames != null) {
@@ -62,7 +63,7 @@ public class PropertiesKeyword extends Keyword {
         }
 
         if (matchedPropertyNames != null) {
-            context.setAnnotation(keywordName, matchedPropertyNames);
+            context.setAnnotation(KEYWORD_NAME, matchedPropertyNames);
         }
 
         return isValid;

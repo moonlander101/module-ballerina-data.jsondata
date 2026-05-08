@@ -19,8 +19,15 @@
 package io.ballerina.lib.data.jsondata.json;
 
 import io.ballerina.lib.data.jsondata.io.BallerinaByteBlockInputStream;
-import io.ballerina.lib.data.jsondata.json.schema.*;
-import io.ballerina.lib.data.jsondata.utils.*;
+import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
+import io.ballerina.lib.data.jsondata.json.schema.SchemaJsonParser;
+import io.ballerina.lib.data.jsondata.json.schema.SchemaRegistry;
+import io.ballerina.lib.data.jsondata.json.schema.SchemaTypeParser;
+import io.ballerina.lib.data.jsondata.json.schema.Validator;
+import io.ballerina.lib.data.jsondata.utils.Constants;
+import io.ballerina.lib.data.jsondata.utils.DiagnosticErrorCode;
+import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
+import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
@@ -99,7 +106,7 @@ public class Native {
                 }
 
                 Set<URI> currentCallUris = new HashSet<>();
-                SchemaJsonParser rootParser = new SchemaJsonParser(currentCallUris,registry);
+                SchemaJsonParser rootParser = new SchemaJsonParser(currentCallUris, registry);
                 Object rootSchema = rootParser.parse(rootJson);
                 if (rootSchema instanceof BError) {
                     return rootSchema;

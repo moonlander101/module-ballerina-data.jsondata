@@ -26,7 +26,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class AdditionalPropertiesKeyword extends Keyword {
-    public static final String keywordName = "additionalProperties";
+    public static final String KEYWORD_NAME = "additionalProperties";
     private final Object additionalSchema;
 
     public AdditionalPropertiesKeyword(Object additionalSchema) {
@@ -40,7 +40,7 @@ public class AdditionalPropertiesKeyword extends Keyword {
         }
 
         Set<String> propertiesMatched = null;
-        Object propertiesAnnotation = context.getAnnotation(PropertiesKeyword.keywordName);
+        Object propertiesAnnotation = context.getAnnotation(PropertiesKeyword.KEYWORD_NAME);
         if (propertiesAnnotation instanceof Set) {
             propertiesMatched = (Set<String>) propertiesAnnotation;
         }
@@ -101,7 +101,7 @@ public class AdditionalPropertiesKeyword extends Keyword {
         }
 
         if (isValid && validatedPropertyNames != null) {
-            context.setAnnotation(keywordName, validatedPropertyNames);
+            context.setAnnotation(KEYWORD_NAME, validatedPropertyNames);
         }
 
         return isValid;

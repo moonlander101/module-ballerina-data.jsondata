@@ -5,7 +5,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BMap;
 
 public class MaxPropertiesKeyword extends Keyword {
-    public static final String keywordName = "maxProperties";
+    public static final String KEYWORD_NAME = "maxProperties";
     private final Long keywordValue;
 
     @Override
@@ -16,7 +16,10 @@ public class MaxPropertiesKeyword extends Keyword {
         long propertyCount = bMap.size();
         boolean valid = propertyCount <= keywordValue;
         if (!valid) {
-            context.addError("maxProperties", "At " + context.getInstanceLocation() + ": [maxProperties] object has " + propertyCount + " properties, maximum allowed is " + keywordValue);
+            context.addError(
+                    "maxProperties",
+                    "At " + context.getInstanceLocation() + ": [maxProperties] object has " + propertyCount
+                            + " properties, maximum allowed is " + keywordValue);
         }
         return valid;
     }

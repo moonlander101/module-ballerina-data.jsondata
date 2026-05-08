@@ -27,7 +27,7 @@ import java.util.LinkedHashSet;
 
 
 public class DynamicRefKeyword extends Keyword {
-    public static final String keywordName = "$dynamicRef";
+    public static final String KEYWORD_NAME = "$dynamicRef";
     private final URI initialRefUri;
     private final String anchorName;
 
@@ -45,7 +45,7 @@ public class DynamicRefKeyword extends Keyword {
     public boolean evaluate(Object instance, EvaluationContext context) {
         SchemaRegistry registry = context.getSchemaRegistry();
         if (registry == null) {
-            context.addError(keywordName,
+            context.addError(KEYWORD_NAME,
                     "At " + context.getInstanceLocation()
                             + ": schema registry is required for $dynamicRef resolution");
             return false;
@@ -82,13 +82,13 @@ public class DynamicRefKeyword extends Keyword {
         }
 
         if (target == null) {
-            context.addError(keywordName,
+            context.addError(KEYWORD_NAME,
                     "At " + context.getInstanceLocation()
                             + ": unresolved $dynamicRef '" + initialRefUri + "'");
             return false;
         }
 
-        EvaluationContext refContext = context.createChildContext("", keywordName);
+        EvaluationContext refContext = context.createChildContext("", KEYWORD_NAME);
         boolean isValid = Validator.validate(instance, target, refContext);
         if (isValid) {
             if (context.isTrackEvaluatedItems()) {

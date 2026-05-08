@@ -17,30 +17,47 @@
 package io.ballerina.lib.data.jsondata.json.schema;
 
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AnyOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AdditionalPropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AllOfKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.OneOfKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.NotKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AnyOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.DependentSchemasKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.NotKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.OneOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PatternPropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertiesKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.AdditionalPropertiesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PropertyNamesKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.unevaluated.UnevaluatedItemsKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.unevaluated.UnevaluatedPropertiesKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PatternPropertiesKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.DependentSchemasKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentEncodingKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentMediaTypeKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentSchemaKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.CommentKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.ExamplesKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.ReadOnlyKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.TitleKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.WriteOnlyKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.*;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.unevaluated.UnevaluatedItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.unevaluated.UnevaluatedPropertiesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ConstKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ContainsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.DependentRequiredKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.EnumKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ExclusiveMaximumKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ExclusiveMinimumKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.FormatKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentEncodingKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentMediaTypeKeyword;
-import io.ballerina.lib.data.jsondata.json.schema.vocabulary.content.ContentSchemaKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MaxItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MaxLengthKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MaxPropertiesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MaximumKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MinItemsKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MinLengthKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MinPropertiesKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MinimumKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.MultipleOfKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.PatternKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.RequiredKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.TypeKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.UniqueItemsKeyword;
 import io.ballerina.lib.data.jsondata.utils.Constants;
 import io.ballerina.lib.data.jsondata.utils.DiagnosticLog;
 import io.ballerina.lib.data.jsondata.utils.JsonEqualityUtils;
@@ -70,19 +87,16 @@ import io.ballerina.runtime.api.values.BString;
 import io.ballerina.runtime.api.values.BTypedesc;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.ballerinalang.langlib.regexp.*;
-
 
 public class SchemaTypeParser {
     private static final Object NULL_CONST = new Object();
@@ -112,9 +126,9 @@ public class SchemaTypeParser {
         Object schema = switch (referredType.getTag()) {
             case TypeTags.UNION_TAG -> parseUnionType(type);
             case TypeTags.TUPLE_TAG, TypeTags.ARRAY_TAG -> parseArrayType(type);
-            case TypeTags.STRING_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG, TypeTags.BOOLEAN_TAG,
-                 TypeTags.JSON_TAG, TypeTags.NEVER_TAG, TypeTags.NULL_TAG, TypeTags.FINITE_TYPE_TAG, TypeTags.INTERSECTION_TAG ->
-                    parseBasicType(type);
+            case TypeTags.STRING_TAG, TypeTags.INT_TAG, TypeTags.FLOAT_TAG, TypeTags.DECIMAL_TAG,
+                    TypeTags.BOOLEAN_TAG, TypeTags.JSON_TAG, TypeTags.NEVER_TAG, TypeTags.NULL_TAG,
+                    TypeTags.FINITE_TYPE_TAG, TypeTags.INTERSECTION_TAG -> parseBasicType(type);
             case TypeTags.RECORD_TYPE_TAG -> parseRecordType(type);
             default -> DiagnosticLog.createJsonError("unsupported type: " + referredType);
         };
@@ -125,8 +139,8 @@ public class SchemaTypeParser {
 
         if (schema instanceof Schema parsedSchema) {
             LinkedHashMap<String, Keyword> keywords = parsedSchema.getKeywords();
-            if (keywords.size() == 1 && keywords.containsKey(TypeKeyword.keywordName)) {
-                Object typeKeywordValue = keywords.get(TypeKeyword.keywordName).getKeywordValue();
+            if (keywords.size() == 1 && keywords.containsKey(TypeKeyword.KEYWORD_NAME)) {
+                Object typeKeywordValue = keywords.get(TypeKeyword.KEYWORD_NAME).getKeywordValue();
                 if (typeKeywordValue instanceof Set<?> typeNames && typeNames.equals(
                         Set.of("string", "number", "boolean", "object", "array", "null"))) {
                     schema = true;
@@ -150,11 +164,15 @@ public class SchemaTypeParser {
 
     private Object parseTypeReference(Type type, Type immediateReferred) {
         Object innerSchema = parse(immediateReferred);
-        if (innerSchema instanceof BError) return innerSchema;
+        if (innerSchema instanceof BError) {
+            return innerSchema;
+        }
 
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         Object err = extractKeywordsFromAnnotations(type, keywords);
-        if (err instanceof BError) return err;
+        if (err instanceof BError) {
+            return err;
+        }
 
         Schema cachedSchema = (Schema) typeAliasToSchema.get(type.getName());
 
@@ -166,17 +184,17 @@ public class SchemaTypeParser {
             return innerSchema;
         }
 
-        boolean isAllOf = keywords.containsKey(AllOfKeyword.keywordName);
-        boolean isOneOf = keywords.containsKey(OneOfKeyword.keywordName);
+        boolean isAllOf = keywords.containsKey(AllOfKeyword.KEYWORD_NAME);
+        boolean isOneOf = keywords.containsKey(OneOfKeyword.KEYWORD_NAME);
 
         if (isAllOf || isOneOf) {
             List<Object> subschemas = new ArrayList<>();
             subschemas.add(innerSchema);
 
             if (isAllOf) {
-                keywords.put(AllOfKeyword.keywordName, new AllOfKeyword(subschemas));
+                keywords.put(AllOfKeyword.KEYWORD_NAME, new AllOfKeyword(subschemas));
             } else {
-                keywords.put(OneOfKeyword.keywordName, new OneOfKeyword(subschemas));
+                keywords.put(OneOfKeyword.KEYWORD_NAME, new OneOfKeyword(subschemas));
             }
 
             cachedSchema.setKeywords(keywords);
@@ -199,20 +217,22 @@ public class SchemaTypeParser {
         TypeKeyword typeKeyword = extractTypeKeyword(new ArrayList<>(List.of(referredType)));
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         if (typeKeyword != null) {
-            keywords.put(TypeKeyword.keywordName, typeKeyword);
+            keywords.put(TypeKeyword.KEYWORD_NAME, typeKeyword);
         }
 
         extractConstOrEnumKeyword(new ArrayList<>(List.of(referredType)), keywords);
         Object err = extractKeywordsFromAnnotations(type, keywords);
-        if (err instanceof BError) return err;
+        if (err instanceof BError) {
+            return err;
+        }
 
-        boolean isAllOf = keywords.containsKey(AllOfKeyword.keywordName);
-        boolean isOneOf = keywords.containsKey(OneOfKeyword.keywordName);
+        boolean isAllOf = keywords.containsKey(AllOfKeyword.KEYWORD_NAME);
+        boolean isOneOf = keywords.containsKey(OneOfKeyword.KEYWORD_NAME);
 
         if (isAllOf || isOneOf) {
             LinkedHashMap<String, Keyword> wrappedKeywords = new LinkedHashMap<>(keywords);
-            wrappedKeywords.remove(AllOfKeyword.keywordName);
-            wrappedKeywords.remove(OneOfKeyword.keywordName);
+            wrappedKeywords.remove(AllOfKeyword.KEYWORD_NAME);
+            wrappedKeywords.remove(OneOfKeyword.KEYWORD_NAME);
 
             List<Object> subschemas = new ArrayList<>();
             if (!wrappedKeywords.isEmpty()) {
@@ -221,9 +241,9 @@ public class SchemaTypeParser {
 
             keywords.clear();
             if (isAllOf) {
-                keywords.put(AllOfKeyword.keywordName, new AllOfKeyword(subschemas));
+                keywords.put(AllOfKeyword.KEYWORD_NAME, new AllOfKeyword(subschemas));
             } else {
-                keywords.put(OneOfKeyword.keywordName, new OneOfKeyword(subschemas));
+                keywords.put(OneOfKeyword.KEYWORD_NAME, new OneOfKeyword(subschemas));
             }
         }
 
@@ -243,7 +263,9 @@ public class SchemaTypeParser {
         }
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         Object err = extractKeywordsFromAnnotations(type, keywords);
-        if (err instanceof BError) return err;
+        if (err instanceof BError) {
+            return err;
+        }
 
         List<Type> memberTypes = unionType.getOriginalMemberTypes();
         List<Object> memberSchemas = new ArrayList<>();
@@ -257,27 +279,27 @@ public class SchemaTypeParser {
             }
         }
 
-        boolean isAllOf = keywords.containsKey(AllOfKeyword.keywordName);
-        boolean isOneOf = keywords.containsKey(OneOfKeyword.keywordName);
+        boolean isAllOf = keywords.containsKey(AllOfKeyword.KEYWORD_NAME);
+        boolean isOneOf = keywords.containsKey(OneOfKeyword.KEYWORD_NAME);
 
         if (!memberSchemas.isEmpty()) {
             if (isAllOf || isOneOf) {
                 List<Object> wrapperList = new ArrayList<>(memberSchemas);
 
                 if (isAllOf) {
-                    keywords.put(AllOfKeyword.keywordName, new AllOfKeyword(wrapperList));
-                    keywords.remove(OneOfKeyword.keywordName);
+                    keywords.put(AllOfKeyword.KEYWORD_NAME, new AllOfKeyword(wrapperList));
+                    keywords.remove(OneOfKeyword.KEYWORD_NAME);
                 } else {
-                    keywords.put(OneOfKeyword.keywordName, new OneOfKeyword(wrapperList));
-                    keywords.remove(AllOfKeyword.keywordName);
+                    keywords.put(OneOfKeyword.KEYWORD_NAME, new OneOfKeyword(wrapperList));
+                    keywords.remove(AllOfKeyword.KEYWORD_NAME);
                 }
 
             } else {
-                keywords.put(AnyOfKeyword.keywordName, new AnyOfKeyword(memberSchemas));
+                keywords.put(AnyOfKeyword.KEYWORD_NAME, new AnyOfKeyword(memberSchemas));
             }
         } else {
-            keywords.remove(AllOfKeyword.keywordName);
-            keywords.remove(OneOfKeyword.keywordName);
+            keywords.remove(AllOfKeyword.KEYWORD_NAME);
+            keywords.remove(OneOfKeyword.KEYWORD_NAME);
         }
 
         return new Schema(keywords);
@@ -291,16 +313,18 @@ public class SchemaTypeParser {
         }
 
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
-        keywords.put(TypeKeyword.keywordName, new TypeKeyword(new HashSet<>(Set.of("object"))));
+        keywords.put(TypeKeyword.KEYWORD_NAME, new TypeKeyword(new HashSet<>(Set.of("object"))));
 
         Map<String, Field> fields = recordType.getFields();
         Type restType = recordType.getRestFieldType();
 
         if (restType == null && fields.isEmpty()) {
             Object err = extractKeywordsFromAnnotations(referredType, keywords);
-            if (err instanceof BError) return err;
+            if (err instanceof BError) {
+                return err;
+            }
             if (keywords.get("propertyNames") == null) {
-                keywords.put(PropertyNamesKeyword.keywordName, new PropertyNamesKeyword(false));
+                keywords.put(PropertyNamesKeyword.KEYWORD_NAME, new PropertyNamesKeyword(false));
             }
             return new Schema(keywords);
         }
@@ -322,29 +346,33 @@ public class SchemaTypeParser {
             }
         }
 
-        keywords.put(PropertiesKeyword.keywordName, new PropertiesKeyword(propertiesMap));
+        keywords.put(PropertiesKeyword.KEYWORD_NAME, new PropertiesKeyword(propertiesMap));
         if (!requiredFieldNames.isEmpty()) {
-            keywords.put(RequiredKeyword.keywordName, new RequiredKeyword(requiredFieldNames));
+            keywords.put(RequiredKeyword.KEYWORD_NAME, new RequiredKeyword(requiredFieldNames));
         }
 
         Object err = extractKeywordsFromAnnotations(referredType, keywords);
-        if (err instanceof BError) return err;
+        if (err instanceof BError) {
+            return err;
+        }
         err = extractKeywordsFromFieldAnnotations(referredType, keywords);
-        if (err instanceof BError) return err;
+        if (err instanceof BError) {
+            return err;
+        }
 
         if (restType != null) {
             // TODO: Unevaluated properties have a rest type of json as well, check that too
-            if (!keywords.containsKey(AdditionalPropertiesKeyword.keywordName)
+            if (!keywords.containsKey(AdditionalPropertiesKeyword.KEYWORD_NAME)
                     && restType.getTag() != TypeTags.JSON_TAG) {
                 Object restSchema = parse(restType);
                 if (restSchema instanceof BError) {
                     return restSchema;
                 }
-                keywords.put(AdditionalPropertiesKeyword.keywordName, new AdditionalPropertiesKeyword(restSchema));
+                keywords.put(AdditionalPropertiesKeyword.KEYWORD_NAME, new AdditionalPropertiesKeyword(restSchema));
             }
         } else {
-            if (!keywords.containsKey(AdditionalPropertiesKeyword.keywordName)) {
-                keywords.put(AdditionalPropertiesKeyword.keywordName, new AdditionalPropertiesKeyword(false));
+            if (!keywords.containsKey(AdditionalPropertiesKeyword.KEYWORD_NAME)) {
+                keywords.put(AdditionalPropertiesKeyword.KEYWORD_NAME, new AdditionalPropertiesKeyword(false));
             }
         }
 
@@ -358,10 +386,12 @@ public class SchemaTypeParser {
 
         Set<String> typeNames = new HashSet<>();
         typeNames.add("array");
-        keywords.put(TypeKeyword.keywordName, new TypeKeyword(typeNames));
+        keywords.put(TypeKeyword.KEYWORD_NAME, new TypeKeyword(typeNames));
 
         Object err = extractKeywordsFromAnnotations(type, keywords);
-        if (err instanceof BError) return err;
+        if (err instanceof BError) {
+            return err;
+        }
 
         if (referredType.getTag() == TypeTags.ARRAY_TAG) {
             return parseSimpleArray(type, keywords);
@@ -380,7 +410,7 @@ public class SchemaTypeParser {
         if (itemsSchema instanceof BError) {
             return itemsSchema;
         }
-        keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(itemsSchema));
+        keywords.put(ItemsKeyword.KEYWORD_NAME, new ItemsKeyword(itemsSchema));
 
         if (arrayType.getSize() != -1) {
             setArraySizeConstraints(keywords, (long) arrayType.getSize(), (long) arrayType.getSize());
@@ -419,15 +449,17 @@ public class SchemaTypeParser {
         return parseTuple(type, tupleTypes, restType, keywords);
     }
 
-    private Object parseTuple(Type type, List<Type> tupleTypes, Type restType, LinkedHashMap<String, Keyword> keywords) {
+    private Object parseTuple(Type type, List<Type> tupleTypes, Type restType,
+                              LinkedHashMap<String, Keyword> keywords) {
         List<Object> annotatedPrefixItemTypes = extractAnnotatedPrefixItemTypes(type);
-        Keyword prefixItemsKeyword = keywords.get(PrefixItemsKeyword.keywordName);
+        Keyword prefixItemsKeyword = keywords.get(PrefixItemsKeyword.KEYWORD_NAME);
 
         if (prefixItemsKeyword == null) {
             List<Object> prefixSchemas = new ArrayList<>();
             for (Type memberType : tupleTypes) {
                 Object memberSchema;
-                if (memberType.getTag() == TypeTags.INTERSECTION_TAG || memberType.getTag() == TypeTags.FINITE_TYPE_TAG) {
+                if (memberType.getTag() == TypeTags.INTERSECTION_TAG
+                        || memberType.getTag() == TypeTags.FINITE_TYPE_TAG) {
                     LinkedHashMap<String, Keyword> memberKeywords = new LinkedHashMap<>();
                     extractConstOrEnumKeyword(new ArrayList<>(List.of(memberType)), memberKeywords);
                     if (memberKeywords.isEmpty()) {
@@ -448,17 +480,17 @@ public class SchemaTypeParser {
             }
 
             if (!prefixSchemas.isEmpty()) {
-                keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
+                keywords.put(PrefixItemsKeyword.KEYWORD_NAME, new PrefixItemsKeyword(prefixSchemas));
             }
         }
 
-        if (restType != null && !keywords.containsKey(ItemsKeyword.keywordName) && !isDeclaredJsonType(restType)) {
+        if (restType != null && !keywords.containsKey(ItemsKeyword.KEYWORD_NAME) && !isDeclaredJsonType(restType)) {
             Object restSchema = createItemsSchemaForTupleRest(restType, annotatedPrefixItemTypes);
             if (restSchema instanceof BError) {
                 return restSchema;
             }
             if (!(restSchema instanceof Boolean boolSchema) || !boolSchema) {
-                keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(restSchema));
+                keywords.put(ItemsKeyword.KEYWORD_NAME, new ItemsKeyword(restSchema));
             }
         }
 
@@ -517,7 +549,8 @@ public class SchemaTypeParser {
         }
 
         for (Type memberType : remainingMembers) {
-            if (memberType.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG || memberType.getTag() == TypeTags.ARRAY_TAG) {
+            if (memberType.getTag() == TypeTags.TYPE_REFERENCED_TYPE_TAG
+                    || memberType.getTag() == TypeTags.ARRAY_TAG) {
                 Object parsedMember = parse(memberType);
                 if (parsedMember instanceof Schema || parsedMember instanceof Boolean) {
                     memberSchemas.add(parsedMember);
@@ -564,7 +597,7 @@ public class SchemaTypeParser {
         }
 
         if (typeKeyword != null) {
-            keywords.put(TypeKeyword.keywordName, typeKeyword);
+            keywords.put(TypeKeyword.KEYWORD_NAME, typeKeyword);
         }
 
         if (!constValues.isEmpty()) {
@@ -572,7 +605,7 @@ public class SchemaTypeParser {
         }
 
         if (!memberSchemas.isEmpty()) {
-            keywords.put(AnyOfKeyword.keywordName, new AnyOfKeyword(memberSchemas));
+            keywords.put(AnyOfKeyword.KEYWORD_NAME, new AnyOfKeyword(memberSchemas));
         }
 
         return new Schema(keywords);
@@ -663,7 +696,8 @@ public class SchemaTypeParser {
                         typeNames.addAll(nestedTypeKeyword.keywordValue);
                     }
                 }
-                default -> {}
+                default -> {
+                }
             }
         }
 
@@ -691,9 +725,9 @@ public class SchemaTypeParser {
         }
         if (constValues.size() == 1) {
             Object constValue = constValues.iterator().next();
-            keywords.put(ConstKeyword.keywordName, new ConstKeyword(constValue));
+            keywords.put(ConstKeyword.KEYWORD_NAME, new ConstKeyword(constValue));
         } else if (constValues.size() > 1) {
-            keywords.put(EnumKeyword.keywordName, new EnumKeyword(constValues));
+            keywords.put(EnumKeyword.KEYWORD_NAME, new EnumKeyword(constValues));
         }
     }
 
@@ -702,11 +736,9 @@ public class SchemaTypeParser {
         if (type.getTag() == TypeTags.INTERSECTION_TAG) {
             Type effectiveType = ((IntersectionType) type).getEffectiveType();
             return extractConstValues(effectiveType);
-        }
-        else if (type.getTag() == TypeTags.NULL_TAG) {
+        } else if (type.getTag() == TypeTags.NULL_TAG) {
             return NULL_CONST;
-        }
-        else if (type.getTag() == TypeTags.FINITE_TYPE_TAG) {
+        } else if (type.getTag() == TypeTags.FINITE_TYPE_TAG) {
             FiniteType finiteType = (FiniteType) type;
             if (finiteType.getValueSpace().size() == 1) {
                 Object value = finiteType.getValueSpace().iterator().next();
@@ -714,8 +746,7 @@ public class SchemaTypeParser {
             } else {
                 return new HashSet<>(finiteType.getValueSpace());
             }
-        } 
-        else if (type.getTag() == TypeTags.RECORD_TYPE_TAG) {
+        } else if (type.getTag() == TypeTags.RECORD_TYPE_TAG) {
             RecordType recordType = (RecordType) type;
             if ((recordType.getFlags() & SymbolFlags.READONLY) == SymbolFlags.READONLY) {
                 BMap<BString, Object> bMap = ValueCreator.createMapValue(Constants.JSON_MAP_TYPE);
@@ -731,8 +762,7 @@ public class SchemaTypeParser {
                 }
                 return bMap;
             }
-        }
-        else if (type.getTag() == TypeTags.TUPLE_TAG) {
+        } else if (type.getTag() == TypeTags.TUPLE_TAG) {
             TupleType tupleType = (TupleType) type;
             BArray bArray = ValueCreator.createArrayValue(
                     TypeCreator.createArrayType(PredefinedTypes.TYPE_ANY));
@@ -792,43 +822,53 @@ public class SchemaTypeParser {
                     break;
                 case "ArrayConstraints": {
                     Object err = extractArrayValidationKeywords((BMap<BString, Object>) annotation, keywords);
-                    if (err instanceof BError) return err;
+                    if (err instanceof BError) {
+                        return err;
+                    }
                     break;
                 }
                 case "ObjectConstraints": {
                     Object err = extractObjectValidationKeywords((BMap<BString, Object>) annotation, keywords);
-                    if (err instanceof BError) return err;
+                    if (err instanceof BError) {
+                        return err;
+                    }
                     break;
                 }
                 case "PatternProperties": {
                     Object err = extractPatternProperties((BMap<BString, Object>) annotation, keywords);
-                    if (err instanceof BError) return err;
+                    if (err instanceof BError) {
+                        return err;
+                    }
                     break;
                 }
                 case "AdditionalProperties": {
                     Object err = extractAdditionalProperties((BMap<BString, Object>) annotation, keywords);
-                    if (err instanceof BError) return err;
+                    if (err instanceof BError) {
+                        return err;
+                    }
                     break;
                 }
                 case "ReadOnly":
-                    keywords.put(ReadOnlyKeyword.keywordName, new ReadOnlyKeyword(true));
+                    keywords.put(ReadOnlyKeyword.KEYWORD_NAME, new ReadOnlyKeyword(true));
                     break;
                 case "WriteOnly":
-                    keywords.put(WriteOnlyKeyword.keywordName, new WriteOnlyKeyword(true));
+                    keywords.put(WriteOnlyKeyword.KEYWORD_NAME, new WriteOnlyKeyword(true));
                     break;
                 case "MetaData":
                     extractMetaDataKeywords((BMap<BString, Object>) annotation, keywords);
                     break;
                 case "StringEncodedData": {
                     Object err = extractStringEncodedDataKeywords((BMap<BString, Object>) annotation, keywords);
-                    if (err instanceof BError) return err;
+                    if (err instanceof BError) {
+                        return err;
+                    }
                     break;
                 }
                 case "AllOf":
-                    keywords.put(AllOfKeyword.keywordName, new AllOfKeyword(new ArrayList<>()));
+                    keywords.put(AllOfKeyword.KEYWORD_NAME, new AllOfKeyword(new ArrayList<>()));
                     break;
                 case "OneOf":
-                    keywords.put(OneOfKeyword.keywordName, new OneOfKeyword(new ArrayList<>()));
+                    keywords.put(OneOfKeyword.KEYWORD_NAME, new OneOfKeyword(new ArrayList<>()));
                     break;
                 case "Not":
                     if (!(annotation instanceof BMap<?, ?> notAnnotation)) {
@@ -840,17 +880,21 @@ public class SchemaTypeParser {
                         return notSchema;
                     }
                     if (notSchema instanceof Schema || notSchema instanceof Boolean) {
-                        finalKeywords.put(NotKeyword.keywordName, new NotKeyword(notSchema));
+                        finalKeywords.put(NotKeyword.KEYWORD_NAME, new NotKeyword(notSchema));
                     }
                     break;
                 case "UnevaluatedProperties": {
                     Object err = extractUnevaluatedProperties((BMap<BString, Object>) annotation, keywords);
-                    if (err instanceof BError) return err;
+                    if (err instanceof BError) {
+                        return err;
+                    }
                     break;
                 }
                 case "UnevaluatedItems": {
                     Object err = extractedUnevaluatedItems((BMap<BString, Object>) annotation, keywords);
-                    if (err instanceof BError) return err;
+                    if (err instanceof BError) {
+                        return err;
+                    }
                     break;
                 }
                 default:
@@ -896,7 +940,8 @@ public class SchemaTypeParser {
             for (BString fieldKey : fieldAnnotationMap.getKeys()) {
                 String fieldAnnotationIdentifier = fieldKey.getValue();
                 Matcher annotationMatcher = annotationNamePattern.matcher(fieldAnnotationIdentifier);
-                String annotationName = annotationMatcher.find() ? annotationMatcher.group(1) : fieldAnnotationIdentifier;
+                String annotationName = annotationMatcher.find() ? annotationMatcher.group(1)
+                        : fieldAnnotationIdentifier;
 
                 Object annotation = fieldAnnotationMap.get(fieldKey);
 
@@ -914,7 +959,7 @@ public class SchemaTypeParser {
         }
 
         if (!dependentRequiredMap.isEmpty()) {
-            keywords.put(DependentRequiredKeyword.keywordName, new DependentRequiredKeyword(dependentRequiredMap));
+            keywords.put(DependentRequiredKeyword.KEYWORD_NAME, new DependentRequiredKeyword(dependentRequiredMap));
         }
 
         if (!dependentSchemasMap.isEmpty()) {
@@ -925,19 +970,19 @@ public class SchemaTypeParser {
             }
 
             Map<String, Object> mergedDependentSchemas = new LinkedHashMap<>();
-            Keyword existingDepSchemas = keywords.get(DependentSchemasKeyword.keywordName);
+            Keyword existingDepSchemas = keywords.get(DependentSchemasKeyword.KEYWORD_NAME);
             if (existingDepSchemas instanceof DependentSchemasKeyword existing) {
                 mergedDependentSchemas.putAll((Map<String, Object>) existing.getKeywordValue());
             }
             mergedDependentSchemas.putAll(dependentSchemasMap);
-            keywords.put(DependentSchemasKeyword.keywordName,
+            keywords.put(DependentSchemasKeyword.KEYWORD_NAME,
                     new DependentSchemasKeyword(mergedDependentSchemas));
         }
         return null;
     }
 
     private void extractDependentRequiredAnnotation(String fieldName, Object annotation,
-                                               Map<String, List<String>> dependentRequiredMap) {
+                                                    Map<String, List<String>> dependentRequiredMap) {
         if (!(annotation instanceof BMap<?, ?> annotationMap)) {
             return;
         }
@@ -977,9 +1022,10 @@ public class SchemaTypeParser {
         }
     }
 
-    private void setArraySizeConstraints(LinkedHashMap<String, Keyword> keywords, Long derivedMin, Long derivedMax) {
-        Keyword minKeyword = keywords.get(MinItemsKeyword.keywordName);
-        Keyword maxKeyword = keywords.get(MaxItemsKeyword.keywordName);
+    private void setArraySizeConstraints(LinkedHashMap<String, Keyword> keywords,
+                                         Long derivedMin, Long derivedMax) {
+        Keyword minKeyword = keywords.get(MinItemsKeyword.KEYWORD_NAME);
+        Keyword maxKeyword = keywords.get(MaxItemsKeyword.KEYWORD_NAME);
         Long annotatedMin = minKeyword != null ? (Long) minKeyword.getKeywordValue() : null;
         Long annotatedMax = maxKeyword != null ? (Long) maxKeyword.getKeywordValue() : null;
 
@@ -987,58 +1033,68 @@ public class SchemaTypeParser {
         Long finalMax = mergeMaxConstraints(annotatedMax, derivedMax);
 
         if (finalMin != null) {
-            keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(finalMin));
+            keywords.put(MinItemsKeyword.KEYWORD_NAME, new MinItemsKeyword(finalMin));
         }
         if (finalMax != null) {
-            keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(finalMax));
+            keywords.put(MaxItemsKeyword.KEYWORD_NAME, new MaxItemsKeyword(finalMax));
         }
     }
 
     private Long mergeMinConstraints(Long annotated, Long derived) {
-        if (annotated == null) return derived;
-        if (derived == null) return annotated;
+        if (annotated == null) {
+            return derived;
+        }
+        if (derived == null) {
+            return annotated;
+        }
         return Math.max(annotated, derived);
     }
 
     private Long mergeMaxConstraints(Long annotated, Long derived) {
-        if (annotated == null) return derived;
-        if (derived == null) return annotated;
+        if (annotated == null) {
+            return derived;
+        }
+        if (derived == null) {
+            return annotated;
+        }
         return Math.min(annotated, derived);
     }
 
-    private void extractNumericValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
+    private void extractNumericValidationKeywords(BMap<BString, Object> annotation,
+                                                  LinkedHashMap<String, Keyword> keywords) {
         SchemaParserUtils.extractDouble(annotation, "minimum").ifPresent(value ->
-                keywords.put(MinimumKeyword.keywordName, new MinimumKeyword(value))
+                keywords.put(MinimumKeyword.KEYWORD_NAME, new MinimumKeyword(value))
         );
         SchemaParserUtils.extractDouble(annotation, "maximum").ifPresent(value ->
-                keywords.put(MaximumKeyword.keywordName, new MaximumKeyword(value))
+                keywords.put(MaximumKeyword.KEYWORD_NAME, new MaximumKeyword(value))
         );
         SchemaParserUtils.extractDouble(annotation, "exclusiveMinimum").ifPresent(value ->
-                keywords.put(ExclusiveMinimumKeyword.keywordName, new ExclusiveMinimumKeyword(value))
+                keywords.put(ExclusiveMinimumKeyword.KEYWORD_NAME, new ExclusiveMinimumKeyword(value))
         );
         SchemaParserUtils.extractDouble(annotation, "exclusiveMaximum").ifPresent(value ->
-                keywords.put(ExclusiveMaximumKeyword.keywordName, new ExclusiveMaximumKeyword(value))
+                keywords.put(ExclusiveMaximumKeyword.KEYWORD_NAME, new ExclusiveMaximumKeyword(value))
         );
         SchemaParserUtils.extractDouble(annotation, "multipleOf").ifPresent(value ->
-                keywords.put(MultipleOfKeyword.keywordName, new MultipleOfKeyword(value))
+                keywords.put(MultipleOfKeyword.KEYWORD_NAME, new MultipleOfKeyword(value))
         );
     }
 
-    private void extractStringValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
+    private void extractStringValidationKeywords(BMap<BString, Object> annotation,
+                                                 LinkedHashMap<String, Keyword> keywords) {
         SchemaParserUtils.extractLong(annotation, "minLength").ifPresent(value ->
-                keywords.put(MinLengthKeyword.keywordName, new MinLengthKeyword(value))
+                keywords.put(MinLengthKeyword.KEYWORD_NAME, new MinLengthKeyword(value))
         );
         SchemaParserUtils.extractLong(annotation, "maxLength").ifPresent(value ->
-                keywords.put(MaxLengthKeyword.keywordName, new MaxLengthKeyword(value))
+                keywords.put(MaxLengthKeyword.KEYWORD_NAME, new MaxLengthKeyword(value))
         );
 
         BString patternKey = StringUtils.fromString("pattern");
         if (annotation.containsKey(patternKey)) {
             Object value = annotation.get(patternKey);
             if (value instanceof BRegexpValue regExVal) {
-                keywords.put(PatternKeyword.keywordName, new PatternKeyword(regExVal));
+                keywords.put(PatternKeyword.KEYWORD_NAME, new PatternKeyword(regExVal));
             } else if (value instanceof BString strVal) {
-                keywords.put(PatternKeyword.keywordName, new PatternKeyword(strVal));
+                keywords.put(PatternKeyword.KEYWORD_NAME, new PatternKeyword(strVal));
             }
         }
 
@@ -1046,12 +1102,13 @@ public class SchemaTypeParser {
         if (annotation.containsKey(formatKey)) {
             Object value = annotation.get(formatKey);
             if (value instanceof BString strVal) {
-                keywords.put(FormatKeyword.keywordName, new FormatKeyword(strVal.getValue()));
+                keywords.put(FormatKeyword.KEYWORD_NAME, new FormatKeyword(strVal.getValue()));
             }
         }
     }
 
-    private Object extractArrayValidationKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
+    private Object extractArrayValidationKeywords(BMap<BString, Object> annotation,
+                                                  LinkedHashMap<String, Keyword> keywords) {
         BString prefixItemsKey = StringUtils.fromString("prefixItems");
         if (annotation.containsKey(prefixItemsKey)) {
             Object prefixItemsObj = annotation.get(prefixItemsKey);
@@ -1064,11 +1121,11 @@ public class SchemaTypeParser {
                         prefixSchema = parse(typeDesc.getDescribingType());
                     } else if (prefixItem == null) {
                         LinkedHashMap<String, Keyword> prefixKeywords = new LinkedHashMap<>();
-                        prefixKeywords.put(ConstKeyword.keywordName, new ConstKeyword(null));
+                        prefixKeywords.put(ConstKeyword.KEYWORD_NAME, new ConstKeyword(null));
                         prefixSchema = new Schema(prefixKeywords);
                     } else {
                         LinkedHashMap<String, Keyword> prefixKeywords = new LinkedHashMap<>();
-                        prefixKeywords.put(ConstKeyword.keywordName, new ConstKeyword(prefixItem));
+                        prefixKeywords.put(ConstKeyword.KEYWORD_NAME, new ConstKeyword(prefixItem));
                         prefixSchema = new Schema(prefixKeywords);
                     }
                     if (prefixSchema instanceof BError) {
@@ -1078,18 +1135,18 @@ public class SchemaTypeParser {
                         prefixSchemas.add(prefixSchema);
                     }
                 }
-                keywords.put(PrefixItemsKeyword.keywordName, new PrefixItemsKeyword(prefixSchemas));
+                keywords.put(PrefixItemsKeyword.KEYWORD_NAME, new PrefixItemsKeyword(prefixSchemas));
             }
         }
 
         SchemaParserUtils.extractLong(annotation, "minItems").ifPresent(value ->
-                keywords.put(MinItemsKeyword.keywordName, new MinItemsKeyword(value))
+                keywords.put(MinItemsKeyword.KEYWORD_NAME, new MinItemsKeyword(value))
         );
         SchemaParserUtils.extractLong(annotation, "maxItems").ifPresent(value ->
-                keywords.put(MaxItemsKeyword.keywordName, new MaxItemsKeyword(value))
+                keywords.put(MaxItemsKeyword.KEYWORD_NAME, new MaxItemsKeyword(value))
         );
         SchemaParserUtils.extractBoolean(annotation, "uniqueItems").ifPresent(value ->
-                keywords.put(UniqueItemsKeyword.keywordName, new UniqueItemsKeyword(value))
+                keywords.put(UniqueItemsKeyword.KEYWORD_NAME, new UniqueItemsKeyword(value))
         );
         BString itemsKey = StringUtils.fromString("items");
         if (annotation.containsKey(itemsKey)) {
@@ -1098,7 +1155,7 @@ public class SchemaTypeParser {
                 return schema;
             }
             if (schema instanceof Schema || schema instanceof Boolean) {
-                keywords.put(ItemsKeyword.keywordName, new ItemsKeyword(schema));
+                keywords.put(ItemsKeyword.KEYWORD_NAME, new ItemsKeyword(schema));
             }
         }
         BString containsKey = StringUtils.fromString("contains");
@@ -1113,7 +1170,8 @@ public class SchemaTypeParser {
                     return containsSchema;
                 }
                 if (containsSchema instanceof Schema || containsSchema instanceof Boolean) {
-                    keywords.put(ContainsKeyword.keywordName, new ContainsKeyword(minContains, maxContains, containsSchema));
+                    keywords.put(ContainsKeyword.KEYWORD_NAME,
+                            new ContainsKeyword(minContains, maxContains, containsSchema));
                 }
             }
         }
@@ -1124,14 +1182,14 @@ public class SchemaTypeParser {
                 return schema;
             }
             if (schema instanceof Schema || schema instanceof Boolean) {
-                keywords.put(UnevaluatedItemsKeyword.keywordName, new UnevaluatedItemsKeyword(schema));
+                keywords.put(UnevaluatedItemsKeyword.KEYWORD_NAME, new UnevaluatedItemsKeyword(schema));
             }
         }
         return null;
     }
 
     private Object extractObjectValidationKeywords(BMap<BString, Object> annotation,
-                                             LinkedHashMap<String, Keyword> keywords) {
+                                                   LinkedHashMap<String, Keyword> keywords) {
         ArrayList<BString> keys = new ArrayList<>(List.of(annotation.getKeys()));
 
         BString propertyNamesKey = StringUtils.fromString("propertyNames");
@@ -1141,17 +1199,17 @@ public class SchemaTypeParser {
                 return propertyNamesSchema;
             }
             if (propertyNamesSchema instanceof Schema || propertyNamesSchema instanceof Boolean) {
-                keywords.put(PropertyNamesKeyword.keywordName,
+                keywords.put(PropertyNamesKeyword.KEYWORD_NAME,
                         new PropertyNamesKeyword(propertyNamesSchema));
             }
         }
 
         SchemaParserUtils.extractLong(annotation, "minProperties").ifPresent(value ->
-                keywords.put(MinPropertiesKeyword.keywordName, new MinPropertiesKeyword(value))
+                keywords.put(MinPropertiesKeyword.KEYWORD_NAME, new MinPropertiesKeyword(value))
         );
 
         SchemaParserUtils.extractLong(annotation, "maxProperties").ifPresent(value ->
-                keywords.put(MaxPropertiesKeyword.keywordName, new MaxPropertiesKeyword(value))
+                keywords.put(MaxPropertiesKeyword.KEYWORD_NAME, new MaxPropertiesKeyword(value))
         );
 
         BString dependentSchemasKey = StringUtils.fromString("dependentSchemas");
@@ -1187,7 +1245,7 @@ public class SchemaTypeParser {
                     parsedSchema = parse(typeDesc.getDescribingType());
                 } else {
                     LinkedHashMap<String, Keyword> constKeywords = new LinkedHashMap<>();
-                    constKeywords.put(ConstKeyword.keywordName, new ConstKeyword(schemaValue));
+                    constKeywords.put(ConstKeyword.KEYWORD_NAME, new ConstKeyword(schemaValue));
                     parsedSchema = new Schema(constKeywords);
                 }
 
@@ -1200,7 +1258,7 @@ public class SchemaTypeParser {
             }
 
             if (!dependentSchemasMap.isEmpty()) {
-                keywords.put(DependentSchemasKeyword.keywordName,
+                keywords.put(DependentSchemasKeyword.KEYWORD_NAME,
                         new DependentSchemasKeyword(dependentSchemasMap));
             }
         }
@@ -1209,7 +1267,7 @@ public class SchemaTypeParser {
     }
 
     private Object extractPatternProperties(BMap<BString, Object> annotation,
-                                       LinkedHashMap<String, Keyword> keywords) {
+                                            LinkedHashMap<String, Keyword> keywords) {
         Object value = annotation.get(Constants.VALUE);
         if (value == null) {
             return null;
@@ -1244,21 +1302,21 @@ public class SchemaTypeParser {
         }
 
         if (!patternSchemaMap.isEmpty()) {
-            keywords.put(PatternPropertiesKeyword.keywordName,
+            keywords.put(PatternPropertiesKeyword.KEYWORD_NAME,
                    new PatternPropertiesKeyword(patternSchemaMap));
         }
         return null;
     }
 
     private Object extractAdditionalProperties(BMap<BString, Object> annotation,
-                                            LinkedHashMap<String, Keyword> keywords) {
+                                               LinkedHashMap<String, Keyword> keywords) {
         if (annotation.containsKey(Constants.VALUE)) {
             Object additionalPropertiesSchema = parseSchemaFromTypeDescOrConst(annotation, Constants.VALUE);
             if (additionalPropertiesSchema instanceof BError) {
                 return additionalPropertiesSchema;
             }
             if (additionalPropertiesSchema instanceof Schema || additionalPropertiesSchema instanceof Boolean) {
-                keywords.put(AdditionalPropertiesKeyword.keywordName,
+                keywords.put(AdditionalPropertiesKeyword.KEYWORD_NAME,
                            new AdditionalPropertiesKeyword(additionalPropertiesSchema));
             }
         }
@@ -1272,38 +1330,41 @@ public class SchemaTypeParser {
             return unevaluatedPropertiesSchema;
         }
         if (unevaluatedPropertiesSchema instanceof Schema || unevaluatedPropertiesSchema instanceof Boolean) {
-            keywords.put(UnevaluatedPropertiesKeyword.keywordName,
+            keywords.put(UnevaluatedPropertiesKeyword.KEYWORD_NAME,
                        new UnevaluatedPropertiesKeyword(unevaluatedPropertiesSchema));
         }
         return null;
     }
 
     private Object extractedUnevaluatedItems(BMap<BString, Object> annotation,
-                                                 LinkedHashMap<String, Keyword> keywords) {
+                                             LinkedHashMap<String, Keyword> keywords) {
         Object unevaluatedItemsSchema = parseSchemaFromTypeDescOrConst(annotation, Constants.VALUE);
         if (unevaluatedItemsSchema instanceof BError) {
             return unevaluatedItemsSchema;
         }
         if (unevaluatedItemsSchema instanceof Schema || unevaluatedItemsSchema instanceof Boolean) {
-            keywords.put(UnevaluatedItemsKeyword.keywordName,
+            keywords.put(UnevaluatedItemsKeyword.KEYWORD_NAME,
                     new UnevaluatedItemsKeyword(unevaluatedItemsSchema));
         }
         return null;
     }
 
-    private Object extractStringEncodedDataKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
+    private Object extractStringEncodedDataKeywords(BMap<BString, Object> annotation,
+                                                    LinkedHashMap<String, Keyword> keywords) {
         BString contentEncodingKey = StringUtils.fromString("contentEncoding");
         if (annotation.containsKey(contentEncodingKey)) {
             Object encoding = annotation.get(contentEncodingKey);
             if (encoding instanceof BString encodingValue) {
-                keywords.put(ContentEncodingKeyword.keywordName, new ContentEncodingKeyword(encodingValue.getValue()));
+                keywords.put(ContentEncodingKeyword.KEYWORD_NAME,
+                        new ContentEncodingKeyword(encodingValue.getValue()));
             }
         }
         BString contentMediaTypeKey = StringUtils.fromString("contentMediaType");
         if (annotation.containsKey(contentMediaTypeKey)) {
             Object mediaType = annotation.get(contentMediaTypeKey);
             if (mediaType instanceof BString mediaTypeValue) {
-                keywords.put(ContentMediaTypeKeyword.keywordName, new ContentMediaTypeKeyword(mediaTypeValue.getValue()));
+                keywords.put(ContentMediaTypeKeyword.KEYWORD_NAME,
+                        new ContentMediaTypeKeyword(mediaTypeValue.getValue()));
             }
         }
         BString contentSchemaKey = StringUtils.fromString("contentSchema");
@@ -1313,32 +1374,33 @@ public class SchemaTypeParser {
                 return contentSchema;
             }
             if (contentSchema instanceof Schema || contentSchema instanceof Boolean) {
-                keywords.put(ContentSchemaKeyword.keywordName, new ContentSchemaKeyword(contentSchema));
+                keywords.put(ContentSchemaKeyword.KEYWORD_NAME, new ContentSchemaKeyword(contentSchema));
             }
         }
         return null;
     }
 
-    private void extractMetaDataKeywords(BMap<BString, Object> annotation, LinkedHashMap<String, Keyword> keywords) {
+    private void extractMetaDataKeywords(BMap<BString, Object> annotation,
+                                         LinkedHashMap<String, Keyword> keywords) {
         BString titleKey = StringUtils.fromString("title");
         if (annotation.containsKey(titleKey)) {
             Object title = annotation.get(titleKey);
             if (title instanceof BString titleValue) {
-                keywords.put(TitleKeyword.keywordName, new TitleKeyword(titleValue.getValue()));
+                keywords.put(TitleKeyword.KEYWORD_NAME, new TitleKeyword(titleValue.getValue()));
             }
         }
         BString examplesKey = StringUtils.fromString("examples");
         if (annotation.containsKey(examplesKey)) {
             Object examples = annotation.get(examplesKey);
             if (examples instanceof BArray examplesValue) {
-                keywords.put(ExamplesKeyword.keywordName, new ExamplesKeyword(examplesValue));
+                keywords.put(ExamplesKeyword.KEYWORD_NAME, new ExamplesKeyword(examplesValue));
             }
         }
         BString commentKey = StringUtils.fromString("comment");
         if (annotation.containsKey(commentKey)) {
             Object comment = annotation.get(commentKey);
             if (comment instanceof BString commentValue) {
-                keywords.put(CommentKeyword.keywordName, new CommentKeyword(commentValue.getValue()));
+                keywords.put(CommentKeyword.KEYWORD_NAME, new CommentKeyword(commentValue.getValue()));
             }
         }
     }
@@ -1358,7 +1420,7 @@ public class SchemaTypeParser {
         }
 
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
-        keywords.put(ConstKeyword.keywordName, new ConstKeyword(value));
+        keywords.put(ConstKeyword.KEYWORD_NAME, new ConstKeyword(value));
         return new Schema(keywords);
     }
 
@@ -1413,7 +1475,7 @@ public class SchemaTypeParser {
         if (referredType.getTag() == TypeTags.RECORD_TYPE_TAG) {
             extractKeywordsFromAnnotations(referredType, keywords);
             extractKeywordsFromFieldAnnotations(referredType, keywords);
-            
+
             if (keywords.containsKey("additionalProperties") || keywords.containsKey("unevaluatedProperties")) {
                 RecordType recordType = (RecordType) referredType;
                 java.util.Map<String, Field> fields = recordType.getFields();
@@ -1422,13 +1484,13 @@ public class SchemaTypeParser {
                     for (String fieldName : fields.keySet()) {
                         propertiesMap.put(fieldName, true);
                     }
-                    keywords.put(PropertiesKeyword.keywordName, new PropertiesKeyword(propertiesMap));
+                    keywords.put(PropertiesKeyword.KEYWORD_NAME, new PropertiesKeyword(propertiesMap));
                 }
             }
         } else {
             extractKeywordsFromAnnotations(type, keywords);
         }
-        
+
         return keywords;
     }
 }
