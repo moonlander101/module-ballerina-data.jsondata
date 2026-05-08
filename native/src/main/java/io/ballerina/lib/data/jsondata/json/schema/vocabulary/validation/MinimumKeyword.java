@@ -7,7 +7,7 @@ import io.ballerina.runtime.api.values.BDecimal;
 import java.math.BigDecimal;
 
 public class MinimumKeyword extends Keyword {
-    public static final String keywordName = "minimum";
+    public static final String KEYWORD_NAME = "minimum";
     private final Double keywordValue;
 
     @Override
@@ -22,7 +22,10 @@ public class MinimumKeyword extends Keyword {
         }
 
         if (!valid) {
-            context.addError("minimum", "At " + context.getInstanceLocation() + ": [minimum] value " + instance + " is less than minimum " + keywordValue);
+            context.addError(
+                    "minimum",
+                    "At " + context.getInstanceLocation() + ": [minimum] value " + instance
+                            + " is less than minimum " + keywordValue);
         }
         return valid;
     }

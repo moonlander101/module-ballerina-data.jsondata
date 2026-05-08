@@ -21,7 +21,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 
 public class DynamicAnchorKeyword extends Keyword {
-    public static final String keywordName = "$dynamicAnchor";
+    public static final String KEYWORD_NAME = "$dynamicAnchor";
 
     private final String anchorName;
 

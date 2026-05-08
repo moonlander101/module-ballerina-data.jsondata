@@ -26,7 +26,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class UnevaluatedPropertiesKeyword extends Keyword {
-    public static final String keywordName = "unevaluatedProperties";
+    public static final String KEYWORD_NAME = "unevaluatedProperties";
     private final Object keywordValue;
 
     public UnevaluatedPropertiesKeyword(Object keywordValue) {
@@ -104,7 +104,8 @@ public class UnevaluatedPropertiesKeyword extends Keyword {
         Object properties = context.getAnnotation("properties");
         Set<String> propertiesEvaluated = properties instanceof Set ? (Set<String>) properties : null;
         Object patternProperties = context.getAnnotation("patternProperties");
-        Set<String> patternPropertiesEvaluated = patternProperties instanceof Set ? (Set<String>) patternProperties : null;
+        Set<String> patternPropertiesEvaluated =
+                patternProperties instanceof Set ? (Set<String>) patternProperties : null;
 
         int totalEvaluatedPropertiesCount = (propertiesEvaluated != null ? propertiesEvaluated.size() : 0) +
                 (patternPropertiesEvaluated != null ? patternPropertiesEvaluated.size() : 0);

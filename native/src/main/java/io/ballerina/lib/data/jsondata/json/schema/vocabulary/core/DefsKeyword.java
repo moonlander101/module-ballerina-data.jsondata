@@ -22,7 +22,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import java.util.Map;
 
 public class DefsKeyword extends Keyword {
-    public static final String keywordName = "$defs";
+    public static final String KEYWORD_NAME = "$defs";
     private final Map<String, Object> defsMap;
 
     public DefsKeyword(Map<String, Object> defsMap) {

@@ -23,7 +23,7 @@ import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
 public class PropertyNamesKeyword extends Keyword {
-    public static final String keywordName = "propertyNames";
+    public static final String KEYWORD_NAME = "propertyNames";
     private final Object schema;
 
     public PropertyNamesKeyword(Object schema) {
@@ -49,7 +49,7 @@ public class PropertyNamesKeyword extends Keyword {
             }
         }
 
-        context.setAnnotation(keywordName, true);
+        context.setAnnotation(KEYWORD_NAME, true);
 
         return isValid;
     }

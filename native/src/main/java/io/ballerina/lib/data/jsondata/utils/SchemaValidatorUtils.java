@@ -5,14 +5,17 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.ItemsKey
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator.PrefixItemsKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation.ContainsKeyword;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class SchemaValidatorUtils {
     public static void createEvaluatedItemsAnnotation(EvaluationContext context) {
         Object existingEvaluatedItems = context.getAnnotation("evaluatedItems");
-        Object prefixItemsAnnotation = context.getAnnotation(PrefixItemsKeyword.keywordName);
-        Object itemsAnnotation = context.getAnnotation(ItemsKeyword.keywordName);
-        Object containsAnnotation = context.getAnnotation(ContainsKeyword.keywordName);
+        Object prefixItemsAnnotation = context.getAnnotation(PrefixItemsKeyword.KEYWORD_NAME);
+        Object itemsAnnotation = context.getAnnotation(ItemsKeyword.KEYWORD_NAME);
+        Object containsAnnotation = context.getAnnotation(ContainsKeyword.KEYWORD_NAME);
 
         Object ifEvaluatedItems = context.getAnnotation("ifEvaluatedItems");
         Object thenEvaluatedItems = context.getAnnotation("thenEvaluatedItems");
@@ -141,7 +144,8 @@ public class SchemaValidatorUtils {
             allEvaluated = true;
         } else if (patternPropertiesAnnotation instanceof Boolean patternPropertiesBool && patternPropertiesBool) {
             allEvaluated = true;
-        } else if (additionalPropertiesAnnotation instanceof Boolean additionalPropertiesBool && additionalPropertiesBool) {
+        } else if (additionalPropertiesAnnotation instanceof Boolean additionalPropertiesBool
+                && additionalPropertiesBool) {
             allEvaluated = true;
         } else if (existingEvaluatedProperties instanceof Boolean && (Boolean) existingEvaluatedProperties) {
             allEvaluated = true;

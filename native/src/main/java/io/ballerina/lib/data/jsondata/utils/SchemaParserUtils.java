@@ -22,7 +22,6 @@ import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
-import io.ballerina.runtime.api.values.BError;
 
 import java.io.IOException;
 import java.io.InputStream;

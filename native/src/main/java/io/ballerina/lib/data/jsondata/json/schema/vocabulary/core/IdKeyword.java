@@ -1,13 +1,12 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.core;
 
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
-import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 import java.net.URI;
 
 public class IdKeyword extends Keyword {
-    public static final String keywordName = "$id";
+    public static final String KEYWORD_NAME = "$id";
     private final URI keywordValue;
 
 

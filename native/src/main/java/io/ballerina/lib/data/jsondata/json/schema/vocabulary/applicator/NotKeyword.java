@@ -21,7 +21,7 @@ import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 public class NotKeyword extends Keyword {
-    public static final String keywordName = "not";
+    public static final String KEYWORD_NAME = "not";
     private final Object schema;
 
     public NotKeyword(Object schema) {
@@ -34,7 +34,9 @@ public class NotKeyword extends Keyword {
 
         boolean isValid = Validator.validate(instance, schema, notContext);
         if (isValid) {
-            context.addError("not", "At " + context.getInstanceLocation() + ": [not] value matches the schema, which is not allowed");
+            context.addError(
+                    "not",
+                    "At " + context.getInstanceLocation() + ": [not] value matches the schema, which is not allowed");
         }
         return !isValid;
     }

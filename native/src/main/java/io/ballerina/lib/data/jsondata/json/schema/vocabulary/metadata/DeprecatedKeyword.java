@@ -20,7 +20,7 @@ import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 public class DeprecatedKeyword extends Keyword {
-    public static final String keywordName = "deprecated";
+    public static final String KEYWORD_NAME = "deprecated";
     private final Object keywordValue;
 
     public DeprecatedKeyword(Object keywordValue) {
@@ -29,10 +29,9 @@ public class DeprecatedKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        if (context.getAnnotation(keywordName) != null) {
-            System.out.println("[deprecated] annotation already exists in context");
+        if (context.getAnnotation(KEYWORD_NAME) != null) {
         }
-        context.setAnnotation(keywordName, keywordValue);
+        context.setAnnotation(KEYWORD_NAME, keywordValue);
         return true;
     }
 

@@ -5,7 +5,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BString;
 
 public class MaxLengthKeyword extends Keyword {
-    public static final String keywordName = "maxLength";
+    public static final String KEYWORD_NAME = "maxLength";
     private final Long keywordValue;
 
     @Override
@@ -15,7 +15,10 @@ public class MaxLengthKeyword extends Keyword {
         }
         boolean valid = str.length() <= keywordValue;
         if (!valid) {
-            context.addError("maxLength", "At " + context.getInstanceLocation() + ": [maxLength] string length " + str.length() + " exceeds maximum " + keywordValue);
+            context.addError(
+                    "maxLength",
+                    "At " + context.getInstanceLocation() + ": [maxLength] string length " + str.length()
+                            + " exceeds maximum " + keywordValue);
         }
         return valid;
     }

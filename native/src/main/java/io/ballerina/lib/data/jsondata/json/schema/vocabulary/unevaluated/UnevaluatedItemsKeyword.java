@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Set;
 
 public class UnevaluatedItemsKeyword extends Keyword {
-    public static final String keywordName = "unevaluatedItems";
+    public static final String KEYWORD_NAME = "unevaluatedItems";
     private final Object keywordValue;
 
     public UnevaluatedItemsKeyword(Object keywordValue) {
@@ -58,8 +58,11 @@ public class UnevaluatedItemsKeyword extends Keyword {
                 Object item = array.get(i);
                 EvaluationContext itemContext = context.createChildContext(String.valueOf(i), "unevaluatedItems");
                 if (!Validator.validate(item, keywordValue, itemContext)) {
-                    context.addError("unevaluatedItems", "At " + context.getInstanceLocation() + "/" + i +
-                            ": [unevaluatedItems] item at index " + i + " is not valid against the unevaluatedItems schema");
+                    context.addError(
+                            "unevaluatedItems",
+                            "At " + context.getInstanceLocation() + "/" + i
+                                    + ": [unevaluatedItems] item at index " + i
+                                    + " is not valid against the unevaluatedItems schema");
                     isValid = false;
                 }
             }

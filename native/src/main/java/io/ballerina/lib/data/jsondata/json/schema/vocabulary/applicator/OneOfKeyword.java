@@ -8,7 +8,7 @@ import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 import java.util.List;
 
 public class OneOfKeyword extends Keyword {
-    public static final String keywordName = "oneOf";
+    public static final String KEYWORD_NAME = "oneOf";
     private final List<Object> keywordValue;
 
     public OneOfKeyword(List<Object> keywordValue) {
@@ -19,11 +19,15 @@ public class OneOfKeyword extends Keyword {
     public boolean evaluate(Object instance, EvaluationContext context) {
         int matchCount = 0;
         for (int i = 0; i < keywordValue.size(); i++) {
-            EvaluationContext schemaContext = context.createChildContext("", "oneOf/" + i);
+            EvaluationContext schemaContext =
+                    context.createChildContext("", "oneOf/" + i);
             if (Validator.validate(instance, keywordValue.get(i), schemaContext)) {
                 matchCount++;
                 if (matchCount > 1) {
-                    context.addError("oneOf", "At " + context.getInstanceLocation() + ": [oneOf] value matches more than one subschema");
+                    context.addError(
+                            "oneOf",
+                            "At " + context.getInstanceLocation()
+                                    + ": [oneOf] value matches more than one subschema");
                     return false;
                 }
                 if (context.isTrackEvaluatedItems()) {
@@ -37,7 +41,9 @@ public class OneOfKeyword extends Keyword {
             }
         }
         if (matchCount == 0) {
-            context.addError("oneOf", "At " + context.getInstanceLocation() + ": [oneOf] value does not match exactly one subschema");
+            context.addError(
+                    "oneOf",
+                    "At " + context.getInstanceLocation() + ": [oneOf] value does not match exactly one subschema");
         }
         return matchCount == 1;
     }

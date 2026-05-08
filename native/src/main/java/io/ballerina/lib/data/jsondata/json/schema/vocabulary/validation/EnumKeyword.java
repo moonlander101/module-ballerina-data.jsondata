@@ -1,13 +1,13 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
-import java.util.Set;
-
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.JsonEqualityUtils;
 
+import java.util.Set;
+
 public class EnumKeyword extends Keyword {
-    public static final String keywordName = "enum";
+    public static final String KEYWORD_NAME = "enum";
     private final Set<Object> keywordValue;
 
     @Override
@@ -17,13 +17,20 @@ public class EnumKeyword extends Keyword {
                 return true;
             }
         }
-        context.addError("enum", "At " + context.getInstanceLocation() + ": [enum] value must be one of " + keywordValue + " but found " + formatValue(instance));
+        context.addError(
+                "enum",
+                "At " + context.getInstanceLocation() + ": [enum] value must be one of " + keywordValue
+                        + " but found " + formatValue(instance));
         return false;
     }
 
     private String formatValue(Object value) {
-        if (value == null) return "null";
-        if (value instanceof String) return "\"" + value + "\"";
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof String) {
+            return "\"" + value + "\"";
+        }
         return String.valueOf(value);
     }
 

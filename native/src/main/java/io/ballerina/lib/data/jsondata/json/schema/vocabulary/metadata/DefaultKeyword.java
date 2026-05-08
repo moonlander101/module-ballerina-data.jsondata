@@ -20,7 +20,7 @@ import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 public class DefaultKeyword extends Keyword {
-    public static final String keywordName = "default";
+    public static final String KEYWORD_NAME = "default";
     private final Object keywordValue;
 
     public DefaultKeyword(Object keywordValue) {
@@ -29,10 +29,9 @@ public class DefaultKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        if (context.getAnnotation(keywordName) != null) {
-            System.out.println("[default] annotation already exists in context");
+        if (context.getAnnotation(KEYWORD_NAME) != null) {
         }
-        context.setAnnotation(keywordName, keywordValue);
+        context.setAnnotation(KEYWORD_NAME, keywordValue);
         return true;
     }
 

@@ -4,7 +4,7 @@ import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 
 public class AnchorKeyword extends Keyword {
-    public static final String keywordName = "$anchor";
+    public static final String KEYWORD_NAME = "$anchor";
     private final Object keywordValue;
 
     @Override

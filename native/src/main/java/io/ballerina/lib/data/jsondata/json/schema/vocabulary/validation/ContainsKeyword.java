@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ContainsKeyword extends Keyword {
-    public static final String keywordName = "contains";
+    public static final String KEYWORD_NAME = "contains";
     private final Long minContains;
     private final Long maxContains;
     private final Object containsSchema;

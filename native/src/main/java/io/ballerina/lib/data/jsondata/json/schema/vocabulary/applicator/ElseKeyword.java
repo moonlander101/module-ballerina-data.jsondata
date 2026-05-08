@@ -22,7 +22,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
 public class ElseKeyword extends Keyword {
-    public static final String keywordName = "else";
+    public static final String KEYWORD_NAME = "else";
     private final Object keywordValue;
 
     public ElseKeyword(Object keywordValue) {
@@ -47,7 +47,9 @@ public class ElseKeyword extends Keyword {
                     }
                     if (context.isTrackEvaluatedProperties()) {
                         SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(elseContext);
-                        context.setAnnotation("elseEvaluatedProperties", elseContext.getAnnotation("evaluatedProperties"));
+                        context.setAnnotation(
+                                "elseEvaluatedProperties",
+                                elseContext.getAnnotation("evaluatedProperties"));
                     }
                 }
                 return elseValid;

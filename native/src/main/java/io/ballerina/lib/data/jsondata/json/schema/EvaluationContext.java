@@ -19,7 +19,11 @@
 package io.ballerina.lib.data.jsondata.json.schema;
 
 import java.net.URI;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 public class EvaluationContext {
     private final String instanceLocationSegment;
@@ -182,7 +186,8 @@ public class EvaluationContext {
             return;
         }
 
-        if (annotationValue instanceof List<?> childAnnotationValues && parentAnnotationValue instanceof List<?> parentAnnotationValues) {
+        if (annotationValue instanceof List<?> childAnnotationValues
+                && parentAnnotationValue instanceof List<?> parentAnnotationValues) {
             List<Object> parentList = (List<Object>) parentAnnotationValues;
             for (Object value : childAnnotationValues) {
                 if (!parentList.contains(value)) {
@@ -192,7 +197,8 @@ public class EvaluationContext {
             return;
         }
 
-        if (annotationValue instanceof Set<?> childAnnotationValues && parentAnnotationValue instanceof Set<?> parentAnnotationValues) {
+        if (annotationValue instanceof Set<?> childAnnotationValues
+                && parentAnnotationValue instanceof Set<?> parentAnnotationValues) {
             Set<Object> parentSet = (Set<Object>) parentAnnotationValues;
             parentSet.addAll(childAnnotationValues);
         }

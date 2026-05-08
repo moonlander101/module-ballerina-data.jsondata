@@ -1,7 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.applicator;
 
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
-import io.ballerina.lib.data.jsondata.json.schema.Schema;
 import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
@@ -12,7 +11,7 @@ import io.ballerina.runtime.api.values.BString;
 import java.util.Map;
 
 public class DependentSchemasKeyword extends Keyword {
-    public static final String keywordName = "dependentSchemas";
+    public static final String KEYWORD_NAME = "dependentSchemas";
     public final Map<String, Object> keywordValue;
 
     public DependentSchemasKeyword(Map<String, Object> keywordValue) {
@@ -35,7 +34,8 @@ public class DependentSchemasKeyword extends Keyword {
         for (Map.Entry<String, Object> entry : keywordValue.entrySet()) {
             String dependentOn = entry.getKey();
             Object subschema = entry.getValue();
-            EvaluationContext subschemaContext = context.createChildContext(dependentOn, "dependentSchemas/" + dependentOn);
+            EvaluationContext subschemaContext =
+                    context.createChildContext(dependentOn, "dependentSchemas/" + dependentOn);
 
             BString dependentOnKey = StringUtils.fromString(dependentOn);
             if (bMap.containsKey(dependentOnKey)) {

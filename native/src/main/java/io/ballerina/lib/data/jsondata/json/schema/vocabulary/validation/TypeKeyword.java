@@ -1,11 +1,6 @@
 package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
-import io.ballerina.lib.data.jsondata.json.schema.SchemaJsonParser;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.SchemaParserUtils;
 import io.ballerina.runtime.api.values.BArray;
@@ -13,8 +8,12 @@ import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
 public class TypeKeyword extends Keyword {
-    public static final String keywordName = "type";
+    public static final String KEYWORD_NAME = "type";
     public final Set<String> keywordValue;
 
     @Override
@@ -35,7 +34,9 @@ public class TypeKeyword extends Keyword {
                 return intVal != null;
             }
 
-            if (Objects.equals(keyword, "number") && (instance instanceof Double || instance instanceof Long || instance instanceof BDecimal)) {
+            if (Objects.equals(keyword, "number")
+                    && (instance instanceof Double || instance instanceof Long
+                    || instance instanceof BDecimal)) {
                 return true;
             }
 
@@ -43,7 +44,7 @@ public class TypeKeyword extends Keyword {
                 return true;
             }
 
-            if (Objects.equals(keyword, "object") && instance instanceof BMap<?,?>) {
+            if (Objects.equals(keyword, "object") && instance instanceof BMap<?, ?>) {
                 return true;
             }
 
@@ -52,7 +53,9 @@ public class TypeKeyword extends Keyword {
             }
         }
         String actualType = instance == null ? "null" : instance.getClass().getSimpleName();
-        context.addError("type", "At " + context.getInstanceLocation() + ": [type] expected " + keywordValue + " but found " + actualType);
+        context.addError("type",
+                "At " + context.getInstanceLocation() + ": [type] expected " + keywordValue
+                        + " but found " + actualType);
         return false;
     }
 

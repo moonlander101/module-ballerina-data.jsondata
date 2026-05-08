@@ -49,7 +49,7 @@ const testFiles = [
     "enum.json",
     "exclusiveMaximum.json",
     "exclusiveMinimum.json",
-//    "format.json",
+    "format.json",
     "if-then-else.json",
     "infinite-loop-detection.json",
     "items.json",

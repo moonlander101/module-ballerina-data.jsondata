@@ -4,6 +4,7 @@ import io.ballerina.runtime.api.values.BArray;
 import io.ballerina.runtime.api.values.BDecimal;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
+
 import java.math.BigDecimal;
 
 public class JsonEqualityUtils {
