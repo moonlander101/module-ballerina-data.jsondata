@@ -62,8 +62,8 @@ public class JsonEqualityUtils {
     }
 
     private static boolean arraysEqual(BArray array1, BArray array2) {
-        int length1 = array1.size();
-        int length2 = array2.size();
+        long length1 = array1.getLength();
+        long length2 = array2.getLength();
 
         if (length1 != length2) {
             return false;

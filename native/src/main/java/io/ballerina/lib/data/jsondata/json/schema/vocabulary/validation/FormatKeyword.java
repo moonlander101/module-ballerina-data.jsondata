@@ -18,7 +18,10 @@ package io.ballerina.lib.data.jsondata.json.schema.vocabulary.validation;
 
 import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
+import io.ballerina.runtime.api.utils.StringUtils;
+import io.ballerina.runtime.api.values.BRegexpValue;
 import io.ballerina.runtime.api.values.BString;
+import org.ballerinalang.langlib.regexp.FromString;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -27,7 +30,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 public class FormatKeyword extends Keyword {
     public static final String KEYWORD_NAME = "format";
@@ -501,12 +503,8 @@ public class FormatKeyword extends Keyword {
     }
 
     private boolean validateRegex(String value) {
-        try {
-            Pattern.compile(value);
-            return true;
-        } catch (PatternSyntaxException e) {
-            return false;
-        }
+        Object regexVal = FromString.fromString(StringUtils.fromString(value));
+        return regexVal instanceof BRegexpValue;
     }
 
     private boolean validateHostname(String value) {
