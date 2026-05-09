@@ -207,4 +207,4 @@ public type UnevaluatedItemsConfig record {|
 |};
 
 # The annotation is used to specify the type of unevaluated items.
-public annotation UnevaluatedPropertiesConfig UnevaluatedItems on type;
+public annotation UnevaluatedItemsConfig UnevaluatedItems on type;

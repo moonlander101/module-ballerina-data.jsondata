@@ -31,7 +31,9 @@ public class TypeKeyword extends Keyword {
                     return true;
                 }
                 Long intVal = SchemaParserUtils.toInteger(instance);
-                return intVal != null;
+                if (intVal != null) {
+                    return true;
+                }
             }
 
             if (Objects.equals(keyword, "number")

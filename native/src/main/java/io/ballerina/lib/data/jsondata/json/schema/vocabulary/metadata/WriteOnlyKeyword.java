@@ -29,8 +29,6 @@ public class WriteOnlyKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
-        if (context.getAnnotation(KEYWORD_NAME) != null) {
-        }
         context.setAnnotation(KEYWORD_NAME, keywordValue);
         return true;
     }

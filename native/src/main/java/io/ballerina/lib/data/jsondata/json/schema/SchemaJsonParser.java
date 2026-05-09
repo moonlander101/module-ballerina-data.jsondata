@@ -80,19 +80,20 @@ import io.ballerina.runtime.api.values.BString;
 import org.ballerinalang.langlib.regexp.FromString;
 
 import java.net.URI;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Stack;
 
 public class SchemaJsonParser {
     private final SchemaRegistry registry;
     private final Set<URI> currentCallUris;
 
-    private final Stack<String> lexicalScopeStack = new Stack<>();
+    private final Deque<String> lexicalScopeStack = new ArrayDeque<>();
 
     public SchemaRegistry getRegistry() {
         return registry;
@@ -104,6 +105,10 @@ public class SchemaJsonParser {
     }
 
     public Object parse(Object json) {
+        if (json == null) {
+            return DiagnosticLog.createJsonError(
+                    "Invalid JSON Schema: expected object or boolean, got null");
+        }
         if (json instanceof BMap<?, ?>) {
             return parseSchema((BMap<BString, Object>) json);
         } else if (json instanceof Boolean) {
@@ -152,8 +157,8 @@ public class SchemaJsonParser {
                 return DiagnosticLog.createJsonError("Invalid value for '$anchor': expected string");
             }
             anchorName = ((BString) anchorValue).getValue();
-                if (!SchemaParserUtils.isValidAnchorName(anchorName)) {
-                    return DiagnosticLog.createJsonError(
+            if (!SchemaParserUtils.isValidAnchorName(anchorName)) {
+                return DiagnosticLog.createJsonError(
                         "Invalid $anchor value: must match pattern " + SchemaParserUtils.VALID_ANCHOR_REGEX);
             }
             keywords.put(AnchorKeyword.KEYWORD_NAME, new AnchorKeyword(anchorValue));
@@ -166,9 +171,9 @@ public class SchemaJsonParser {
                 return DiagnosticLog.createJsonError("Invalid value for '$dynamicAnchor': expected string");
             }
             dynamicAnchorName = ((BString) dynamicAnchorValue).getValue();
-                if (!SchemaParserUtils.isValidAnchorName(dynamicAnchorName)) {
-                    return DiagnosticLog.createJsonError(
-                            "Invalid $dynamicAnchor value: must match pattern " + SchemaParserUtils.VALID_ANCHOR_REGEX);
+            if (!SchemaParserUtils.isValidAnchorName(dynamicAnchorName)) {
+                return DiagnosticLog.createJsonError(
+                        "Invalid $dynamicAnchor value: must match pattern " + SchemaParserUtils.VALID_ANCHOR_REGEX);
             }
             keywords.put(DynamicAnchorKeyword.KEYWORD_NAME, new DynamicAnchorKeyword(dynamicAnchorName));
         }

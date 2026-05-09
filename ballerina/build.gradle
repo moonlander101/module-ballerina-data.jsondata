@@ -86,15 +86,6 @@ task updateTomlFiles {
         newConfig = newConfig.replace("@stdlib.constraintnative.version@", stdlibDependentConstraintNativeVersion)
         newConfig = newConfig.replace("@constraint.version@", stdlibDependentConstraintVersion)
 
-        newConfig = newConfig.replace("@networknt.json.schema.validator.version@", project.networkntJsonSchemaValidatorVersion)
-        newConfig = newConfig.replace("@@jacksonDatabindVersion@@", project.jacksonDatabindVersion)
-        newConfig = newConfig.replace("@@jacksonCoreVersion@@", project.jacksonCoreVersion)
-        newConfig = newConfig.replace("@@jacksonAnnotationsVersion@@", project.jacksonAnnotationsVersion)
-        newConfig = newConfig.replace("@@jacksonDatatypeJsr310Version@@", project.jacksonDatatypeJsr310Version)
-        newConfig = newConfig.replace("@@snakeyamlVersion@@", project.snakeyamlVersion)
-        newConfig = newConfig.replace("@@joniVersion@@", project.joniVersion)
-        newConfig = newConfig.replace("@@jcodingsVersion@@", project.jcodingsVersion)
-
         ballerinaTomlFile.text = newConfig
 
         def newCompilerPluginToml = compilerPluginTomlFilePlaceHolder.text.replace("@project.version@", project.version)

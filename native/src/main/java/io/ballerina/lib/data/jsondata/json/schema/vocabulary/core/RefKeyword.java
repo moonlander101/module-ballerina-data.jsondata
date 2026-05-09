@@ -58,22 +58,23 @@ public class RefKeyword extends Keyword {
         }
 
         context.pushDynamicScope(refUri);
-
-        EvaluationContext refContext = context.createChildContext("", KEYWORD_NAME);
-        boolean isValid = Validator.validate(instance, target, refContext);
-        if (isValid) {
-            if (context.isTrackEvaluatedProperties()) {
-                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
-                refContext.moveToParentContext("evaluatedProperties");
+        try {
+            EvaluationContext refContext = context.createChildContext("", KEYWORD_NAME);
+            boolean isValid = Validator.validate(instance, target, refContext);
+            if (isValid) {
+                if (context.isTrackEvaluatedProperties()) {
+                    SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(refContext);
+                    refContext.moveToParentContext("evaluatedProperties");
+                }
+                if (context.isTrackEvaluatedItems()) {
+                    SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
+                    refContext.moveToParentContext("evaluatedItems");
+                }
             }
-            if (context.isTrackEvaluatedItems()) {
-                SchemaValidatorUtils.createEvaluatedItemsAnnotation(refContext);
-                refContext.moveToParentContext("evaluatedItems");
-            }
+            return isValid;
+        } finally {
+            context.popDynamicScope();
         }
-
-        context.popDynamicScope();
-        return isValid;
     }
 }
 

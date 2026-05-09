@@ -73,6 +73,7 @@ public class SchemaParserUtils {
 
         try (Stream<Path> paths = Files.walk(parentDir)) {
             paths.filter(path -> path.toString().endsWith(".json"))
+                    .filter(Files::isRegularFile)
                     .filter(path -> !path.equals(rootAbsPath))
                     .forEach(path -> {
                         try {

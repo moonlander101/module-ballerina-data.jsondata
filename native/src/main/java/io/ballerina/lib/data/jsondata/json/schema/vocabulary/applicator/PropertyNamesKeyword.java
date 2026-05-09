@@ -48,9 +48,6 @@ public class PropertyNamesKeyword extends Keyword {
                 isValid = false;
             }
         }
-
-        context.setAnnotation(KEYWORD_NAME, true);
-
         return isValid;
     }
 

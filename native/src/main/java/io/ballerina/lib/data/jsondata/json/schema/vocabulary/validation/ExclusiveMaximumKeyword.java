@@ -4,19 +4,22 @@ import io.ballerina.lib.data.jsondata.json.schema.EvaluationContext;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.runtime.api.values.BDecimal;
 
+import java.math.BigDecimal;
+
 public class ExclusiveMaximumKeyword extends Keyword {
     public static final String KEYWORD_NAME = "exclusiveMaximum";
-    private final Double keywordValue;
+    private final BigDecimal keywordValue;
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
         boolean valid = true;
-        if (instance instanceof Double) {
-            valid = (Double) instance < keywordValue;
-        } else if (instance instanceof Long) {
-            valid = (Long) instance < keywordValue;
-        } else if (instance instanceof BDecimal) {
-            valid = ((BDecimal) instance).decimalValue().compareTo(new java.math.BigDecimal(keywordValue)) < 0;
+        BigDecimal exclusiveMax = keywordValue;
+        if (instance instanceof Double d) {
+            valid = BigDecimal.valueOf(d).compareTo(exclusiveMax) < 0;
+        } else if (instance instanceof Long l) {
+            valid = BigDecimal.valueOf(l).compareTo(exclusiveMax) < 0;
+        } else if (instance instanceof BDecimal bd) {
+            valid = bd.decimalValue().compareTo(exclusiveMax) < 0;
         }
 
         if (!valid) {
@@ -29,7 +32,7 @@ public class ExclusiveMaximumKeyword extends Keyword {
     }
 
     public ExclusiveMaximumKeyword(Double keywordValue) {
-        this.keywordValue = keywordValue;
+        this.keywordValue = BigDecimal.valueOf(keywordValue);
     }
 
     public Object getKeywordValue() {

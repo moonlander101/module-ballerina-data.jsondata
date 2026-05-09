@@ -8,17 +8,18 @@ import java.math.BigDecimal;
 
 public class MinimumKeyword extends Keyword {
     public static final String KEYWORD_NAME = "minimum";
-    private final Double keywordValue;
+    private final BigDecimal keywordValue;
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
         boolean valid = true;
-        if (instance instanceof Double) {
-            valid = (Double) instance >= keywordValue;
-        } else if (instance instanceof Long) {
-            valid = (Long) instance >= keywordValue;
-        } else if (instance instanceof BDecimal) {
-            valid = ((BDecimal) instance).decimalValue().compareTo(BigDecimal.valueOf(keywordValue)) >= 0;
+        BigDecimal minimum = keywordValue;
+        if (instance instanceof Double d) {
+            valid = BigDecimal.valueOf(d).compareTo(minimum) >= 0;
+        } else if (instance instanceof Long l) {
+            valid = BigDecimal.valueOf(l).compareTo(minimum) >= 0;
+        }  else if (instance instanceof BDecimal bd) {
+            valid = bd.decimalValue().compareTo(minimum) >= 0;
         }
 
         if (!valid) {
@@ -31,7 +32,7 @@ public class MinimumKeyword extends Keyword {
     }
 
     public MinimumKeyword(Double keywordValue) {
-        this.keywordValue = keywordValue;
+        this.keywordValue = BigDecimal.valueOf(keywordValue);
     }
 
     public Object getKeywordValue() {

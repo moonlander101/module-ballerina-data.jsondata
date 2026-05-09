@@ -37,7 +37,7 @@ public class EvaluationContext {
     private final LinkedHashSet<URI> dynamicScope;
     private boolean trackEvaluatedItems;
     private boolean trackEvaluatedProperties;
-    private boolean formatAnnotation;
+    private final boolean formatAnnotation;
 
     public EvaluationContext() {
         this(null, "", "", null, new LinkedHashSet<>());
@@ -78,7 +78,8 @@ public class EvaluationContext {
     }
 
     public EvaluationContext createChildContext(String instancePathSegment, String schemaPathSegment) {
-        return new EvaluationContext(this, instancePathSegment, schemaPathSegment, schemaRegistry, this.dynamicScope);
+        return new EvaluationContext(this, instancePathSegment, schemaPathSegment, schemaRegistry,
+                new LinkedHashSet<>(this.dynamicScope));
     }
 
     public void addError(String keywordName, String message) {
@@ -151,10 +152,6 @@ public class EvaluationContext {
 
     public boolean isFormatAnnotation() {
         return formatAnnotation;
-    }
-
-    public void setFormatAnnotation(boolean formatAnnotation) {
-        this.formatAnnotation = formatAnnotation;
     }
 
     public void moveToParentContext(String annotationKey) {

@@ -18,6 +18,7 @@ public class OneOfKeyword extends Keyword {
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
         int matchCount = 0;
+        EvaluationContext matchedContext = null;
         for (int i = 0; i < keywordValue.size(); i++) {
             EvaluationContext schemaContext =
                     context.createChildContext("", "oneOf/" + i);
@@ -30,22 +31,24 @@ public class OneOfKeyword extends Keyword {
                                     + ": [oneOf] value matches more than one subschema");
                     return false;
                 }
-                if (context.isTrackEvaluatedItems()) {
-                    SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
-                    schemaContext.moveToParentContext("evaluatedItems");
-                }
-                if (context.isTrackEvaluatedProperties()) {
-                    SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(schemaContext);
-                    schemaContext.moveToParentContext("evaluatedProperties");
-                }
+                matchedContext = schemaContext;
             }
         }
-        if (matchCount == 0) {
-            context.addError(
-                    "oneOf",
-                    "At " + context.getInstanceLocation() + ": [oneOf] value does not match exactly one subschema");
+        if (matchCount == 1) {
+            if (context.isTrackEvaluatedItems()) {
+                SchemaValidatorUtils.createEvaluatedItemsAnnotation(matchedContext);
+                matchedContext.moveToParentContext("evaluatedItems");
+            }
+            if (context.isTrackEvaluatedProperties()) {
+                SchemaValidatorUtils.createEvaluatedPropertiesAnnotation(matchedContext);
+                matchedContext.moveToParentContext("evaluatedProperties");
+            }
+            return true;
         }
-        return matchCount == 1;
+        context.addError(
+                "oneOf",
+                "At " + context.getInstanceLocation() + ": [oneOf] value does not match exactly one subschema");
+        return false;
     }
 
     @Override

@@ -49,22 +49,17 @@ public class PropertiesKeyword extends Keyword {
 
             Object schema = propertiesMap.get(propertyName);
             if (schema != null) {
+                matchedPropertyNames.add(propertyName);
                 EvaluationContext propertyContext =
                         context.createChildContext(propertyName, "properties/" + propertyName);
 
-                if (Validator.validate(bMap.get(propertyKey), schema, propertyContext)) {
-                    if (matchedPropertyNames != null) {
-                        matchedPropertyNames.add(propertyName);
-                    }
-                } else {
+                if (!Validator.validate(bMap.get(propertyKey), schema, propertyContext)) {
                     isValid = false;
                 }
             }
         }
 
-        if (matchedPropertyNames != null) {
-            context.setAnnotation(KEYWORD_NAME, matchedPropertyNames);
-        }
+        context.setAnnotation(KEYWORD_NAME, matchedPropertyNames);
 
         return isValid;
     }

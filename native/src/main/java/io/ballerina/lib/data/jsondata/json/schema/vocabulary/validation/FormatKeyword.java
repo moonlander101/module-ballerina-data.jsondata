@@ -87,7 +87,7 @@ public class FormatKeyword extends Keyword {
                         + "(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\\d|"
                         + "1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|"
                         + "(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\\d|"
-                        + "1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:)))$"
+                        + "1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:)))$)"
         );
     }
 
@@ -121,7 +121,7 @@ public class FormatKeyword extends Keyword {
     private static class DatetimePatternHolder {
         static final Pattern INSTANCE = Pattern.compile(
                 "^(\\d{4})-([0-1]\\d)-([0-3]\\d)[tT]([0-2]\\d):([0-5]\\d):([0-5]\\d|60)" +
-                        "(?:\\.\\d+)?([zZ]|[+-]\\d\\d(?::?\\d\\d)?)$"
+                        "(?:\\.\\d+)?([zZ]|[+-]\\d\\d:\\d\\d)$"
         );
     }
 
@@ -247,11 +247,8 @@ public class FormatKeyword extends Keyword {
                 valid = validateUriTemplate(str.getValue());
                 break;
             default:
-                context.addError(
-                        "format",
-                        "At " + context.getInstanceLocation() + ": [format] unknown format type: "
-                                + keywordValue);
-                return false;
+                context.setAnnotation(KEYWORD_NAME, keywordValue);
+                return true;
         }
         if (!valid) {
             context.addError(
@@ -313,6 +310,9 @@ public class FormatKeyword extends Keyword {
     }
 
     private boolean validateIdnEmail(String value) {
+        if (validateEmail(value)) {
+            return true;
+        }
         Matcher matcher = IdnEmailPatternHolder.INSTANCE.matcher(value);
         return matcher.matches();
     }
@@ -362,21 +362,16 @@ public class FormatKeyword extends Keyword {
     }
 
     private boolean validateUUID(String value) {
-        int offset = 0;
-        if (value.startsWith("urn:uuid:")) {
-            offset = 9;
-        }
-        int len = value.length() - offset;
-        if (len != 36) {
+        if (value.length() != 36) {
             return false;
         }
         for (int pos : UUID_HYPHEN_POSITIONS) {
-            if (value.charAt(offset + pos) != '-') {
+            if (value.charAt(pos) != '-') {
                 return false;
             }
         }
-        for (int i = 0; i < len; i++) {
-            char c = value.charAt(offset + i);
+        for (int i = 0; i < 36; i++) {
+            char c = value.charAt(i);
             if (c == '-') {
                 continue;
             }
@@ -442,12 +437,9 @@ public class FormatKeyword extends Keyword {
             if (offHour > 23) {
                 return false;
             }
-            if (offset.length() > 3) {
-                int minuteStart = offset.length() == 6 ? 4 : 3;
-                int offMinute = Integer.parseInt(offset.substring(minuteStart, minuteStart + 2));
-                if (offMinute > 59) {
-                    return false;
-                }
+            int offMinute = Integer.parseInt(offset.substring(4, 6));
+            if (offMinute > 59) {
+                return false;
             }
         }
         if (second == 60) {
@@ -496,11 +488,7 @@ public class FormatKeyword extends Keyword {
         if (!offset.equalsIgnoreCase("Z")) {
             int offSign = offset.charAt(0) == '+' ? -1 : 1;
             int offHour = Integer.parseInt(offset.substring(1, 3));
-            int offMinute = 0;
-            if (offset.length() > 3) {
-                int minuteStart = offset.length() == 6 ? 4 : 3;
-                offMinute = Integer.parseInt(offset.substring(minuteStart, minuteStart + 2));
-            }
+            int offMinute = Integer.parseInt(offset.substring(4, 6));
             utcMinutes += offSign * (offHour * 60 + offMinute);
         }
         utcMinutes = ((utcMinutes % 1440) + 1440) % 1440;

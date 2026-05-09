@@ -34,8 +34,6 @@ public class ContentSchemaKeyword extends Keyword {
             return true;
         }
 
-        if (context.getAnnotation(KEYWORD_NAME) != null) {
-        }
         context.setAnnotation(KEYWORD_NAME, keywordValue);
         return true;
     }

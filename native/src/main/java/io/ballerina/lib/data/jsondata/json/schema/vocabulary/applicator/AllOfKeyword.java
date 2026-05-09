@@ -21,6 +21,7 @@ import io.ballerina.lib.data.jsondata.json.schema.Validator;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.Keyword;
 import io.ballerina.lib.data.jsondata.utils.SchemaValidatorUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class AllOfKeyword extends Keyword {
@@ -33,11 +34,15 @@ public class AllOfKeyword extends Keyword {
 
     @Override
     public boolean evaluate(Object instance, EvaluationContext context) {
+        List<EvaluationContext> validChildContexts = new ArrayList<>(keywordValue.size());
         for (int i = 0; i < keywordValue.size(); i++) {
             EvaluationContext schemaContext = context.createChildContext("", "allOf/" + i);
             if (!Validator.validate(instance, keywordValue.get(i), schemaContext)) {
                 return false;
             }
+            validChildContexts.add(schemaContext);
+        }
+        for (EvaluationContext schemaContext : validChildContexts) {
             if (context.isTrackEvaluatedItems()) {
                 SchemaValidatorUtils.createEvaluatedItemsAnnotation(schemaContext);
                 schemaContext.moveToParentContext("evaluatedItems");

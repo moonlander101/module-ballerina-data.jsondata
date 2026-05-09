@@ -330,29 +330,29 @@ isolated function testSchemaJsonValidation(json inputData, map<json> schema, boo
     }
 }
 
-function dataProviderForSchemaJsonIdHandling() returns [json, json, boolean][] {
+function dataProviderForSchemaJsonIdHandling() returns [json, map<json>, boolean][] {
     json testData = {
         "key": "value"
     };
 
-    json schemaWithoutId = {
+    map<json> schemaWithoutId = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object"
     };
 
-    json schemaWithRelativeId = {
+    map<json> schemaWithRelativeId = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "/schemas/test.json",
         "type": "object"
     };
 
-    json schemaWithValidId = {
+    map<json> schemaWithValidId = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "http://test.com/schema.json",
         "type": "object"
     };
 
-    json schemaWithValidId2 = {
+    map<json> schemaWithValidId2 = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "urn://schema.json",
         "type": "object"

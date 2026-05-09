@@ -772,14 +772,9 @@ public class SchemaTypeParser {
                 Object memberValue = extractConstValues(memberType);
                 if (memberValue == null) {
                     return null;
+                } else {
+                    bArray.add(index, SchemaParserUtils.normalizeConstValue(memberValue, NULL_CONST));
                 }
-                if (memberValue instanceof Set<?>) {
-                    for (Object item : (Set<?>) memberValue) {
-                        bArray.add(index, SchemaParserUtils.normalizeConstValue(item, NULL_CONST));
-                        index += 1;
-                    }
-                }
-                bArray.add(index, SchemaParserUtils.normalizeConstValue(memberValue, NULL_CONST));
                 index += 1;
             }
             return bArray;
@@ -950,7 +945,10 @@ public class SchemaTypeParser {
                         extractDependentRequiredAnnotation(fieldName, annotation, dependentRequiredMap);
                         break;
                     case "DependentSchema":
-                        extractDependentSchemaAnnotation(fieldName, annotation, dependentSchemasMap);
+                        Object depErr = extractDependentSchemaAnnotation(fieldName, annotation, dependentSchemasMap);
+                        if (depErr instanceof BError) {
+                            return depErr;
+                        }
                         break;
                     default:
                         break;
@@ -1010,16 +1008,20 @@ public class SchemaTypeParser {
         }
     }
 
-    private void extractDependentSchemaAnnotation(String fieldName, Object annotation,
+    private Object extractDependentSchemaAnnotation(String fieldName, Object annotation,
                                                  Map<String, Object> dependentSchemasMap) {
         if (!(annotation instanceof BMap<?, ?>)) {
-            return;
+            return null;
         }
 
         Object schema = parseSchemaFromTypeDescOrConst((BMap<BString, Object>) annotation, Constants.VALUE);
+        if (schema instanceof BError) {
+            return schema;
+        }
         if (schema instanceof Schema || schema instanceof Boolean) {
             dependentSchemasMap.put(fieldName, schema);
         }
+        return null;
     }
 
     private void setArraySizeConstraints(LinkedHashMap<String, Keyword> keywords,
@@ -1396,7 +1398,7 @@ public class SchemaTypeParser {
                 keywords.put(ExamplesKeyword.KEYWORD_NAME, new ExamplesKeyword(examplesValue));
             }
         }
-        BString commentKey = StringUtils.fromString("comment");
+        BString commentKey = StringUtils.fromString("$comment");
         if (annotation.containsKey(commentKey)) {
             Object comment = annotation.get(commentKey);
             if (comment instanceof BString commentValue) {
@@ -1473,8 +1475,14 @@ public class SchemaTypeParser {
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         Type referredType = TypeUtils.getReferredType(type);
         if (referredType.getTag() == TypeTags.RECORD_TYPE_TAG) {
-            extractKeywordsFromAnnotations(referredType, keywords);
-            extractKeywordsFromFieldAnnotations(referredType, keywords);
+            Object err = extractKeywordsFromAnnotations(referredType, keywords);
+            if (err instanceof BError) {
+                return null;
+            }
+            err = extractKeywordsFromFieldAnnotations(referredType, keywords);
+            if (err instanceof BError) {
+                return null;
+            }
 
             if (keywords.containsKey("additionalProperties") || keywords.containsKey("unevaluatedProperties")) {
                 RecordType recordType = (RecordType) referredType;
@@ -1488,7 +1496,10 @@ public class SchemaTypeParser {
                 }
             }
         } else {
-            extractKeywordsFromAnnotations(type, keywords);
+            Object err = extractKeywordsFromAnnotations(type, keywords);
+            if (err instanceof BError) {
+                return null;
+            }
         }
 
         return keywords;

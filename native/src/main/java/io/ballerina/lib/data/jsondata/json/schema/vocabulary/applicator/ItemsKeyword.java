@@ -49,7 +49,9 @@ public class ItemsKeyword extends Keyword {
             }
         }
 
-        context.setAnnotation("items", true);
+        if (isValid) {
+            context.setAnnotation("items", true);
+        }
         return isValid;
     }
 

@@ -57,25 +57,25 @@ public class Validator {
             context.setTrackEvaluatedProperties(true);
         }
 
-        for (String key : s.getOrderedKeys()) {
-            Keyword keyword = s.getKeyword(key);
-            if (keyword != null) {
-                isValid = isValid && keyword.evaluate(instance, context);
-                if (failFast && !isValid) {
-                    context.setTrackEvaluatedItems(prevTrackItems);
-                    context.setTrackEvaluatedProperties(prevTrackProperties);
-                    if (pushedScope) {
-                        context.popDynamicScope();
+        try {
+            for (String key : s.getOrderedKeys()) {
+                Keyword keyword = s.getKeyword(key);
+                if (keyword != null) {
+                    boolean keywordResult = keyword.evaluate(instance, context);
+                    if (!keywordResult) {
+                        isValid = false;
+                        if (failFast) {
+                            return false;
+                        }
                     }
-                    return isValid;
                 }
             }
-        }
-
-        context.setTrackEvaluatedItems(prevTrackItems);
-        context.setTrackEvaluatedProperties(prevTrackProperties);
-        if (pushedScope) {
-            context.popDynamicScope();
+        } finally {
+            context.setTrackEvaluatedItems(prevTrackItems);
+            context.setTrackEvaluatedProperties(prevTrackProperties);
+            if (pushedScope) {
+                context.popDynamicScope();
+            }
         }
         return isValid;
     }

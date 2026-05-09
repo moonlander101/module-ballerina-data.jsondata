@@ -52,9 +52,11 @@ public class AnyOfKeyword extends Keyword {
                 }
             }
         }
-        context.addError(
-                "anyOf",
-                "At " + context.getInstanceLocation() + ": [anyOf] value does not match any of the subschemas");
+        if (!isValid) {
+            context.addError(
+                    "anyOf",
+                    "At " + context.getInstanceLocation() + ": [anyOf] value does not match any of the subschemas");
+        }
         return isValid;
     }
 
