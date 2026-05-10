@@ -40,6 +40,7 @@ import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicAnchorK
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.DynamicRefKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.IdKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.core.RefKeyword;
+import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.CommentKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.DefaultKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.DeprecatedKeyword;
 import io.ballerina.lib.data.jsondata.json.schema.vocabulary.metadata.DescriptionKeyword;
@@ -123,6 +124,7 @@ public class SchemaJsonParser {
         LinkedHashMap<String, Keyword> keywords = new LinkedHashMap<>();
         boolean scopePushed = false;
         String resolvedId = null;
+        URI resolvedIdUri = null;
         String anchorName = null;
         String dynamicAnchorName = null;
 
@@ -138,8 +140,8 @@ public class SchemaJsonParser {
             String idStr = ((BString) idValue).getValue();
             String base = lexicalScopeStack.isEmpty() ? registry.getMockRootUri() : lexicalScopeStack.peek();
             resolvedId = SchemaRegistry.resolveURI(base, idStr);
+            resolvedIdUri = URI.create(resolvedId);
 
-            URI resolvedIdUri = URI.create(resolvedId);
             if (registry.containsKey(resolvedIdUri)) {
                 currentCallUris.add(resolvedIdUri);
                 return registry.get(resolvedIdUri);
@@ -196,16 +198,12 @@ public class SchemaJsonParser {
                 currentCallUris.add(mockUri);
             }
 
-            if (resolvedId != null) {
-                try {
-                    URI idUri = URI.create(resolvedId);
-                    if (registry.containsKey(idUri)) {
-                        return DiagnosticLog.createJsonError("Duplicate $id: " + resolvedId);
-                    }
-                    registry.put(idUri, schema);
-                    currentCallUris.add(idUri);
-                } catch (IllegalArgumentException ignored) {
+            if (resolvedIdUri != null) {
+                if (registry.containsKey(resolvedIdUri)) {
+                    return DiagnosticLog.createJsonError("Duplicate $id: " + resolvedId);
                 }
+                registry.put(resolvedIdUri, schema);
+                currentCallUris.add(resolvedIdUri);
             }
 
             if (anchorName != null) {
@@ -631,6 +629,12 @@ public class SchemaJsonParser {
             case DeprecatedKeyword.KEYWORD_NAME -> {
                 if (value instanceof Boolean deprecated) {
                     keywords.put(DeprecatedKeyword.KEYWORD_NAME, new DeprecatedKeyword(deprecated));
+                }
+                return null;
+            }
+            case CommentKeyword.KEYWORD_NAME -> {
+                if (value instanceof BString) {
+                    keywords.put(CommentKeyword.KEYWORD_NAME, new CommentKeyword(((BString) value).getValue()));
                 }
                 return null;
             }
